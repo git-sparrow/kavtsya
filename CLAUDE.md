@@ -29,3 +29,17 @@ Twin goals: learn AI hands-on, and refresh JS/TS/React/React Native fundamentals
 
 - `PROJECT_BRIEF.md` — source of truth for scope, decisions, naming, roadmap.
 - `.claude/settings.json` — enabled skill plugins.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues at `git-sparrow/kavtsya`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
