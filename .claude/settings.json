@@ -1,0 +1,11 @@
+{
+  "extraKnownMarketplaces": {
+    "mp-skills": {
+      "source": { "source": "github", "repo": "git-sparrow/mattp.skills" }
+    }
+  },
+  "enabledPlugins": {
+    "mp-core@mp-skills": true,
+    "mp-engineering@mp-skills": true
+  }
+}

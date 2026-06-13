@@ -1,0 +1,49 @@
+# ---- Node / JS ----
+node_modules/
+npm-debug.*
+yarn-error.*
+yarn-debug.*
+*.log
+
+# ---- Expo / React Native ----
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Expo / EAS
+.easignore
+
+# ---- Native ----
+ios/Pods/
+ios/build/
+android/.gradle/
+android/build/
+android/app/build/
+*.keystore
+!debug.keystore
+
+# ---- Environment / secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+
+# ---- Editor / OS ----
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+Thumbs.db
+
+# ---- Misc ----
+coverage/
+.cache/
+tmp/
