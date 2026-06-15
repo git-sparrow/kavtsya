@@ -4,30 +4,37 @@
 
 ## Status
 
-**Planning / exploration — do not build the app yet.** See `PROJECT_BRIEF.md` for the full brief, decisions, and roadmap. The next milestone is finalizing feature + AI scope, then a tech/architecture plan, then PRD → issues → build.
+**Build phase** — scope and architecture are locked. See `PROJECT_BRIEF.md` for the full brief and decisions, `CONTEXT.md` for the domain glossary, and `docs/adr/` for architecture decisions. Next milestone: PRD → issues → build.
 
 ## What this is
 
-A multi-shop coffee loyalty mobile app for the Ukrainian market. Customers collect loyalty stamps across cafés (QR code → discount / free 10th coffee); owners scan QRs, send push notifications, and get AI insights. Signature feature: an AI "coffee fortune" (**Ворожка**) tied to the Ukrainian tradition of fortune-telling by coffee grounds.
+A multi-café coffee loyalty mobile app for the Ukrainian market. Each Café runs its own independent loyalty program — Customers collect **Зернятка** (loyalty units; one per Purchase) and redeem **Rewards** at the Cafés where they buy coffee. **CafeOwners** (Кавовар) scan Customer QR codes, configure their program, send push notifications, and get analytics. Signature feature: an AI "coffee fortune" (**Ворожка**) tied to the Ukrainian tradition of fortune-telling by coffee grounds.
 
 Twin goals: learn AI hands-on, and refresh JS/TS/React/React Native fundamentals.
 
 ## Stack (locked in)
 
-- **React Native + Expo** (iOS + Android)
-- Push via Expo notifications
-- AI as a core, deliberate feature — not a gimmick
-- Native Swift may come later
+- **Mobile**: React Native + Expo (iOS + Android), single app with CafeOwner Mode
+- **Backend**: Hono on Node.js (Railway)
+- **Database**: PostgreSQL on Railway, raw SQL via `postgres.js` (no ORM), Zod for validation
+- **Auth**: Better Auth — email/password + Google + Apple Sign-In
+- **AI**: custom provider abstraction, Claude (Haiku) by default
+- **Push**: Expo Push Notifications
+- **Repo**: monorepo — `apps/mobile` + `apps/api` + shared types
+
+See the Tech stack table in `PROJECT_BRIEF.md` and `docs/adr/` for full rationale.
 
 ## Working agreement
 
-- Respect the planning-phase freeze: discuss, design, and document — but don't scaffold app code until the brief says build.
+- Use the domain glossary in `CONTEXT.md` consistently — **Зернятко** not "stamp/point", **CafeOwner** not "owner", **Purchase** not "transaction".
 - Keep it simple: no redundant functionality.
 - This repo enables `mp-core` + `mp-engineering` skills via `.claude/settings.json`. Run `/mp-engineering:setup-matt-pocock-skills` once before using the engineering workflow skills.
 
 ## Key files
 
 - `PROJECT_BRIEF.md` — source of truth for scope, decisions, naming, roadmap.
+- `CONTEXT.md` — domain glossary (Зернятко, CafeOwner, Ворожка, Purchase, Reward, Plan, …).
+- `docs/adr/` — architecture decision records.
 - `.claude/settings.json` — enabled skill plugins.
 
 ## Agent skills
