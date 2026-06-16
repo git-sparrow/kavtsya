@@ -42,12 +42,11 @@ A mobile loyalty app connecting coffee shops with their Customers, plus a CafeOw
 **Customer**
 - Login + unique QR code
 - Collect Зернятка — one per Purchase, per Café (Зернятка do not pool across Cafés)
-- Instant signup reward — 1–2 bonus Зернятка credited at the first Purchase
 - Redeem Reward when Зернятко threshold is reached
 - **Ворожка** — AI-generated coffee fortune after each Purchase
 
 **CafeOwner**
-- Scan Customer QR to issue a Зернятко
+- Scan Customer QR to issue a Зернятко (Purchase) and to confirm a Redemption when the threshold is reached
 - Configure loyalty program: Зернятко threshold (configurable; default 10) + Reward (from platform defaults: free drink, free specific drink, fixed discount, % discount)
 - Send push notifications (menu updates, seasonal products) — one-tap campaigns
 - Basic analytics: peak hours, repeat vs new Customers
@@ -60,6 +59,7 @@ A mobile loyalty app connecting coffee shops with their Customers, plus a CafeOw
 
 ### Backlog (good idea, not yet scheduled)
 
+- Signup Reward — 1–2 bonus Зернятка as an install hook _(postponed from v1 on 2026-06-16; revisit once the core loop is live. Note: Зернятка are per-Café, so any implementation must credit at first Purchase, not at signup.)_
 - Shareable Ворожка card for social media _(needs value validation before building)_
 - Seasonal / holiday Ворожка fortunes (Ukrainian holidays)
 - Coffee personality profile — AI label based on order patterns
@@ -87,21 +87,22 @@ When a Free CafeOwner hits the Active Customer cap: soft warning issued → grac
 
 ## AI scope
 
-AI is a **core learning goal**, not a gimmick. v1 goes deep on one feature:
+AI is a **core learning goal**, not a gimmick. v1 keeps the AI surface simple but real:
 
-- **Ворожка (v1)** — LLM-generated coffee fortune personalised using Purchase patterns (time of day, frequency, day of week). No drink-level data is captured in v1. _Future: consider logging the ordered drink during the scan to enable richer, drink-specific fortunes (see backlog issue)._
+- **Ворожка (v1)** — a scheduled job uses Claude (via the provider abstraction, `ADR 0007`) to generate a batch of **generic** coffee fortunes **once a day** into a pool. Each Purchase scan serves a **random** fortune from that day's pool — no live AI call on the scan, no per-Customer personalization in v1. This still exercises the provider abstraction, prompt design, and a scheduled job, without per-scan cost or latency. _Future: personalized AI fortunes per Customer using Purchase patterns (time of day, frequency, day of week); optionally log the ordered drink during the scan for drink-specific fortunes (see backlog)._
 
 v2 AI:
+- Personalized Ворожка — per-Customer fortunes from Purchase patterns
 - Churn prediction for CafeOwners
 
-## ⏳ Open design questions (blocking the PRD)
+## ✓ Resolved design questions (were blocking the PRD)
 
-Surfaced during the architecture review on 2026-06-15. These must be answered before the PRD is complete — resume here next session.
+Surfaced during the architecture review on 2026-06-15; all four resolved on 2026-06-16. The PRD is unblocked.
 
-1. **Redemption mechanic (highest priority — core loop is unspecified).** When a Customer's balance reaches the threshold: does the CafeOwner scan again to confirm redemption? Does the balance reset to 0 or subtract the threshold? Can Зернятка accumulate past the threshold (banking multiple Rewards)?
-2. **"Instant signup reward" vs "credited at first Purchase" contradiction.** The Signup Reward is meant to be an *instant* hook to reduce install hesitation, but it's defined as credited at the first Purchase (days later). Resolve: is it a *promise shown at signup* ("2 Зернятка waiting for your first coffee") applied at first Purchase, or do we rename the feature?
-3. **Зернятко issuance must not depend on Ворожка.** A Purchase triggers both a Зернятко and a Claude API call. If the AI call is slow/down, the Зернятко must still be issued; the fortune degrades gracefully (fallback or retry). Confirm and document as an architectural rule (possible ADR).
-4. **Single-use QR token?** Recommendation: make the dynamic QR token single-use so a double-scan can't issue two Зернятка, solving double-issuance and farming together. Confirm.
+1. ~~**Redemption mechanic (highest priority — core loop is unspecified).**~~ ✓ **Resolved 2026-06-16** — Scan-to-confirm, subtract-the-threshold. The CafeOwner does a separate redeem scan to confirm the Reward was handed over; the balance subtracts the threshold (does not reset to 0), so beans toward the next Reward are preserved and a 2× balance can bank multiple Redemptions. See **Redemption** in `CONTEXT.md`.
+2. ~~**"Instant signup reward" vs "credited at first Purchase" contradiction.**~~ ✓ **Resolved 2026-06-16** — Signup Reward postponed out of v1 to the Backlog. Removes the contradiction entirely; revisit after the core loop ships.
+3. ~~**Зернятко issuance must not depend on Ворожка.**~~ ✓ **Resolved 2026-06-16** — Confirmed, and the mechanism changed to make it structural: Ворожка is now a daily AI-generated batch served randomly per scan (see AI scope), so the Purchase scan makes **no live AI call at all**. Зернятко issuance is therefore trivially independent of the fortune. Captured as `docs/adr/0009`.
+4. ~~**Single-use QR token?**~~ ✓ **Resolved 2026-06-16** — Confirmed single-use. Each rotating token is consumed on first successful scan (by `jti`); re-scans are rejected. Closes the double-issuance / farming window. Captured in `docs/adr/0006`.
 
 ## ⏳ Open action items
 

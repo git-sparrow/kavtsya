@@ -42,8 +42,12 @@ _Avoid_: Order, transaction, visit
 What a Customer redeems after accumulating a threshold number of Зернятка at a Café. The CafeOwner selects the Reward from platform-defined defaults: free drink (any item), free drink (specific item the CafeOwner names), fixed discount (e.g. ₴30 off), or percentage discount (e.g. 10% off). Custom Rewards defined by the CafeOwner are a future feature.
 _Avoid_: Prize, benefit, perk, offer
 
-**Signup Reward**:
-A one-time bonus earned at registration, credited as 1–2 Зернятка to the Customer's balance at the first Café they make a Purchase at. Designed to give immediate tangible value and reduce install hesitation.
+**Redemption**:
+The act of a Customer claiming a Reward once their Зернятко balance at a Café reaches that Café's threshold. The CafeOwner confirms it with a separate scan-to-confirm action (distinct from a Purchase scan) — confirming the Reward was handed over. On confirmation the balance **subtracts the threshold** (e.g. balance 23, threshold 10 → 13); it does not reset to 0, so Зернятка earned toward the next Reward (including any from a Purchase on the same visit) are preserved. A balance of 2× threshold or more can therefore bank multiple Redemptions.
+_Avoid_: Claim, cash-in, reset
+
+**Signup Reward** _(postponed — not in v1, see Backlog)_:
+A one-time bonus earned at registration, credited as 1–2 Зернятка to the Customer's balance at the first Café they make a Purchase at. Designed to give immediate tangible value and reduce install hesitation. Postponed out of v1 on 2026-06-16; kept here as the canonical term for when it returns.
 _Avoid_: Welcome bonus, onboarding reward, first-visit discount
 
 ### Business model
@@ -59,5 +63,5 @@ _Avoid_: Monthly user, active user
 ### Features
 
 **Ворожка** (vorozhka — "the fortune-teller"):
-The post-Purchase AI feature that generates a personalized coffee fortune for the Customer after each Purchase. v1 personalizes using Purchase patterns only (time of day, Purchase frequency, day of week, Café) — no drink-level data is captured during the scan. Tied to the Ukrainian tradition of fortune-telling by coffee grounds (_ворожіння на кавовій гущі_).
+The post-Purchase AI feature that shows the Customer a coffee fortune after each Purchase. In v1 a scheduled job uses the AI provider to generate a batch of **generic** fortunes **once a day** into a pool; each Purchase scan serves a **random** fortune from that day's pool — there is no live AI call during the scan and no per-Customer personalization yet. Tied to the Ukrainian tradition of fortune-telling by coffee grounds (_ворожіння на кавовій гущі_). _Future: personalized fortunes per Customer using Purchase patterns (time of day, frequency, day of week, Café)._
 _Avoid_: Fortune, prediction, horoscope
