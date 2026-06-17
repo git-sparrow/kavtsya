@@ -19,7 +19,7 @@ A participating coffee shop registered on the platform.
 _Avoid_: Shop, venue, store, location
 
 **Platform**:
-The Kavtsya team acting as operator — sets and adjusts business-level configuration (free-tier limits, grace periods, pricing) without code deployments. Distinct from CafeOwners and Customers.
+The Kavtsya team acting as operator — sets and adjusts business-level configuration (pricing, which features are Paid-gated, platform-default Rewards) without code deployments. Distinct from CafeOwners and Customers.
 _Avoid_: Admin, founder, superuser
 
 ### App structure
@@ -35,15 +35,15 @@ The loyalty unit of Kavtsya — one bonus point per Purchase. Customers accumula
 _Avoid_: Stamp, credit, punch, card
 
 **Purchase**:
-A Customer buying at least one drink at a Café. Recorded when the CafeOwner scans the Customer's QR code — this adds one Зернятко to the Customer's balance at that Café and triggers Ворожка.
+A Customer buying at least one drink at a Café. Recorded when the CafeOwner scans the Customer's QR code (or, when the QR can't be scanned, enters the Customer's static **member code** — the offline fallback, see `docs/adr/0006`) — this adds one Зернятко to the Customer's balance at that Café and triggers Ворожка. A CafeOwner cannot earn Зернятка at a Café they operate (self-farming guard, `docs/adr/0003`).
 _Avoid_: Order, transaction, visit
 
 **Reward**:
-What a Customer redeems after accumulating a threshold number of Зернятка at a Café. The CafeOwner selects the Reward from platform-defined defaults: free drink (any item), free drink (specific item the CafeOwner names), fixed discount (e.g. ₴30 off), or percentage discount (e.g. 10% off). Custom Rewards defined by the CafeOwner are a future feature.
+What a Customer redeems after accumulating a threshold number of Зернятка at a Café. Every Café — Free or Pro — chooses its Reward from the **platform-default set**: free drink (any item), free drink (specific item the CafeOwner names), fixed discount (e.g. ₴30 off), or percentage discount (e.g. 10% off). The default set is **Platform-tunable** (a new default can be added without a code deploy). **Custom Rewards** — anything the defaults can't express (combos like "drink + pastry", tiered/escalating, non-menu perks, conditional offers) — are a **Pro** feature, shipping in two flavours: *display-only* first (the app shows the reward text, the barista honours it manually — no POS needed), then *auto-applied* at the register once POS integration lands (`docs/adr/0012`).
 _Avoid_: Prize, benefit, perk, offer
 
 **Redemption**:
-The act of a Customer claiming a Reward once their Зернятко balance at a Café reaches that Café's threshold. The CafeOwner confirms it with a separate scan-to-confirm action (distinct from a Purchase scan) — confirming the Reward was handed over. On confirmation the balance **subtracts the threshold** (e.g. balance 23, threshold 10 → 13); it does not reset to 0, so Зернятка earned toward the next Reward (including any from a Purchase on the same visit) are preserved. A balance of 2× threshold or more can therefore bank multiple Redemptions.
+The act of a Customer claiming a Reward once their Зернятко balance at a Café reaches that Café's threshold. It is confirmed as a separate action off a **single** QR scan: the one scan identifies the Customer, and the CafeOwner can issue a Зернятко (Purchase) and/or confirm a Redemption from it — distinct actions, no second scan. On confirmation the balance **subtracts the threshold** (e.g. balance 23, threshold 10 → 13); it does not reset to 0, so Зернятка earned toward the next Reward (including any from a Purchase on the same visit) are preserved. A balance of 2× threshold or more can therefore bank multiple Redemptions (each a distinct confirm action). The threshold subtracted is **snapshotted** at confirmation time, so a later change to the Café's threshold never re-prices a past Redemption.
 _Avoid_: Claim, cash-in, reset
 
 **Signup Reward** _(postponed — not in v1, see Backlog)_:
@@ -53,11 +53,11 @@ _Avoid_: Welcome bonus, onboarding reward, first-visit discount
 ### Business model
 
 **Plan**:
-The subscription tier a CafeOwner is on — Free or Paid. Customers are always free. Free Plan includes core loyalty features (QR scan, Зернятка, Reward configuration) with a cap on Active Customers. Paid Plan unlocks push notifications and analytics, and removes the Active Customer cap. All limits are set by the Platform and configurable without a code deployment.
+The subscription tier a CafeOwner is on — Free or Paid. Customers are always free. The split is **feature-gated, not usage-capped**: the Free Plan includes the full core loyalty loop with no limits — QR scan, unlimited Зернятка issuance, and Reward configuration from platform defaults. The Paid Plan unlocks push notifications and analytics (and future paid extras — Custom Rewards, churn alerts). There is no cap on how many Customers a Free Café can serve.
 _Avoid_: Subscription, tier, account type
 
 **Active Customer**:
-A Customer who has made at least one Purchase at a Café within the current calendar month. Used as the billing metric for the Free Plan cap. The cap value, soft-warning threshold, and grace period duration are all Platform-configurable. When the cap is exceeded: the CafeOwner receives a soft warning; Зернятка issuance continues through a grace period before pausing.
+A distinct Customer with at least one Purchase at a Café within a given period (e.g. a calendar month, or a rolling 30 days). Purely an **analytics** metric — monthly reach, repeat vs new Customers, and the basis for future churn windows. Not tied to billing: the Free Plan has no cap.
 _Avoid_: Monthly user, active user
 
 ### Features

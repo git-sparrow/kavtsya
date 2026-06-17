@@ -65,23 +65,26 @@ A mobile loyalty app connecting coffee shops with their Customers, plus a CafeOw
 - Coffee personality profile — AI label based on order patterns
 - Personalized push notifications based on order history
 - CafeOwner: demand forecasting
-- CafeOwner: custom Rewards (beyond platform defaults)
+- CafeOwner: **custom Rewards** (Pro, beyond platform defaults) — *display-only* first (barista honours manually, no POS), then *auto-applied* at the register with POS integration. Free keeps the full platform-default set.
+- CafeOwner: **POS integration** (Pro) — optional enrichment of the loyalty loop for cafés that already run a POS (Poster first). An edge adapter (`POSProvider`, mirroring the AI provider abstraction), **never a dependency** — the core loop always works without a POS. Adds order-level data (drinks, spend), auto-applied discount Rewards at the register, and drink-specific Ворожка. Still requires the QR scan to bind a transaction to a Customer. See `docs/adr/0012`.
 
 ## Business model
 
-Customers are always free. CafeOwners are the revenue source — freemium with a Paid Plan.
+Customers are always free. CafeOwners are the revenue source — freemium with a single Paid tier (**Pro**). The split is **feature-gated, not usage-capped**: Free Cafés get the full core loyalty loop with no limits; Pro unlocks CafeOwner growth tools. There is no cap on how many Customers a Free Café can serve, and nothing ever pauses Зернятко issuance. Guiding line: **Customer-facing features are Free; CafeOwner growth tools are Paid.** See `docs/adr/0011`.
 
-| Feature | Free | Paid |
+| Feature | Free | Pro |
 |---|---|---|
-| QR scan + Зернятка issuance | ✅ | ✅ |
-| Reward + threshold configuration | ✅ | ✅ |
-| Push notifications | ❌ | ✅ |
+| QR scan + Зернятка issuance (unlimited) | ✅ | ✅ |
+| Reward + threshold configuration (platform defaults) | ✅ | ✅ |
+| Ворожка (coffee fortune) | ✅ | ✅ |
+| Push campaigns / outreach | ❌ | ✅ |
 | Analytics | ❌ | ✅ |
-| Active Customers / month | capped | unlimited |
 
-All limits (cap value, soft-warning threshold, grace period) are **Platform-configurable** — adjustable by the Kavtsya team without a code deployment.
+The Pro hero feature is **outreach + AI retention** (push campaigns + AI win-back of lapsing regulars), with analytics as the supporting layer.
 
-When a Free CafeOwner hits the Active Customer cap: soft warning issued → grace period → Зернятка issuance pauses until CafeOwner upgrades or next billing period.
+**Pricing & positioning** — one Pro tier, flat monthly **per Café**, target ~**₴390–490/mo** with a **14-day trial** and an annual discount. Positioning: _"Лояльність і маркетинг для кав'ярні — без POS, без IT, лише QR-код."_ The wedge is **no POS required** — Ukrainian incumbents (Poster ₴600–2,142/mo; Expirenza/mono with free loyalty but POS-integration ~₴495/mo) all tie loyalty to a cash-register system, while most cafés use nothing or paper stamps. Main competitive threat: **Expirenza (by mono)**; defend on no-POS simplicity + Ворожка delight + AI, not on accrual mechanics.
+
+**Future Paid extras** (post-v1): Custom Rewards (beyond platform defaults), churn alerts, AI win-back, and **POS integration** (see Backlog). Other features uncovered during build may also land behind Pro.
 
 **Future**: pricing scales for CafeOwners with multiple Cafés — one CafeOwner, many Cafés pays more than a single-café CafeOwner. Not in v1.
 
@@ -99,7 +102,7 @@ v2 AI:
 
 Surfaced during the architecture review on 2026-06-15; all four resolved on 2026-06-16. The PRD is unblocked.
 
-1. ~~**Redemption mechanic (highest priority — core loop is unspecified).**~~ ✓ **Resolved 2026-06-16** — Scan-to-confirm, subtract-the-threshold. The CafeOwner does a separate redeem scan to confirm the Reward was handed over; the balance subtracts the threshold (does not reset to 0), so beans toward the next Reward are preserved and a 2× balance can bank multiple Redemptions. See **Redemption** in `CONTEXT.md`.
+1. ~~**Redemption mechanic (highest priority — core loop is unspecified).**~~ ✓ **Resolved 2026-06-16** — Subtract-the-threshold, confirmed via a **single scan**. One QR scan identifies the Customer; the CafeOwner can issue a Зернятко and/or confirm a Redemption as distinct actions off that one scan (no second scan — refined 2026-06-17). The balance subtracts the threshold (does not reset to 0), so beans toward the next Reward are preserved and a 2× balance can bank multiple Redemptions. See **Redemption** in `CONTEXT.md` and `docs/adr/0006`, `docs/adr/0010`.
 2. ~~**"Instant signup reward" vs "credited at first Purchase" contradiction.**~~ ✓ **Resolved 2026-06-16** — Signup Reward postponed out of v1 to the Backlog. Removes the contradiction entirely; revisit after the core loop ships.
 3. ~~**Зернятко issuance must not depend on Ворожка.**~~ ✓ **Resolved 2026-06-16** — Confirmed, and the mechanism changed to make it structural: Ворожка is now a daily AI-generated batch served randomly per scan (see AI scope), so the Purchase scan makes **no live AI call at all**. Зернятко issuance is therefore trivially independent of the fortune. Captured as `docs/adr/0009`.
 4. ~~**Single-use QR token?**~~ ✓ **Resolved 2026-06-16** — Confirmed single-use. Each rotating token is consumed on first successful scan (by `jti`); re-scans are rejected. Closes the double-issuance / farming window. Captured in `docs/adr/0006`.
