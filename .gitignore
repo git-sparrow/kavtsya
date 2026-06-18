@@ -47,3 +47,6 @@ Thumbs.db
 coverage/
 .cache/
 tmp/
+
+# ---- Personal /teach learning workspace (not product code) ----
+learning/
