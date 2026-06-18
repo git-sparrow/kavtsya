@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: kavtsya-db
+    environment:
+      POSTGRES_USER: kavtsya
+      POSTGRES_PASSWORD: kavtsya
+      POSTGRES_DB: kavtsya
+    ports:
+      - "5432:5432"
+    volumes:
+      - kavtsya-db-data:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kavtsya -d kavtsya"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kavtsya-db-data:

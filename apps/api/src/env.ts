@@ -1,0 +1,41 @@
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { z } from "zod";
+
+const envSchema = z.object({
+  DATABASE_URL: z.string().url(),
+  PORT: z.coerce.number().int().positive().default(3000),
+});
+
+export type Env = z.infer<typeof envSchema>;
+
+/**
+ * Walk up from `startDir` to the filesystem root, loading the first `.env`
+ * found. Lets API processes pick up the repo-root `.env` even though pnpm runs
+ * package scripts with the cwd set to `apps/api`. Best-effort: real environment
+ * variables (e.g. Railway) take precedence and need no file.
+ */
+export function loadDotEnv(startDir: string = process.cwd()): void {
+  let dir = startDir;
+  for (;;) {
+    const candidate = join(dir, ".env");
+    if (existsSync(candidate)) {
+      process.loadEnvFile(candidate);
+      return;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) return;
+    dir = parent;
+  }
+}
+
+export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
+  const parsed = envSchema.safeParse(source);
+  if (!parsed.success) {
+    const issues = parsed.error.issues
+      .map((i) => `  - ${i.path.join(".") || "(root)"}: ${i.message}`)
+      .join("\n");
+    throw new Error(`Invalid environment:\n${issues}`);
+  }
+  return parsed.data;
+}
