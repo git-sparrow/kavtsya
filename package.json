@@ -1,0 +1,19 @@
+{
+  "name": "kavtsya",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev:api": "pnpm --filter @kavtsya/api dev",
+    "dev:mobile": "pnpm --filter @kavtsya/mobile start",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d db",
+    "migrate": "pnpm --filter @kavtsya/api migrate",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}
