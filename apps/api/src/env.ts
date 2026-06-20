@@ -5,6 +5,10 @@ import { z } from "zod";
 const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   PORT: z.coerce.number().int().positive().default(3000),
+  // Better Auth signs sessions with this; must be high-entropy (≥32 chars).
+  BETTER_AUTH_SECRET: z.string().min(32),
+  // Public base URL Better Auth issues cookies/redirects against.
+  BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -1,5 +1,7 @@
 import { serve } from "@hono/node-server";
+import { Pool } from "pg";
 import { createApp } from "./app";
+import { createAuth } from "./auth";
 import { systemClock } from "./clock";
 import { createDb } from "./db";
 import { loadDotEnv, loadEnv } from "./env";
@@ -7,7 +9,15 @@ import { loadDotEnv, loadEnv } from "./env";
 loadDotEnv();
 const env = loadEnv();
 const db = createDb(env.DATABASE_URL);
-const app = createApp({ db, clock: systemClock });
+// Better Auth needs its own pg Pool against the same database (no postgres.js
+// adapter); the rest of the app keeps using `db` (postgres.js).
+const authPool = new Pool({ connectionString: env.DATABASE_URL });
+const auth = createAuth({
+  database: authPool,
+  secret: env.BETTER_AUTH_SECRET,
+  baseURL: env.BETTER_AUTH_URL,
+});
+const app = createApp({ db, clock: systemClock, auth });
 
 serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   console.log(`Kavtsya API listening on http://localhost:${info.port}`);
