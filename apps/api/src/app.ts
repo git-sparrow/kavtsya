@@ -3,6 +3,7 @@ import type { Auth, AuthSession, AuthUser } from "./auth";
 import type { Clock } from "./clock";
 import type { Database } from "./db";
 import { registerAuthRoutes } from "./routes/auth";
+import { registerCafeRoutes } from "./routes/cafes";
 import { registerHealthRoute } from "./routes/health";
 
 /**
@@ -40,6 +41,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.on(["POST", "GET"], "/api/auth/*", (c) => deps.auth.handler(c.req.raw));
 
   registerHealthRoute(app, deps);
-  registerAuthRoutes(app);
+  registerAuthRoutes(app, deps);
+  registerCafeRoutes(app, deps);
   return app;
 }
