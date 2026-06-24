@@ -14,10 +14,7 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, "node_modules"),
 ];
 
-// Honor the `exports` field in package.json. @better-auth/expo only exposes its
-// `/client` (and `/plugins`) entry points via `exports`, mapping to ./dist/*;
-// without this Metro looks for a literal ./client.js at the package root and
-// fails to resolve. Opt-in in Expo SDK 52's Metro.
-config.resolver.unstable_enablePackageExports = true;
+// Package `exports` resolution is enabled by default in SDK 56's Metro, which
+// @better-auth/expo relies on (it only exposes its /client entry via exports).
 
 module.exports = config;
