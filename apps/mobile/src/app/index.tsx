@@ -1,4 +1,4 @@
-import type { Cafe, MeResponse } from "@kavtsya/shared";
+import type { Cafe, MeResponse, Reward, RewardType } from "@kavtsya/shared";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -10,7 +10,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { fetchMe, registerCafe } from "@/lib/api";
+import {
+  fetchMe,
+  fetchProgram,
+  fetchRewardDefaults,
+  registerCafe,
+  updateProgram,
+} from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 
 export default function Index() {
@@ -167,13 +173,21 @@ function RegisterCafeForm({ onRegistered }: { onRegistered: () => Promise<void> 
 }
 
 function CafeOwnerHome({ cafes, onExit }: { cafes: Cafe[]; onExit: () => void }) {
+  // Pick a Café to configure its loyalty program; null = the Café list.
+  const [selected, setSelected] = useState<Cafe | null>(null);
+
+  if (selected) {
+    return <CafeProgramConfig cafe={selected} onBack={() => setSelected(null)} />;
+  }
+
   return (
     <View style={styles.card}>
       <Text style={styles.ownerBadge}>Режим Кавовара</Text>
       {cafes.map((cafe) => (
-        <Text key={cafe.id} style={styles.row}>
-          {cafe.name}
-        </Text>
+        <Pressable key={cafe.id} style={styles.cafeRow} onPress={() => setSelected(cafe)}>
+          <Text style={styles.row}>{cafe.name}</Text>
+          <Text style={styles.muted}>Налаштувати програму ›</Text>
+        </Pressable>
       ))}
       <Text style={styles.muted}>Сканування QR з'явиться у наступному оновленні.</Text>
       <Pressable style={styles.secondaryButton} onPress={onExit}>
@@ -181,6 +195,199 @@ function CafeOwnerHome({ cafes, onExit }: { cafes: Cafe[]; onExit: () => void })
       </Pressable>
     </View>
   );
+}
+
+/** Reward types that carry a parameter, and the keyboard/placeholder to collect it. */
+const REWARD_PARAM: Partial<
+  Record<RewardType, { label: string; placeholder: string; numeric: boolean }>
+> = {
+  free_specific_drink: { label: "Напій", placeholder: "Напр. Капучино", numeric: false },
+  fixed_discount: { label: "Знижка, ₴", placeholder: "Напр. 30", numeric: true },
+  percent_discount: { label: "Знижка, %", placeholder: "Напр. 10", numeric: true },
+};
+
+/**
+ * Loyalty program config for one Café (#18): the CafeOwner sets the Зернятко
+ * threshold and picks a Reward from the platform-default set. Reads on mount and
+ * writes back via the API; the server is the authority on valid Rewards.
+ */
+function CafeProgramConfig({ cafe, onBack }: { cafe: Cafe; onBack: () => void }) {
+  const [threshold, setThreshold] = useState("10");
+  // null = "no Reward yet"; otherwise one of the platform-default types.
+  const [rewardType, setRewardType] = useState<RewardType | null>(null);
+  const [param, setParam] = useState("");
+  const [defaults, setDefaults] = useState<{ type: RewardType; label: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const [program, rewardDefaults] = await Promise.all([
+          fetchProgram(cafe.id),
+          fetchRewardDefaults(),
+        ]);
+        if (!active) return;
+        setDefaults(rewardDefaults);
+        setThreshold(String(program.threshold));
+        setRewardType(program.reward?.type ?? null);
+        setParam(rewardParamValue(program.reward));
+      } catch (e) {
+        if (active) setError(e instanceof Error ? e.message : "Помилка завантаження");
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [cafe.id]);
+
+  function selectReward(type: RewardType | null) {
+    setRewardType(type);
+    setParam("");
+    setSaved(false);
+  }
+
+  async function save() {
+    setError(null);
+    setSaved(false);
+    const thresholdNum = Number(threshold);
+    if (!Number.isInteger(thresholdNum) || thresholdNum < 1) {
+      setError("Поріг має бути цілим числом від 1");
+      return;
+    }
+    let reward: Reward | null;
+    try {
+      reward = buildReward(rewardType, param);
+    } catch {
+      setError("Заповніть деталі винагороди");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const written = await updateProgram(cafe.id, { threshold: thresholdNum, reward });
+      setThreshold(String(written.threshold));
+      setRewardType(written.reward?.type ?? null);
+      setParam(rewardParamValue(written.reward));
+      setSaved(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не вдалося зберегти");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) return <ActivityIndicator size="large" color="#3b2417" />;
+
+  const paramSpec = rewardType ? REWARD_PARAM[rewardType] : undefined;
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.ownerBadge}>{cafe.name}</Text>
+
+      <Text style={styles.muted}>Поріг Зернятка (скільки до винагороди):</Text>
+      <TextInput
+        style={styles.input}
+        keyboardType="number-pad"
+        value={threshold}
+        onChangeText={(t) => {
+          setThreshold(t);
+          setSaved(false);
+        }}
+      />
+
+      <Text style={styles.muted}>Винагорода:</Text>
+      <RewardChip
+        label="Без винагороди"
+        active={rewardType === null}
+        onPress={() => selectReward(null)}
+      />
+      {defaults.map((d) => (
+        <RewardChip
+          key={d.type}
+          label={d.label}
+          active={rewardType === d.type}
+          onPress={() => selectReward(d.type)}
+        />
+      ))}
+
+      {paramSpec && (
+        <TextInput
+          style={styles.input}
+          placeholder={paramSpec.placeholder}
+          keyboardType={paramSpec.numeric ? "number-pad" : "default"}
+          value={param}
+          onChangeText={(t) => {
+            setParam(t);
+            setSaved(false);
+          }}
+        />
+      )}
+
+      {error && <Text style={styles.error}>{error}</Text>}
+      {saved && <Text style={styles.muted}>Збережено ✓</Text>}
+
+      <Pressable
+        style={[styles.primaryButton, busy && styles.disabled]}
+        disabled={busy}
+        onPress={save}
+      >
+        <Text style={styles.primaryButtonText}>{busy ? "..." : "Зберегти"}</Text>
+      </Pressable>
+      <Pressable style={styles.secondaryButton} onPress={onBack}>
+        <Text style={styles.secondaryButtonText}>Назад</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function RewardChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable style={[styles.chip, active && styles.chipActive]} onPress={onPress}>
+      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/** The editable param of a Reward as a text-input string ("" when none). */
+function rewardParamValue(reward: Reward | null): string {
+  if (!reward) return "";
+  if (reward.type === "free_specific_drink") return reward.item;
+  if (reward.type === "fixed_discount") return String(reward.amountUah);
+  if (reward.type === "percent_discount") return String(reward.percent);
+  return "";
+}
+
+/** Assemble a Reward from the chosen type + raw param; throws if the param is missing. */
+function buildReward(type: RewardType | null, param: string): Reward | null {
+  if (type === null) return null;
+  const trimmed = param.trim();
+  switch (type) {
+    case "free_drink":
+      return { type };
+    case "free_specific_drink":
+      if (!trimmed) throw new Error("missing item");
+      return { type, item: trimmed };
+    case "fixed_discount":
+      if (!trimmed) throw new Error("missing amount");
+      return { type, amountUah: Number(trimmed) };
+    case "percent_discount":
+      if (!trimmed) throw new Error("missing percent");
+      return { type, percent: Number(trimmed) };
+  }
 }
 
 const styles = StyleSheet.create({
@@ -222,6 +429,33 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#3b2417",
     textAlign: "center",
+  },
+  cafeRow: {
+    borderWidth: 1,
+    borderColor: "#d8c9bc",
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 2,
+  },
+  chip: {
+    borderWidth: 1,
+    borderColor: "#d8c9bc",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  chipActive: {
+    borderColor: "#3b2417",
+    backgroundColor: "#f0e6db",
+  },
+  chipText: {
+    fontSize: 15,
+    color: "#7a5c45",
+  },
+  chipTextActive: {
+    color: "#3b2417",
+    fontWeight: "600",
   },
   muted: {
     fontSize: 13,
