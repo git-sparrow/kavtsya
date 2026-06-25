@@ -21,3 +21,19 @@ export const authClient = createAuthClient({
     }),
   ],
 });
+
+/**
+ * Fetch one of our own (non-auth) API routes through the Better Auth client so
+ * the Expo plugin still attaches the SecureStore session cookie — but against
+ * the API root, not Better Auth's `/api/auth` base. Without the `baseURL`
+ * override, `$fetch("/api/me")` resolves to `/api/auth/api/me` and 404s.
+ *
+ * Loosely typed on purpose: `$fetch`'s generic signature is awkward to alias,
+ * and every caller re-validates `data` against a shared Zod schema anyway.
+ */
+export function apiFetch(
+  path: string,
+  options?: { method?: string; body?: unknown },
+): Promise<{ data: unknown; error: { message?: string } | null }> {
+  return authClient.$fetch(path, { baseURL: API_URL, ...options } as never);
+}
