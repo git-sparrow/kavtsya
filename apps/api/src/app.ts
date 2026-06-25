@@ -5,6 +5,7 @@ import type { Database } from "./db";
 import { registerAuthRoutes } from "./routes/auth";
 import { registerCafeRoutes } from "./routes/cafes";
 import { registerHealthRoute } from "./routes/health";
+import { registerLoyaltyRoutes } from "./routes/loyalty";
 
 /**
  * Everything the app needs from the outside world. Injected (not imported as
@@ -43,5 +44,6 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   registerHealthRoute(app, deps);
   registerAuthRoutes(app, deps);
   registerCafeRoutes(app, deps);
+  registerLoyaltyRoutes(app, deps);
   return app;
 }

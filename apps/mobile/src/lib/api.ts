@@ -1,4 +1,13 @@
-import { type Cafe, cafeSchema, type MeResponse, meResponseSchema } from "@kavtsya/shared";
+import {
+  type Cafe,
+  cafeSchema,
+  type LoyaltyProgram,
+  loyaltyProgramSchema,
+  type MeResponse,
+  meResponseSchema,
+  type RewardDefaults,
+  rewardDefaultsSchema,
+} from "@kavtsya/shared";
 
 import { apiFetch } from "@/lib/auth-client";
 
@@ -20,4 +29,29 @@ export async function registerCafe(name: string): Promise<Cafe> {
   });
   if (error) throw new Error(error.message ?? "Не вдалося зареєструвати кав'ярню");
   return cafeSchema.parse(data);
+}
+
+/** The platform-default Reward set the config screen offers (story 38). */
+export async function fetchRewardDefaults(): Promise<RewardDefaults> {
+  const { data, error } = await apiFetch("/api/reward-defaults");
+  if (error) throw new Error(error.message ?? "Не вдалося завантажити винагороди");
+  return rewardDefaultsSchema.parse(data);
+}
+
+export async function fetchProgram(cafeId: string): Promise<LoyaltyProgram> {
+  const { data, error } = await apiFetch(`/api/cafes/${cafeId}/program`);
+  if (error) throw new Error(error.message ?? "Не вдалося завантажити програму");
+  return loyaltyProgramSchema.parse(data);
+}
+
+export async function updateProgram(
+  cafeId: string,
+  program: LoyaltyProgram,
+): Promise<LoyaltyProgram> {
+  const { data, error } = await apiFetch(`/api/cafes/${cafeId}/program`, {
+    method: "PUT",
+    body: program,
+  });
+  if (error) throw new Error(error.message ?? "Не вдалося зберегти програму");
+  return loyaltyProgramSchema.parse(data);
 }
