@@ -1,20 +1,20 @@
 import { type Cafe, cafeSchema, type MeResponse, meResponseSchema } from "@kavtsya/shared";
 
-import { authClient } from "@/lib/auth-client";
+import { apiFetch } from "@/lib/auth-client";
 
-// Calls to our own API go through the Better Auth client's fetch, so the Expo
-// plugin attaches the SecureStore-held session cookie automatically. Responses
-// are validated against the shared schemas — the same type-safe boundary the
-// API enforces on the way out.
+// Calls to our own API go through the Better Auth client's fetch (via apiFetch),
+// so the Expo plugin attaches the SecureStore-held session cookie automatically.
+// Responses are validated against the shared schemas — the same type-safe
+// boundary the API enforces on the way out.
 
 export async function fetchMe(): Promise<MeResponse> {
-  const { data, error } = await authClient.$fetch("/api/me");
+  const { data, error } = await apiFetch("/api/me");
   if (error) throw new Error(error.message ?? "Не вдалося завантажити профіль");
   return meResponseSchema.parse(data);
 }
 
 export async function registerCafe(name: string): Promise<Cafe> {
-  const { data, error } = await authClient.$fetch("/api/cafes", {
+  const { data, error } = await apiFetch("/api/cafes", {
     method: "POST",
     body: { name },
   });
