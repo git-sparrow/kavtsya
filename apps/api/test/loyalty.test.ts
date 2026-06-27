@@ -9,6 +9,7 @@ import { createApp } from "../src/app";
 import type { Auth } from "../src/auth";
 import { systemClock } from "../src/clock";
 import type { Database } from "../src/db";
+import { clearPlatformConfigCache } from "../src/platform-config";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 let db: Database;
@@ -29,6 +30,9 @@ beforeEach(async () => {
   // platform_config is intentionally NOT truncated: it holds migration-seeded
   // Platform config (the default Reward set) that every test relies on.
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
+  // Reads are cached in-process; drop it so a config change in one test never
+  // leaks into the next, and so a freshly-seeded value is read.
+  clearPlatformConfigCache();
 });
 
 function app() {
@@ -246,6 +250,8 @@ test("a Reward type absent from the platform-default set is rejected", async () 
     ])}
     where key = 'reward_defaults'
   `;
+  // The write bypasses the app, so invalidate the read cache to observe it now.
+  clearPlatformConfigCache();
 
   try {
     const res = await putProgram(
@@ -260,5 +266,6 @@ test("a Reward type absent from the platform-default set is rejected", async () 
       update platform_config set value = ${db.json(original!.value as never)}
       where key = 'reward_defaults'
     `;
+    clearPlatformConfigCache();
   }
 });

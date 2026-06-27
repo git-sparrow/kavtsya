@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AppState } from "react-native";
 
 import { fetchQrToken } from "@/lib/api";
 
@@ -10,7 +11,10 @@ const MIN_REFRESH_MS = 5_000;
 /**
  * Holds the Customer's rotating QR token (ADR 0006) fresh on screen: fetches one
  * on mount and schedules the next fetch shortly before the current token's
- * `expiresAt` (≈60s in practice), so the displayed code always validates. The
+ * `expiresAt` (≈75s with the seeded 90s lifetime; both Platform-tunable), so the
+ * displayed code always validates. JS timers are suspended while the app is
+ * backgrounded, so we also refetch the moment it returns to the foreground —
+ * otherwise a resumed app could show a token already past its grace window. The
  * server is the only authority on token contents — this just displays and
  * rotates them. Returns the current `token`, an `error` string, and `reload`
  * (which restarts the loop immediately, e.g. from a retry button).
@@ -27,7 +31,10 @@ export function useQrToken() {
     // Fetch, then arm the next fetch just before this token expires. A failure
     // retries on the floor delay rather than giving up — the QR is the
     // Customer's only way to earn, so it should self-heal once back online.
+    // Cancels any pending timer first, so an out-of-band call (foreground
+    // resume) re-arms the schedule instead of running two loops.
     async function refresh() {
+      if (timer) clearTimeout(timer);
       try {
         const { token: next, expiresAt } = await fetchQrToken();
         if (!active) return;
@@ -48,9 +55,17 @@ export function useQrToken() {
     }
 
     void refresh();
+
+    // Force a fresh token when the app returns to the foreground, where the
+    // scheduled timer may have been suspended past the token's expiry.
+    const appStateSub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void refresh();
+    });
+
     return () => {
       active = false;
       if (timer) clearTimeout(timer);
+      appStateSub.remove();
     };
   }, [reloadKey]);
 

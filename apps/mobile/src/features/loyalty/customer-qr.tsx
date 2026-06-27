@@ -19,9 +19,9 @@ const QR_SIZE = 220;
 
 /**
  * The Customer's rotating QR code (ADR 0006): the CafeOwner scans it to record a
- * Purchase. It refreshes itself (~60s) via `useQrToken`; the Customer just holds
- * the phone up. While the first token loads we reserve the square so the layout
- * doesn't jump, and a fetch failure offers a manual retry.
+ * Purchase. It refreshes itself before each token expires via `useQrToken`; the
+ * Customer just holds the phone up. While the first token loads we reserve the
+ * square so the layout doesn't jump, and a fetch failure offers a manual retry.
  */
 export function CustomerQr() {
   const { token, error, reload } = useQrToken();

@@ -4,11 +4,24 @@ import { qrTokenConfigSchema } from "@kavtsya/shared";
 import type { Database } from "./db";
 
 /**
+ * How long a read is served from memory before re-querying. Platform config is
+ * near-constant and tuned rarely, but it's read on hot paths (every Customer's
+ * QR poll reads `qr_token`), so a short cache collapses many identical reads
+ * into one DB round-trip. The cost is an up-to-this-long propagation delay after
+ * the Platform changes a value — acceptable for config that changes by hand.
+ */
+const CACHE_TTL_MS = 30_000;
+
+type CacheEntry = { value: unknown; expiresAt: number };
+const cache = new Map<string, CacheEntry>();
+
+/**
  * The Platform-owned key/value store (`platform_config`, CONTEXT → Platform):
  * business-level config the Platform tunes without a code deploy. Every value is
  * an untrusted JSONB boundary, so reads validate with the same Zod schema the
  * domain uses, and fall back to a supplied default when the key is absent — a
  * not-yet-seeded or deleted row degrades to a sane default rather than throwing.
+ * Reads are cached for {@link CACHE_TTL_MS}; see {@link clearPlatformConfigCache}.
  */
 export async function readPlatformConfig<T>(
   db: Database,
@@ -16,10 +29,25 @@ export async function readPlatformConfig<T>(
   schema: z.ZodType<T>,
   fallback: unknown,
 ): Promise<T> {
+  const cached = cache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value as T;
+  }
   const [row] = await db<{ value: unknown }[]>`
     select "value" from platform_config where "key" = ${key}
   `;
-  return schema.parse(row?.value ?? fallback);
+  const value = schema.parse(row?.value ?? fallback);
+  cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+  return value;
+}
+
+/**
+ * Drop all cached config so the next read hits the database. Call after writing
+ * `platform_config` directly (tests, or a future Platform-config write path) so
+ * the change is observed immediately instead of after the TTL.
+ */
+export function clearPlatformConfigCache(): void {
+  cache.clear();
 }
 
 /**

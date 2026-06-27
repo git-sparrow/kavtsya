@@ -5,6 +5,7 @@ import { createApp } from "../src/app";
 import type { Auth } from "../src/auth";
 import { systemClock } from "../src/clock";
 import type { Database } from "../src/db";
+import { clearPlatformConfigCache } from "../src/platform-config";
 import { validateQrToken } from "../src/qr-token";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
@@ -26,6 +27,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
+  clearPlatformConfigCache();
 });
 
 function app() {
@@ -95,6 +97,7 @@ test("a missing qr_token config row degrades to defaults instead of failing", as
     select value from platform_config where key = 'qr_token'
   `;
   await db`delete from platform_config where key = 'qr_token'`;
+  clearPlatformConfigCache();
 
   try {
     const res = await app().request("/api/qr-token", { headers: { cookie } });
@@ -113,5 +116,6 @@ test("a missing qr_token config row degrades to defaults instead of failing", as
       insert into platform_config (key, value)
       values ('qr_token', ${db.json(original!.value as never)})
     `;
+    clearPlatformConfigCache();
   }
 });
