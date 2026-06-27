@@ -32,7 +32,12 @@ beforeEach(async () => {
 });
 
 function app() {
-  return createApp({ db, clock: systemClock, auth });
+  return createApp({
+    db,
+    clock: systemClock,
+    auth,
+    qrTokenSecret: "test-qr-token-secret-at-least-32-chars",
+  });
 }
 
 /** Fold a response's Set-Cookie headers into a Cookie request header value. */

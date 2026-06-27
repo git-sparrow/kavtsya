@@ -9,6 +9,9 @@ const envSchema = z.object({
   BETTER_AUTH_SECRET: z.string().min(32),
   // Public base URL Better Auth issues cookies/redirects against.
   BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
+  // Signs the rotating Customer QR token (ADR 0006); separate from the session
+  // secret so it can be rotated independently. Must be high-entropy (≥32 chars).
+  QR_TOKEN_SECRET: z.string().min(32),
 });
 
 export type Env = z.infer<typeof envSchema>;

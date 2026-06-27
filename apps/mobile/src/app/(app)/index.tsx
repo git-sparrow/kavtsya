@@ -7,6 +7,7 @@ import { Screen } from "@/components/screen";
 import { ErrorText, Muted, Title } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
 import { RegisterCafeForm } from "@/features/cafe/register-cafe-form";
+import { CustomerQr } from "@/features/loyalty/customer-qr";
 import { authClient } from "@/lib/auth-client";
 import { colors } from "@/theme/colors";
 
@@ -53,6 +54,8 @@ export default function Home() {
       <Card>
         <Title>Вітаємо, {me.name || me.email}!</Title>
         <Muted>{me.email}</Muted>
+
+        <CustomerQr />
 
         {isOwner ? (
           <Button

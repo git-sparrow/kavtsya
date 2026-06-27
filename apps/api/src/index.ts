@@ -17,7 +17,12 @@ const auth = createAuth({
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
 });
-const app = createApp({ db, clock: systemClock, auth });
+const app = createApp({
+  db,
+  clock: systemClock,
+  auth,
+  qrTokenSecret: env.QR_TOKEN_SECRET,
+});
 
 serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   console.log(`Kavtsya API listening on http://localhost:${info.port}`);
