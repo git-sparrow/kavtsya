@@ -1,6 +1,7 @@
 import type { LoyaltyProgram, Reward, RewardDefaults } from "@kavtsya/shared";
 import { loyaltyProgramSchema, rewardDefaultsSchema } from "@kavtsya/shared";
 import type { Database } from "./db";
+import { readPlatformConfig } from "./platform-config";
 
 /**
  * The loyalty program a Café runs (CONTEXT → Зернятко, Reward) and the
@@ -24,11 +25,8 @@ function toProgram(row: ProgramRow): LoyaltyProgram {
 }
 
 /** The platform-default Reward set, read from `platform_config` (story 38). */
-export async function getRewardDefaults(db: Database): Promise<RewardDefaults> {
-  const [row] = await db<{ value: unknown }[]>`
-    select "value" from platform_config where "key" = 'reward_defaults'
-  `;
-  return rewardDefaultsSchema.parse(row?.value ?? []);
+export function getRewardDefaults(db: Database): Promise<RewardDefaults> {
+  return readPlatformConfig(db, "reward_defaults", rewardDefaultsSchema, []);
 }
 
 /** Whether a Reward's type is currently offered by the platform-default set. */

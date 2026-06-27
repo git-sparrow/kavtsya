@@ -1,8 +1,19 @@
+import { createHmac } from "node:crypto";
 import { expect, test } from "vitest";
 import { fixedClock } from "../src/clock";
 import { signQrToken, validateQrToken } from "../src/qr-token";
 
 const SECRET = "qr-token-test-secret-at-least-32-chars-long";
+
+/** Mint a correctly-signed token for an arbitrary (possibly malformed) payload. */
+function forgeSignedToken(payload: unknown, secret: string): string {
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const sig = createHmac("sha256", secret)
+    .update(body)
+    .digest()
+    .toString("base64url");
+  return `${body}.${sig}`;
+}
 
 // --- sign → validate round-trip ----------------------------------------------
 
@@ -93,6 +104,37 @@ test("a garbage string is rejected as malformed", () => {
   const clock = fixedClock(new Date("2026-06-27T10:00:00Z"));
 
   const result = validateQrToken("not-a-real-token", {
+    clock,
+    secret: SECRET,
+    graceSeconds: 30,
+  });
+
+  expect(result).toEqual({ valid: false, reason: "malformed" });
+});
+
+test("a correctly-signed token missing exp is rejected as malformed, not treated as never-expiring", () => {
+  const clock = fixedClock(new Date("2026-06-27T10:00:00Z"));
+  // A real signature over a structurally-incomplete payload (no exp/sub) — the
+  // shape a future signing bug could produce. Must not slip through as valid.
+  const token = forgeSignedToken({ jti: "abc", iat: 0 }, SECRET);
+
+  const result = validateQrToken(token, {
+    clock,
+    secret: SECRET,
+    graceSeconds: 30,
+  });
+
+  expect(result).toEqual({ valid: false, reason: "malformed" });
+});
+
+test("a correctly-signed token with an empty sub is rejected as malformed", () => {
+  const clock = fixedClock(new Date("2026-06-27T10:00:00Z"));
+  const token = forgeSignedToken(
+    { sub: "", jti: "abc", iat: 0, exp: 9999999999 },
+    SECRET,
+  );
+
+  const result = validateQrToken(token, {
     clock,
     secret: SECRET,
     graceSeconds: 30,

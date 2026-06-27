@@ -38,6 +38,10 @@ export function useQrToken() {
         timer = setTimeout(() => void refresh(), delay);
       } catch (e) {
         if (!active) return;
+        // Drop the old token: it may already be past its grace window, and a
+        // stale QR that still scans-as-rejected is worse than showing the error
+        // and retrying. The loop self-heals once the network is back.
+        setToken(null);
         setError(e instanceof Error ? e.message : "Не вдалося оновити QR-код");
         timer = setTimeout(() => void refresh(), MIN_REFRESH_MS);
       }

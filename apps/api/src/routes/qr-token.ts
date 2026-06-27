@@ -1,7 +1,8 @@
 import type { Hono } from "hono";
 import type { QrTokenResponse } from "@kavtsya/shared";
 import type { AppDeps, AppEnv } from "../app";
-import { getQrTokenConfig, signQrToken } from "../qr-token";
+import { getQrTokenConfig } from "../platform-config";
+import { signQrToken } from "../qr-token";
 
 /**
  * The Customer's rotating QR token (ADR 0006, #19). One authenticated route:

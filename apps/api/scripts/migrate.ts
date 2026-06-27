@@ -1,10 +1,9 @@
 import { createDb } from "../src/db";
-import { loadDotEnv, loadEnv } from "../src/env";
+import { loadDatabaseUrl, loadDotEnv } from "../src/env";
 import { runMigrations } from "../src/migrate";
 
 loadDotEnv();
-const env = loadEnv();
-const db = createDb(env.DATABASE_URL);
+const db = createDb(loadDatabaseUrl());
 
 try {
   await runMigrations(db);

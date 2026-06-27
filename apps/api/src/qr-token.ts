@@ -1,8 +1,6 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
-import type { QrTokenConfig } from "@kavtsya/shared";
-import { qrTokenConfigSchema } from "@kavtsya/shared";
+import { z } from "zod";
 import type { Clock } from "./clock";
-import type { Database } from "./db";
 
 /**
  * The Customer's rotating QR token (ADR 0006): a short-lived, HMAC-signed token
@@ -17,16 +15,24 @@ import type { Database } from "./db";
  * slice (#20) records to make earning single-use.
  */
 
-interface QrTokenPayload {
+/**
+ * The signed token's claims. Validated on the way back in (not just cast), so a
+ * structurally-incomplete-but-correctly-signed token — e.g. a future bug that
+ * signs a payload with an undefined `sub`/`exp` — is rejected as `malformed`
+ * rather than silently treated as a never-expiring token for Customer
+ * `undefined`. `exp`/`iat` are epoch seconds.
+ */
+const qrTokenPayloadSchema = z.object({
   /** The Customer the token authenticates (`user.id`). */
-  sub: string;
+  sub: z.string().min(1),
   /** Unique token id — basis for single-use earning (ADR 0006). */
-  jti: string;
+  jti: z.string().min(1),
   /** Issued-at, epoch seconds. */
-  iat: number;
+  iat: z.number(),
   /** Expiry, epoch seconds (iat + ttl). */
-  exp: number;
-}
+  exp: z.number(),
+});
+type QrTokenPayload = z.infer<typeof qrTokenPayloadSchema>;
 
 export interface SignQrTokenOptions {
   clock: Clock;
@@ -92,12 +98,18 @@ export function validateQrToken(
     return { valid: false, reason: "bad_signature" };
   }
 
-  let payload: QrTokenPayload;
+  let raw: unknown;
   try {
-    payload = JSON.parse(Buffer.from(body, "base64url").toString());
+    raw = JSON.parse(Buffer.from(body, "base64url").toString());
   } catch {
     return { valid: false, reason: "malformed" };
   }
+
+  // The signature only proves *we* minted this body, not that its shape is sound
+  // — validate the claims before trusting `exp`/`sub` (see schema note above).
+  const parsed = qrTokenPayloadSchema.safeParse(raw);
+  if (!parsed.success) return { valid: false, reason: "malformed" };
+  const payload: QrTokenPayload = parsed.data;
 
   const nowSeconds = Math.floor(clock.now().getTime() / 1000);
   if (nowSeconds > payload.exp + graceSeconds) {
@@ -105,18 +117,6 @@ export function validateQrToken(
   }
 
   return { valid: true, customerId: payload.sub, jti: payload.jti };
-}
-
-/**
- * The Platform-tunable QR-token settings (ttl + grace), read from
- * `platform_config` like the default Reward set — never hardcoded, so the
- * Platform can tune them without a code deploy (ADR 0006).
- */
-export async function getQrTokenConfig(db: Database): Promise<QrTokenConfig> {
-  const [row] = await db<{ value: unknown }[]>`
-    select "value" from platform_config where "key" = 'qr_token'
-  `;
-  return qrTokenConfigSchema.parse(row?.value);
 }
 
 /** Constant-time string compare that tolerates length mismatch without throwing. */
