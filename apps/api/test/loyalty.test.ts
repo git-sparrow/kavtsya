@@ -47,7 +47,11 @@ async function signUp(email: string): Promise<string> {
   const res = await app().request("/api/auth/sign-up/email", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email, password: "hunter2-very-secret", name: "Test" }),
+    body: JSON.stringify({
+      email,
+      password: "hunter2-very-secret",
+      name: "Test",
+    }),
   });
   expect(res.status).toBe(200);
   return cookieFrom(res);
@@ -72,7 +76,10 @@ function getProgram(cafeId: string, cookie?: string) {
 function putProgram(cafeId: string, body: unknown, cookie?: string) {
   return app().request(`/api/cafes/${cafeId}/program`, {
     method: "PUT",
-    headers: { "content-type": "application/json", ...(cookie ? { cookie } : {}) },
+    headers: {
+      "content-type": "application/json",
+      ...(cookie ? { cookie } : {}),
+    },
     body: JSON.stringify(body),
   });
 }
@@ -88,7 +95,9 @@ test("reward defaults require authentication", async () => {
 test("reward defaults are read from platform_config (the four platform types)", async () => {
   const cookie = await signUp("owner@example.com");
 
-  const res = await app().request("/api/reward-defaults", { headers: { cookie } });
+  const res = await app().request("/api/reward-defaults", {
+    headers: { cookie },
+  });
 
   expect(res.status).toBe(200);
   const defaults = rewardDefaultsSchema.parse(await res.json());
@@ -138,7 +147,10 @@ test("updating a program requires authentication", async () => {
   const cookie = await signUp("owner@example.com");
   const cafeId = await registerCafe("Кавця", cookie);
 
-  const res = await putProgram(cafeId, { threshold: 8, reward: { type: "free_drink" } });
+  const res = await putProgram(cafeId, {
+    threshold: 8,
+    reward: { type: "free_drink" },
+  });
 
   expect(res.status).toBe(401);
 });
@@ -160,14 +172,20 @@ test("a CafeOwner sets the threshold and Reward, and a re-read reflects it", asy
     reward: { type: "free_specific_drink", item: "Капучино" },
   });
 
-  const reread = loyaltyProgramSchema.parse(await (await getProgram(cafeId, cookie)).json());
+  const reread = loyaltyProgramSchema.parse(
+    await (await getProgram(cafeId, cookie)).json(),
+  );
   expect(reread).toEqual(written);
 });
 
 test("a Reward can be cleared back to null", async () => {
   const cookie = await signUp("owner@example.com");
   const cafeId = await registerCafe("Кавця", cookie);
-  await putProgram(cafeId, { threshold: 10, reward: { type: "free_drink" } }, cookie);
+  await putProgram(
+    cafeId,
+    { threshold: 10, reward: { type: "free_drink" } },
+    cookie,
+  );
 
   const res = await putProgram(cafeId, { threshold: 10, reward: null }, cookie);
 

@@ -21,7 +21,12 @@ export default function OwnerHome() {
           <Pressable
             key={cafe.id}
             style={styles.cafeRow}
-            onPress={() => router.push({ pathname: "/owner/[cafeId]", params: { cafeId: cafe.id } })}
+            onPress={() =>
+              router.push({
+                pathname: "/owner/[cafeId]",
+                params: { cafeId: cafe.id },
+              })
+            }
           >
             <Title>{cafe.name}</Title>
             <Muted>Налаштувати програму ›</Muted>

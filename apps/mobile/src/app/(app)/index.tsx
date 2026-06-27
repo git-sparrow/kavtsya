@@ -23,8 +23,16 @@ export default function Home() {
       <Screen>
         <Card>
           <ErrorText>{error}</ErrorText>
-          <Button title="Спробувати знову" variant="secondary" onPress={() => void reload()} />
-          <Button title="Вийти" variant="secondary" onPress={() => authClient.signOut()} />
+          <Button
+            title="Спробувати знову"
+            variant="secondary"
+            onPress={() => void reload()}
+          />
+          <Button
+            title="Вийти"
+            variant="secondary"
+            onPress={() => authClient.signOut()}
+          />
         </Card>
       </Screen>
     );
@@ -47,12 +55,19 @@ export default function Home() {
         <Muted>{me.email}</Muted>
 
         {isOwner ? (
-          <Button title="Режим Кавовара" onPress={() => router.push("/owner")} />
+          <Button
+            title="Режим Кавовара"
+            onPress={() => router.push("/owner")}
+          />
         ) : (
           <RegisterCafeForm onRegistered={reload} />
         )}
 
-        <Button title="Вийти" variant="secondary" onPress={() => authClient.signOut()} />
+        <Button
+          title="Вийти"
+          variant="secondary"
+          onPress={() => authClient.signOut()}
+        />
       </Card>
     </Screen>
   );

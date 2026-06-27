@@ -54,7 +54,12 @@ export default function SignIn() {
           value={email}
           onChangeText={setEmail}
         />
-        <TextField placeholder="Пароль" secureTextEntry value={password} onChangeText={setPassword} />
+        <TextField
+          placeholder="Пароль"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
 
         {error && <ErrorText>{error}</ErrorText>}
 
@@ -71,7 +76,9 @@ export default function SignIn() {
           }}
         >
           <Text style={styles.link}>
-            {isSignup ? "Вже маєте акаунт? Увійти" : "Немає акаунта? Зареєструватися"}
+            {isSignup
+              ? "Вже маєте акаунт? Увійти"
+              : "Немає акаунта? Зареєструватися"}
           </Text>
         </Pressable>
       </Card>

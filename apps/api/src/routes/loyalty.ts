@@ -18,7 +18,10 @@ const cafeIdSchema = z.string().uuid();
  * requires a session; the program routes additionally require ownership of the
  * Café (enforced by the ownership-scoped queries in `../loyalty`).
  */
-export function registerLoyaltyRoutes(app: Hono<AppEnv>, { db }: AppDeps): void {
+export function registerLoyaltyRoutes(
+  app: Hono<AppEnv>,
+  { db }: AppDeps,
+): void {
   // The platform-default Reward set the CafeOwner's chooser renders (story 38).
   app.get("/api/reward-defaults", async (c) => {
     const user = c.get("user");
@@ -59,7 +62,12 @@ export function registerLoyaltyRoutes(app: Hono<AppEnv>, { db }: AppDeps): void 
       }
     }
 
-    const program = await updateLoyaltyProgram(db, cafeId.data, user.id, parsed.data);
+    const program = await updateLoyaltyProgram(
+      db,
+      cafeId.data,
+      user.id,
+      parsed.data,
+    );
     if (!program) return c.json({ error: "not_found" }, 404);
     return c.json(program);
   });

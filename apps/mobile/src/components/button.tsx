@@ -26,7 +26,10 @@ export function Button({
 
   return (
     <Pressable
-      style={[isPrimary ? styles.primary : styles.secondary, isDisabled && styles.disabled]}
+      style={[
+        isPrimary ? styles.primary : styles.secondary,
+        isDisabled && styles.disabled,
+      ]}
       disabled={isDisabled}
       onPress={onPress}
     >

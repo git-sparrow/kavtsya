@@ -69,7 +69,11 @@ export default function CafeProgram() {
         {editor.saved && <Muted>Збережено ✓</Muted>}
 
         <Button title="Зберегти" onPress={editor.save} busy={editor.saving} />
-        <Button title="Назад" variant="secondary" onPress={() => router.back()} />
+        <Button
+          title="Назад"
+          variant="secondary"
+          onPress={() => router.back()}
+        />
       </Card>
     </Screen>
   );

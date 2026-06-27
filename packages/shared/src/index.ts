@@ -92,7 +92,9 @@ export type LoyaltyProgram = z.infer<typeof loyaltyProgramSchema>;
  * platform-default set.
  */
 export const updateLoyaltyProgramBodySchema = loyaltyProgramSchema;
-export type UpdateLoyaltyProgramBody = z.infer<typeof updateLoyaltyProgramBodySchema>;
+export type UpdateLoyaltyProgramBody = z.infer<
+  typeof updateLoyaltyProgramBodySchema
+>;
 
 /**
  * One entry in the platform-default Reward set, as `GET /api/reward-defaults`

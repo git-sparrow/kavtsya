@@ -27,20 +27,23 @@ export async function registerCafe(name: string): Promise<Cafe> {
     method: "POST",
     body: { name },
   });
-  if (error) throw new Error(error.message ?? "Не вдалося зареєструвати кав'ярню");
+  if (error)
+    throw new Error(error.message ?? "Не вдалося зареєструвати кав'ярню");
   return cafeSchema.parse(data);
 }
 
 /** The platform-default Reward set the config screen offers (story 38). */
 export async function fetchRewardDefaults(): Promise<RewardDefaults> {
   const { data, error } = await apiFetch("/api/reward-defaults");
-  if (error) throw new Error(error.message ?? "Не вдалося завантажити винагороди");
+  if (error)
+    throw new Error(error.message ?? "Не вдалося завантажити винагороди");
   return rewardDefaultsSchema.parse(data);
 }
 
 export async function fetchProgram(cafeId: string): Promise<LoyaltyProgram> {
   const { data, error } = await apiFetch(`/api/cafes/${cafeId}/program`);
-  if (error) throw new Error(error.message ?? "Не вдалося завантажити програму");
+  if (error)
+    throw new Error(error.message ?? "Не вдалося завантажити програму");
   return loyaltyProgramSchema.parse(data);
 }
 

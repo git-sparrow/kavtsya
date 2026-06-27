@@ -4,9 +4,21 @@ import type { Reward, RewardType } from "@kavtsya/shared";
 export const REWARD_PARAM: Partial<
   Record<RewardType, { label: string; placeholder: string; numeric: boolean }>
 > = {
-  free_specific_drink: { label: "Напій", placeholder: "Напр. Капучино", numeric: false },
-  fixed_discount: { label: "Знижка, ₴", placeholder: "Напр. 30", numeric: true },
-  percent_discount: { label: "Знижка, %", placeholder: "Напр. 10", numeric: true },
+  free_specific_drink: {
+    label: "Напій",
+    placeholder: "Напр. Капучино",
+    numeric: false,
+  },
+  fixed_discount: {
+    label: "Знижка, ₴",
+    placeholder: "Напр. 30",
+    numeric: true,
+  },
+  percent_discount: {
+    label: "Знижка, %",
+    placeholder: "Напр. 10",
+    numeric: true,
+  },
 };
 
 /** The editable param of a Reward as a text-input string ("" when none). */
@@ -19,7 +31,10 @@ export function rewardParamValue(reward: Reward | null): string {
 }
 
 /** Assemble a Reward from the chosen type + raw param; throws if the param is missing. */
-export function buildReward(type: RewardType | null, param: string): Reward | null {
+export function buildReward(
+  type: RewardType | null,
+  param: string,
+): Reward | null {
   if (type === null) return null;
   const trimmed = param.trim();
   switch (type) {
