@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { authClient } from "@/lib/auth-client";
+import { colors } from "@/theme/colors";
 
 export default function RootLayout() {
   // useSession reads the SecureStore-cached session first, so a returning
@@ -15,7 +16,7 @@ export default function RootLayout() {
       <StatusBar style="auto" />
       {isPending ? (
         <View style={styles.loading}>
-          <ActivityIndicator size="large" color="#3b2417" />
+          <ActivityIndicator size="large" color={colors.brand} />
         </View>
       ) : (
         // Stack.Protected gates routes on the session: when a group's guard is
@@ -23,7 +24,7 @@ export default function RootLayout() {
         // in/out reactively swaps the auth screen for the app and back.
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Protected guard={!!session}>
-            <Stack.Screen name="index" />
+            <Stack.Screen name="(app)" />
           </Stack.Protected>
           <Stack.Protected guard={!session}>
             <Stack.Screen name="sign-in" />
@@ -39,6 +40,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fffaf3",
+    backgroundColor: colors.background,
   },
 });

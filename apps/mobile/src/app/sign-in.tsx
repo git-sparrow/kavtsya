@@ -1,8 +1,13 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Pressable, StyleSheet, Text } from "react-native";
 
+import { Button } from "@/components/button";
+import { Card } from "@/components/card";
+import { Screen } from "@/components/screen";
+import { ErrorText } from "@/components/text";
+import { TextField } from "@/components/text-field";
 import { authClient } from "@/lib/auth-client";
+import { colors } from "@/theme/colors";
 
 type Mode = "signin" | "signup";
 
@@ -31,120 +36,54 @@ export default function SignIn() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text style={styles.brand}>Кавця</Text>
-
-        <View style={styles.card}>
-          {isSignup && (
-            <TextInput
-              style={styles.input}
-              placeholder="Ім'я"
-              autoCapitalize="words"
-              value={name}
-              onChangeText={setName}
-            />
-          )}
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
+    <Screen>
+      <Card>
+        {isSignup && (
+          <TextField
+            placeholder="Ім'я"
+            autoCapitalize="words"
+            value={name}
+            onChangeText={setName}
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Пароль"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+        )}
+        <TextField
+          placeholder="Email"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+        <TextField placeholder="Пароль" secureTextEntry value={password} onChangeText={setPassword} />
 
-          {error && <Text style={styles.error}>{error}</Text>}
+        {error && <ErrorText>{error}</ErrorText>}
 
-          <Pressable
-            style={[styles.primaryButton, busy && styles.disabled]}
-            disabled={busy}
-            onPress={submit}
-          >
-            <Text style={styles.primaryButtonText}>
-              {busy ? "..." : isSignup ? "Зареєструватися" : "Увійти"}
-            </Text>
-          </Pressable>
+        <Button
+          title={isSignup ? "Зареєструватися" : "Увійти"}
+          onPress={submit}
+          busy={busy}
+        />
 
-          <Pressable
-            onPress={() => {
-              setError(null);
-              setMode(isSignup ? "signin" : "signup");
-            }}
-          >
-            <Text style={styles.link}>
-              {isSignup ? "Вже маєте акаунт? Увійти" : "Немає акаунта? Зареєструватися"}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    </SafeAreaView>
+        <Pressable
+          onPress={() => {
+            setError(null);
+            setMode(isSignup ? "signin" : "signup");
+          }}
+        >
+          <Text style={styles.link}>
+            {isSignup ? "Вже маєте акаунт? Увійти" : "Немає акаунта? Зареєструватися"}
+          </Text>
+        </Pressable>
+      </Card>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#fffaf3",
-  },
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
-    padding: 24,
-  },
-  brand: {
-    fontSize: 40,
-    fontWeight: "700",
-    color: "#3b2417",
-  },
-  card: {
-    alignItems: "stretch",
-    alignSelf: "stretch",
-    gap: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#d8c9bc",
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: "#fff",
-    color: "#3b2417",
-  },
-  primaryButton: {
-    backgroundColor: "#3b2417",
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    color: "#fffaf3",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  disabled: {
-    opacity: 0.6,
-  },
   link: {
-    color: "#7a5c45",
+    color: colors.accent,
     fontSize: 14,
     textAlign: "center",
     marginTop: 4,
-  },
-  error: {
-    color: "#b00020",
-    fontSize: 14,
-    textAlign: "center",
   },
 });
