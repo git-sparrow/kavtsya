@@ -43,7 +43,11 @@ async function signUp(email: string): Promise<string> {
   const res = await app().request("/api/auth/sign-up/email", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email, password: "hunter2-very-secret", name: "Test" }),
+    body: JSON.stringify({
+      email,
+      password: "hunter2-very-secret",
+      name: "Test",
+    }),
   });
   expect(res.status).toBe(200);
   return cookieFrom(res);
@@ -124,7 +128,9 @@ test("ownership is isolated: each owner sees only their own Café", async () => 
   await registerCafe("Bob Café", bob);
 
   const aliceMe = meResponseSchema.parse(
-    await (await app().request("/api/me", { headers: { cookie: alice } })).json(),
+    await (
+      await app().request("/api/me", { headers: { cookie: alice } })
+    ).json(),
   );
 
   expect(aliceMe.cafes.map((c) => c.name)).toEqual(["Alice Café"]);

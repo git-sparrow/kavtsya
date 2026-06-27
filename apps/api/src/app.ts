@@ -32,7 +32,9 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   // Resolve the session from request cookies once per request and stash it in
   // context, so any route can read the current Customer via `c.get("user")`.
   app.use("*", async (c, next) => {
-    const session = await deps.auth.api.getSession({ headers: c.req.raw.headers });
+    const session = await deps.auth.api.getSession({
+      headers: c.req.raw.headers,
+    });
     c.set("user", session?.user ?? null);
     c.set("session", session?.session ?? null);
     await next();

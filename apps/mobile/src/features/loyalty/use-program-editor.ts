@@ -17,7 +17,9 @@ export function useProgramEditor(cafeId: string) {
   // null = "no Reward yet"; otherwise one of the platform-default types.
   const [rewardType, setRewardType] = useState<RewardType | null>(null);
   const [param, setParam] = useState("");
-  const [defaults, setDefaults] = useState<{ type: RewardType; label: string }[]>([]);
+  const [defaults, setDefaults] = useState<
+    { type: RewardType; label: string }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -37,7 +39,8 @@ export function useProgramEditor(cafeId: string) {
         setRewardType(program.reward?.type ?? null);
         setParam(rewardParamValue(program.reward));
       } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : "Помилка завантаження");
+        if (active)
+          setError(e instanceof Error ? e.message : "Помилка завантаження");
       } finally {
         if (active) setLoading(false);
       }
@@ -81,7 +84,10 @@ export function useProgramEditor(cafeId: string) {
 
     setSaving(true);
     try {
-      const written = await updateProgram(cafeId, { threshold: thresholdNum, reward });
+      const written = await updateProgram(cafeId, {
+        threshold: thresholdNum,
+        reward,
+      });
       setThreshold(String(written.threshold));
       setRewardType(written.reward?.type ?? null);
       setParam(rewardParamValue(written.reward));

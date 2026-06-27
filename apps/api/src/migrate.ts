@@ -26,7 +26,9 @@ export async function runMigrations(
   `;
 
   const files = (await readdir(dir)).filter((f) => f.endsWith(".sql")).sort();
-  const appliedRows = await db<{ name: string }[]>`select name from schema_migrations`;
+  const appliedRows = await db<
+    { name: string }[]
+  >`select name from schema_migrations`;
   const applied = new Set(appliedRows.map((r) => r.name));
 
   for (const file of files) {

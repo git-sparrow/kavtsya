@@ -1,0 +1,21 @@
+# Dependencies & build output
+node_modules
+dist
+build
+
+# Expo
+apps/mobile/.expo
+apps/mobile/android
+apps/mobile/ios
+**/expo-env.d.ts
+
+# Lockfiles & generated
+pnpm-lock.yaml
+skills-lock.json
+
+# Vendored skills (not our code to format)
+.agents/skills
+.claude/skills
+
+# Misc
+*.md

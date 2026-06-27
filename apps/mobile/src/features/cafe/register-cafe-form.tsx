@@ -11,7 +11,11 @@ import { registerCafe } from "@/lib/api";
  * success it asks the caller to refetch /api/me, which is what unlocks
  * CafeOwner Mode (ADR 0003).
  */
-export function RegisterCafeForm({ onRegistered }: { onRegistered: () => Promise<void> }) {
+export function RegisterCafeForm({
+  onRegistered,
+}: {
+  onRegistered: () => Promise<void>;
+}) {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -32,7 +36,11 @@ export function RegisterCafeForm({ onRegistered }: { onRegistered: () => Promise
   return (
     <View style={styles.section}>
       <Muted>Стати Кавоваром — зареєструйте кав&apos;ярню:</Muted>
-      <TextField placeholder="Назва кав'ярні" value={name} onChangeText={setName} />
+      <TextField
+        placeholder="Назва кав'ярні"
+        value={name}
+        onChangeText={setName}
+      />
       {error && <ErrorText>{error}</ErrorText>}
       <Button
         title="Зареєструвати кав'ярню"
