@@ -1,12 +1,12 @@
 import type { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import { meResponseSchema, qrTokenResponseSchema } from "@kavtsya/shared";
-import { createApp } from "../src/app";
 import type { Auth } from "../src/auth";
 import { systemClock } from "../src/clock";
 import type { Database } from "../src/db";
 import { clearPlatformConfigCache } from "../src/platform-config";
 import { validateQrToken } from "../src/qr-token";
+import { makeApp, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 const QR_SECRET = "qr-route-test-secret-at-least-32-chars-long";
@@ -31,28 +31,7 @@ beforeEach(async () => {
 });
 
 function app() {
-  return createApp({ db, clock: systemClock, auth, qrTokenSecret: QR_SECRET });
-}
-
-function cookieFrom(res: Response): string {
-  return res.headers
-    .getSetCookie()
-    .map((c) => c.split(";")[0])
-    .join("; ");
-}
-
-async function signUp(email: string): Promise<string> {
-  const res = await app().request("/api/auth/sign-up/email", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      email,
-      password: "hunter2-very-secret",
-      name: "Test",
-    }),
-  });
-  expect(res.status).toBe(200);
-  return cookieFrom(res);
+  return makeApp({ db, auth, qrTokenSecret: QR_SECRET });
 }
 
 test("a QR token requires authentication", async () => {
@@ -62,7 +41,7 @@ test("a QR token requires authentication", async () => {
 });
 
 test("an authed Customer gets a signed token that validates back to them", async () => {
-  const cookie = await signUp("customer@example.com");
+  const cookie = await signUp(app(), "customer@example.com");
 
   const res = await app().request("/api/qr-token", { headers: { cookie } });
 
@@ -90,7 +69,7 @@ test("an authed Customer gets a signed token that validates back to them", async
 });
 
 test("a missing qr_token config row degrades to defaults instead of failing", async () => {
-  const cookie = await signUp("customer@example.com");
+  const cookie = await signUp(app(), "customer@example.com");
 
   // Simulate a DB where migration 0005 hasn't seeded qr_token yet.
   const [original] = await db<{ value: unknown }[]>`

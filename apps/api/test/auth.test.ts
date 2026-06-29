@@ -1,9 +1,8 @@
 import type { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
-import { createApp } from "../src/app";
 import type { Auth } from "../src/auth";
-import { systemClock } from "../src/clock";
 import type { Database } from "../src/db";
+import { cookieFrom, makeApp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 let db: Database;
@@ -27,12 +26,7 @@ beforeEach(async () => {
 });
 
 function app() {
-  return createApp({
-    db,
-    clock: systemClock,
-    auth,
-    qrTokenSecret: "test-qr-token-secret-at-least-32-chars",
-  });
+  return makeApp({ db, auth });
 }
 
 function postJson(path: string, body: unknown, cookie?: string) {
@@ -44,14 +38,6 @@ function postJson(path: string, body: unknown, cookie?: string) {
     },
     body: JSON.stringify(body),
   });
-}
-
-/** Fold a response's Set-Cookie headers into a Cookie request header value. */
-function cookieFrom(res: Response): string {
-  return res.headers
-    .getSetCookie()
-    .map((c) => c.split(";")[0])
-    .join("; ");
 }
 
 const CUSTOMER = {

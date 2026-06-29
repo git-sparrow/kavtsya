@@ -1,10 +1,9 @@
 import type { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import { cafeSchema, meResponseSchema } from "@kavtsya/shared";
-import { createApp } from "../src/app";
 import type { Auth } from "../src/auth";
-import { systemClock } from "../src/clock";
 import type { Database } from "../src/db";
+import { makeApp, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 let db: Database;
@@ -27,35 +26,7 @@ beforeEach(async () => {
 });
 
 function app() {
-  return createApp({
-    db,
-    clock: systemClock,
-    auth,
-    qrTokenSecret: "test-qr-token-secret-at-least-32-chars",
-  });
-}
-
-/** Fold a response's Set-Cookie headers into a Cookie request header value. */
-function cookieFrom(res: Response): string {
-  return res.headers
-    .getSetCookie()
-    .map((c) => c.split(";")[0])
-    .join("; ");
-}
-
-/** Sign a fresh Customer up and return their session cookie. */
-async function signUp(email: string): Promise<string> {
-  const res = await app().request("/api/auth/sign-up/email", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      email,
-      password: "hunter2-very-secret",
-      name: "Test",
-    }),
-  });
-  expect(res.status).toBe(200);
-  return cookieFrom(res);
+  return makeApp({ db, auth });
 }
 
 function registerCafe(name: string, cookie?: string) {
@@ -76,7 +47,7 @@ test("registering a Café requires authentication", async () => {
 });
 
 test("a signed-in Customer can register a Café, persisted under their ownership", async () => {
-  const cookie = await signUp("owner@example.com");
+  const cookie = await signUp(app(), "owner@example.com");
 
   const res = await registerCafe("Кавця на Хрещатику", cookie);
 
@@ -94,7 +65,7 @@ test("a signed-in Customer can register a Café, persisted under their ownership
 });
 
 test("an account with no Café is a customer only", async () => {
-  const cookie = await signUp("plain@example.com");
+  const cookie = await signUp(app(), "plain@example.com");
 
   const res = await app().request("/api/me", { headers: { cookie } });
 
@@ -105,7 +76,7 @@ test("an account with no Café is a customer only", async () => {
 });
 
 test("registering a Café unlocks the cafe_owner role on the same account", async () => {
-  const cookie = await signUp("owner@example.com");
+  const cookie = await signUp(app(), "owner@example.com");
   const created = await registerCafe("Кавця на Подолі", cookie);
   const cafe = cafeSchema.parse(await created.json());
 
@@ -119,7 +90,7 @@ test("registering a Café unlocks the cafe_owner role on the same account", asyn
 });
 
 test("an empty Café name is rejected", async () => {
-  const cookie = await signUp("owner@example.com");
+  const cookie = await signUp(app(), "owner@example.com");
 
   const res = await registerCafe("   ", cookie);
 
@@ -127,8 +98,8 @@ test("an empty Café name is rejected", async () => {
 });
 
 test("ownership is isolated: each owner sees only their own Café", async () => {
-  const alice = await signUp("alice@example.com");
-  const bob = await signUp("bob@example.com");
+  const alice = await signUp(app(), "alice@example.com");
+  const bob = await signUp(app(), "bob@example.com");
   await registerCafe("Alice Café", alice);
   await registerCafe("Bob Café", bob);
 
