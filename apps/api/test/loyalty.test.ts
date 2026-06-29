@@ -5,11 +5,10 @@ import {
   loyaltyProgramSchema,
   rewardDefaultsSchema,
 } from "@kavtsya/shared";
-import { createApp } from "../src/app";
 import type { Auth } from "../src/auth";
-import { systemClock } from "../src/clock";
 import type { Database } from "../src/db";
 import { clearPlatformConfigCache } from "../src/platform-config";
+import { makeApp, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 let db: Database;
@@ -36,34 +35,7 @@ beforeEach(async () => {
 });
 
 function app() {
-  return createApp({
-    db,
-    clock: systemClock,
-    auth,
-    qrTokenSecret: "test-qr-token-secret-at-least-32-chars",
-  });
-}
-
-/** Fold a response's Set-Cookie headers into a Cookie request header value. */
-function cookieFrom(res: Response): string {
-  return res.headers
-    .getSetCookie()
-    .map((c) => c.split(";")[0])
-    .join("; ");
-}
-
-async function signUp(email: string): Promise<string> {
-  const res = await app().request("/api/auth/sign-up/email", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      email,
-      password: "hunter2-very-secret",
-      name: "Test",
-    }),
-  });
-  expect(res.status).toBe(200);
-  return cookieFrom(res);
+  return makeApp({ db, auth });
 }
 
 async function registerCafe(name: string, cookie: string): Promise<string> {
@@ -102,7 +74,7 @@ test("reward defaults require authentication", async () => {
 });
 
 test("reward defaults are read from platform_config (the four platform types)", async () => {
-  const cookie = await signUp("owner@example.com");
+  const cookie = await signUp(app(), "owner@example.com");
 
   const res = await app().request("/api/reward-defaults", {
     headers: { cookie },
@@ -121,7 +93,7 @@ test("reward defaults are read from platform_config (the four platform types)", 
 // --- reading a Café's program -------------------------------------------------
 
 test("reading a program requires authentication", async () => {
-  const cookie = await signUp("owner@example.com");
+  const cookie = await signUp(app(), "owner@example.com");
   const cafeId = await registerCafe("Кавця", cookie);
 
   const res = await getProgram(cafeId);
@@ -130,7 +102,7 @@ test("reading a program requires authentication", async () => {
 });
 
 test("a freshly registered Café defaults to threshold 10 and no Reward", async () => {
-  const cookie = await signUp("owner@example.com");
+  const cookie = await signUp(app(), "owner@example.com");
   const cafeId = await registerCafe("Кавця на Хрещатику", cookie);
 
   const res = await getProgram(cafeId, cookie);
@@ -141,8 +113,8 @@ test("a freshly registered Café defaults to threshold 10 and no Reward", async 
 });
 
 test("a CafeOwner cannot read another owner's program", async () => {
-  const alice = await signUp("alice@example.com");
-  const bob = await signUp("bob@example.com");
+  const alice = await signUp(app(), "alice@example.com");
+  const bob = await signUp(app(), "bob@example.com");
   const aliceCafe = await registerCafe("Alice Café", alice);
 
   const res = await getProgram(aliceCafe, bob);
@@ -153,7 +125,7 @@ test("a CafeOwner cannot read another owner's program", async () => {
 // --- updating a Café's program ------------------------------------------------
 
 test("updating a program requires authentication", async () => {
-  const cookie = await signUp("owner@example.com");
+  const cookie = await signUp(app(), "owner@example.com");
   const cafeId = await registerCafe("Кавця", cookie);
 
   const res = await putProgram(cafeId, {
@@ -165,7 +137,7 @@ test("updating a program requires authentication", async () => {
 });
 
 test("a CafeOwner sets the threshold and Reward, and a re-read reflects it", async () => {
-  const cookie = await signUp("owner@example.com");
+  const cookie = await signUp(app(), "owner@example.com");
   const cafeId = await registerCafe("Кавця на Подолі", cookie);
 
   const update = await putProgram(
@@ -188,7 +160,7 @@ test("a CafeOwner sets the threshold and Reward, and a re-read reflects it", asy
 });
 
 test("a Reward can be cleared back to null", async () => {
-  const cookie = await signUp("owner@example.com");
+  const cookie = await signUp(app(), "owner@example.com");
   const cafeId = await registerCafe("Кавця", cookie);
   await putProgram(
     cafeId,
@@ -204,8 +176,8 @@ test("a Reward can be cleared back to null", async () => {
 });
 
 test("a CafeOwner cannot update another owner's program", async () => {
-  const alice = await signUp("alice@example.com");
-  const bob = await signUp("bob@example.com");
+  const alice = await signUp(app(), "alice@example.com");
+  const bob = await signUp(app(), "bob@example.com");
   const aliceCafe = await registerCafe("Alice Café", alice);
 
   const res = await putProgram(aliceCafe, { threshold: 5, reward: null }, bob);
@@ -214,7 +186,7 @@ test("a CafeOwner cannot update another owner's program", async () => {
 });
 
 test("a non-positive threshold is rejected", async () => {
-  const cookie = await signUp("owner@example.com");
+  const cookie = await signUp(app(), "owner@example.com");
   const cafeId = await registerCafe("Кавця", cookie);
 
   const res = await putProgram(cafeId, { threshold: 0, reward: null }, cookie);
@@ -223,7 +195,7 @@ test("a non-positive threshold is rejected", async () => {
 });
 
 test("a free_specific_drink Reward without an item is rejected", async () => {
-  const cookie = await signUp("owner@example.com");
+  const cookie = await signUp(app(), "owner@example.com");
   const cafeId = await registerCafe("Кавця", cookie);
 
   const res = await putProgram(
@@ -236,7 +208,7 @@ test("a free_specific_drink Reward without an item is rejected", async () => {
 });
 
 test("a Reward type absent from the platform-default set is rejected", async () => {
-  const cookie = await signUp("owner@example.com");
+  const cookie = await signUp(app(), "owner@example.com");
   const cafeId = await registerCafe("Кавця", cookie);
 
   // Platform retires percent_discount from the default set — no code deploy.
