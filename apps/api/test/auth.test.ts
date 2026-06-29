@@ -27,7 +27,12 @@ beforeEach(async () => {
 });
 
 function app() {
-  return createApp({ db, clock: systemClock, auth });
+  return createApp({
+    db,
+    clock: systemClock,
+    auth,
+    qrTokenSecret: "test-qr-token-secret-at-least-32-chars",
+  });
 }
 
 function postJson(path: string, body: unknown, cookie?: string) {

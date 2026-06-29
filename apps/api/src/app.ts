@@ -6,6 +6,7 @@ import { registerAuthRoutes } from "./routes/auth";
 import { registerCafeRoutes } from "./routes/cafes";
 import { registerHealthRoute } from "./routes/health";
 import { registerLoyaltyRoutes } from "./routes/loyalty";
+import { registerQrTokenRoutes } from "./routes/qr-token";
 
 /**
  * Everything the app needs from the outside world. Injected (not imported as
@@ -16,6 +17,8 @@ export interface AppDeps {
   db: Database;
   clock: Clock;
   auth: Auth;
+  /** HMAC secret signing the rotating Customer QR token (ADR 0006). */
+  qrTokenSecret: string;
 }
 
 /** Per-request context: the resolved session, populated by the auth middleware. */
@@ -47,5 +50,6 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   registerAuthRoutes(app, deps);
   registerCafeRoutes(app, deps);
   registerLoyaltyRoutes(app, deps);
+  registerQrTokenRoutes(app, deps);
   return app;
 }

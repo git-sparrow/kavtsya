@@ -111,6 +111,30 @@ export const rewardDefaultsSchema = z.array(rewardDefaultSchema);
 export type RewardDefaults = z.infer<typeof rewardDefaultsSchema>;
 
 /**
+ * Contract for `GET /api/qr-token`: the Customer's short-lived, rotating QR
+ * token (ADR 0006) and the instant it expires. The app renders `token` as a QR
+ * and refreshes before `expiresAt`; the CafeOwner's scanner validates it
+ * server-side (the scan slice, #20).
+ */
+export const qrTokenResponseSchema = z.object({
+  token: z.string(),
+  expiresAt: z.string().datetime(),
+});
+export type QrTokenResponse = z.infer<typeof qrTokenResponseSchema>;
+
+/**
+ * Platform-tunable QR-token settings, stored in `platform_config` under the
+ * `qr_token` key (ADR 0006 → "Token lifetime and grace are Platform-tunable").
+ * `ttlSeconds` is the token's lifetime; `graceSeconds` is the slack past expiry
+ * the scanner accepts to absorb clock skew / brief signal loss.
+ */
+export const qrTokenConfigSchema = z.object({
+  ttlSeconds: z.number().int().positive().max(3600),
+  graceSeconds: z.number().int().nonnegative().max(3600),
+});
+export type QrTokenConfig = z.infer<typeof qrTokenConfigSchema>;
+
+/**
  * Contract for `GET /api/me`: the account, its derived roles, and the Cafés it
  * owns. The mobile app reads `roles` to decide whether to offer CafeOwner Mode.
  */

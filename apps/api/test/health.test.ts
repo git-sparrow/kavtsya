@@ -25,7 +25,12 @@ test("GET /health reports ok and a live DB connection", async () => {
   // Frozen clock proves the response time comes from the injected clock,
   // not a real wall-clock read.
   const clock = fixedClock(new Date("2026-06-18T09:00:00.000Z"));
-  const app = createApp({ db, clock, auth });
+  const app = createApp({
+    db,
+    clock,
+    auth,
+    qrTokenSecret: "test-qr-token-secret-at-least-32-chars",
+  });
 
   const res = await app.request("/health");
 

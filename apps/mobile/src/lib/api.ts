@@ -5,6 +5,8 @@ import {
   loyaltyProgramSchema,
   type MeResponse,
   meResponseSchema,
+  type QrTokenResponse,
+  qrTokenResponseSchema,
   type RewardDefaults,
   rewardDefaultsSchema,
 } from "@kavtsya/shared";
@@ -30,6 +32,16 @@ export async function registerCafe(name: string): Promise<Cafe> {
   if (error)
     throw new Error(error.message ?? "Не вдалося зареєструвати кав'ярню");
   return cafeSchema.parse(data);
+}
+
+/**
+ * The Customer's rotating QR token (ADR 0006). The app renders `token` as a QR
+ * and refetches before `expiresAt` so the code on screen is always fresh.
+ */
+export async function fetchQrToken(): Promise<QrTokenResponse> {
+  const { data, error } = await apiFetch("/api/qr-token");
+  if (error) throw new Error(error.message ?? "Не вдалося оновити QR-код");
+  return qrTokenResponseSchema.parse(data);
 }
 
 /** The platform-default Reward set the config screen offers (story 38). */
