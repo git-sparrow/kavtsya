@@ -1,14 +1,14 @@
 import { router } from "expo-router";
-import { Pressable, StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { Screen } from "@/components/screen";
-import { Muted, OwnerBadge, Title } from "@/components/text";
+import { OwnerBadge, Title } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
 import { colors, radius } from "@/theme/colors";
 
-/** CafeOwner Mode landing: the owner's Cafés, each opening its loyalty-program editor. */
+/** CafeOwner Mode landing: the owner's Cafés — scan a Customer QR (#20) or open the program editor. */
 export default function OwnerHome() {
   const { me } = useMe();
   const cafes = me?.cafes ?? [];
@@ -18,21 +18,29 @@ export default function OwnerHome() {
       <Card>
         <OwnerBadge>Режим Кавовара</OwnerBadge>
         {cafes.map((cafe) => (
-          <Pressable
-            key={cafe.id}
-            style={styles.cafeRow}
-            onPress={() =>
-              router.push({
-                pathname: "/owner/[cafeId]",
-                params: { cafeId: cafe.id },
-              })
-            }
-          >
+          <View key={cafe.id} style={styles.cafeRow}>
             <Title>{cafe.name}</Title>
-            <Muted>Налаштувати програму ›</Muted>
-          </Pressable>
+            <Button
+              title="Сканувати QR клієнта"
+              onPress={() =>
+                router.push({
+                  pathname: "/owner/scan",
+                  params: { cafeId: cafe.id },
+                })
+              }
+            />
+            <Button
+              title="Налаштувати програму"
+              variant="secondary"
+              onPress={() =>
+                router.push({
+                  pathname: "/owner/[cafeId]",
+                  params: { cafeId: cafe.id },
+                })
+              }
+            />
+          </View>
         ))}
-        <Muted>Сканування QR з&apos;явиться у наступному оновленні.</Muted>
         <Button
           title="Повернутися в режим клієнта"
           variant="secondary"
@@ -50,6 +58,6 @@ const styles = StyleSheet.create({
     borderRadius: radius,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    gap: 2,
+    gap: 8,
   },
 });
