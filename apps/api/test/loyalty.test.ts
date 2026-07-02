@@ -1,14 +1,10 @@
 import type { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
-import {
-  cafeSchema,
-  loyaltyProgramSchema,
-  rewardDefaultsSchema,
-} from "@kavtsya/shared";
+import { loyaltyProgramSchema, rewardDefaultsSchema } from "@kavtsya/shared";
 import type { Auth } from "../src/auth";
 import type { Database } from "../src/db";
 import { clearPlatformConfigCache } from "../src/platform-config";
-import { makeApp, signUp } from "./helpers/app";
+import { makeApp, registerCafe as registerCafeAt, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 let db: Database;
@@ -38,14 +34,8 @@ function app() {
   return makeApp({ db, auth });
 }
 
-async function registerCafe(name: string, cookie: string): Promise<string> {
-  const res = await app().request("/api/cafes", {
-    method: "POST",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify({ name }),
-  });
-  expect(res.status).toBe(201);
-  return cafeSchema.parse(await res.json()).id;
+function registerCafe(name: string, cookie: string): Promise<string> {
+  return registerCafeAt(app(), name, cookie);
 }
 
 function getProgram(cafeId: string, cookie?: string) {

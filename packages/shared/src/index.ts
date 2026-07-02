@@ -146,3 +146,44 @@ export const meResponseSchema = z.object({
   cafes: z.array(cafeSchema),
 });
 export type MeResponse = z.infer<typeof meResponseSchema>;
+
+/**
+ * Body for `POST /api/purchases` — the CafeOwner's scan (#20): the Café they
+ * are issuing at and the Customer's scanned rotating QR token (ADR 0006).
+ */
+export const issuePurchaseBodySchema = z.object({
+  cafeId: z.string().uuid(),
+  qrToken: z.string().min(1),
+});
+export type IssuePurchaseBody = z.infer<typeof issuePurchaseBodySchema>;
+
+/**
+ * Contract for a successful `POST /api/purchases`: who earned the Зернятко and
+ * where they now stand against the Café's program, so the scan screen can
+ * confirm ("Олена — 5/10") without a second request. `balance` is derived from
+ * the ledger (ADR 0010), never a stored counter.
+ */
+export const purchaseResultSchema = z.object({
+  customerName: z.string(),
+  balance: z.number().int().nonnegative(),
+  threshold: z.number().int(),
+  reward: rewardSchema.nullable(),
+});
+export type PurchaseResult = z.infer<typeof purchaseResultSchema>;
+
+/**
+ * One entry of `GET /api/me/balances` — a Café where the Customer holds
+ * Зернятка, with the program context the balance is read against. Ordered most
+ * recently visited first.
+ */
+export const cafeBalanceSchema = z.object({
+  cafeId: z.string().uuid(),
+  cafeName: z.string(),
+  balance: z.number().int().nonnegative(),
+  threshold: z.number().int(),
+  reward: rewardSchema.nullable(),
+});
+export type CafeBalance = z.infer<typeof cafeBalanceSchema>;
+
+export const cafeBalancesResponseSchema = z.array(cafeBalanceSchema);
+export type CafeBalancesResponse = z.infer<typeof cafeBalancesResponseSchema>;

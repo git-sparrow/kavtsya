@@ -17,7 +17,8 @@ type ProgramRow = { zernyatko_threshold: number; reward: unknown };
 
 // The `reward` JSONB column is an untrusted boundary like any other input, so
 // it's validated on read with the same Zod schema the write path enforces.
-function toProgram(row: ProgramRow): LoyaltyProgram {
+// Exported for every reader of the program columns (the scan slice included).
+export function programFromRow(row: ProgramRow): LoyaltyProgram {
   return loyaltyProgramSchema.parse({
     threshold: row.zernyatko_threshold,
     reward: row.reward,
@@ -52,7 +53,7 @@ export async function getLoyaltyProgram(
     from cafes
     where "id" = ${cafeId} and "owner_user_id" = ${ownerUserId}
   `;
-  return row ? toProgram(row) : null;
+  return row ? programFromRow(row) : null;
 }
 
 /**
@@ -73,5 +74,5 @@ export async function updateLoyaltyProgram(
     where "id" = ${cafeId} and "owner_user_id" = ${ownerUserId}
     returning "zernyatko_threshold", "reward"
   `;
-  return row ? toProgram(row) : null;
+  return row ? programFromRow(row) : null;
 }

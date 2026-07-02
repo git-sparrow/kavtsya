@@ -1,5 +1,6 @@
 import type { Hono } from "hono";
 import { expect } from "vitest";
+import { cafeSchema } from "@kavtsya/shared";
 import { type AppEnv, createApp } from "../../src/app";
 import type { Auth } from "../../src/auth";
 import { type Clock, systemClock } from "../../src/clock";
@@ -62,4 +63,23 @@ export async function signUp(
   });
   expect(res.status).toBe(200);
   return cookieFrom(res);
+}
+
+/**
+ * Register a Café for the signed-in account and return its id. For suites that
+ * need a Café as a fixture — `cafes.test.ts` tests the endpoint itself and
+ * keeps its own raw-response variant.
+ */
+export async function registerCafe(
+  app: Hono<AppEnv>,
+  name: string,
+  cookie: string,
+): Promise<string> {
+  const res = await app.request("/api/cafes", {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie },
+    body: JSON.stringify({ name }),
+  });
+  expect(res.status).toBe(201);
+  return cafeSchema.parse(await res.json()).id;
 }
