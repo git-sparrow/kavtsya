@@ -1,6 +1,6 @@
 # Kavtsya — Project Brief
 
-_Last updated: 2026-06-15 · Status: **build phase** — scope and architecture locked; PRD → issues → build_
+_Last updated: 2026-07-02 · Status: **building** — scope and architecture locked; PRD done, issues open, vertical slices shipping (core loyalty loop wired end to end through #20)_
 
 ## Purpose
 
@@ -123,8 +123,9 @@ Availability (checked 2026-06-13): no app named Kavtsya/Кавця on either sto
 1. ~~Finalize the name.~~ ✓ **Kavtsya** (pending registrar purchase)
 2. ~~Finalize feature scope + AI scope.~~ ✓ done 2026-06-15 (see Feature tiers above)
 3. ~~Tech / architecture plan.~~ ✓ done 2026-06-15 (see Tech stack above + `docs/adr/`)
-4. **PRD → issues, then build.** ← next
+4. ~~PRD → issues.~~ ✓ done — tracked in [GitHub Issues](https://github.com/git-sparrow/kavtsya/issues).
+5. **Build the vertical slices.** ← in progress. Merged so far: walking skeleton (#15), auth (#16), Cafés (#17), loyalty config (#18), rotating QR token (#19), core scan + Зернятко ledger (#20). Next: Redemption, Ворожка, push, analytics.
 
 ## Dev environment
 
-Built with Claude Code using custom skill presets from the `mp-skills` marketplace (fork `git-sparrow/mattp.skills`). This repo enables `mp-core` + `mp-engineering` via `.claude/settings.json`. Run `/mp-engineering:setup-matt-pocock-skills` once before using the engineering workflow skills.
+Built with Claude Code. Matt Pocock's workflow skills (`/tdd`, `/to-prd`, `/to-issues`, `/triage`, `/domain-modeling`, …) are **vendored into this repo and committed**, not installed globally: the real files live in `.agents/skills/`, with `.claude/skills/` symlinks pointing at them and `skills-lock.json` pinning the `mattpocock/skills` sources/hashes. They are standalone and **un-namespaced** (`/tdd`, not `/mp-engineering:tdd`) and travel with the repo, so no per-machine global install is needed — update them with `npx skills@latest` against `skills-lock.json`. `.claude/settings.json` additionally pins project-relevant plugins (currently the Expo skills). See [`CLAUDE.md`](CLAUDE.md) for the full working agreement.
