@@ -30,6 +30,21 @@ export function rewardParamValue(reward: Reward | null): string {
   return "";
 }
 
+/** A configured Reward as one display line (balances list, scan confirmation). */
+export function rewardLabel(reward: Reward | null): string {
+  if (!reward) return "";
+  switch (reward.type) {
+    case "free_drink":
+      return "Безкоштовний напій";
+    case "free_specific_drink":
+      return `Безкоштовно: ${reward.item}`;
+    case "fixed_discount":
+      return `Знижка ₴${reward.amountUah}`;
+    case "percent_discount":
+      return `Знижка ${reward.percent}%`;
+  }
+}
+
 /** Assemble a Reward from the chosen type + raw param; throws if the param is missing. */
 export function buildReward(
   type: RewardType | null,
