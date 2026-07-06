@@ -55,9 +55,12 @@ export interface ValidateQrTokenOptions {
   graceSeconds: number;
 }
 
+/** Why a token failed validation — named so the wire mapping (#50) can be exhaustive over it. */
+export type QrTokenInvalidReason = "malformed" | "bad_signature" | "expired";
+
 export type QrTokenValidation =
   | { valid: true; customerId: string; jti: string }
-  | { valid: false; reason: "malformed" | "bad_signature" | "expired" };
+  | { valid: false; reason: QrTokenInvalidReason };
 
 function base64url(buf: Buffer): string {
   return buf.toString("base64url");
