@@ -101,6 +101,17 @@ Honest framing first: the real competitor is not Expirenza — it is the **paper
 5. **Reframe the Pro pitch from "analytics" to "she came back".** Owners don't buy dashboards; they buy "Kavtsya brought Олена back after 3 weeks" — the AI win-back story ADR 0011 already names as the hero. The first Pro artifact should be a concrete win-back message, not a chart. (Related trial-design caveat: a 14-day trial of analytics over 14 days of data shows almost nothing — the trial should showcase outreach, which works from day one.)
 6. **Buy the domains** (#1) — the cheapest risk-elimination on the board.
 
+Added 2026-07-07 (second brainstorm):
+
+7. **Launch on a story beat.** Candidate windows: **Oct 1** (International Coffee Day) and — the culturally exact one — **Dec 13, Андріїв день**, the traditional Ukrainian fortune-telling night (Андріївські вечорниці). A Ворожка launch on the actual ворожіння holiday is PR-ready and uncopyable by POS incumbents.
+8. **Pilot in Lviv.** Ukraine's coffee capital: dense independent-café culture, an annual coffee festival to demo at, walkable neighborhoods where people pass five cafés on the way to work — the best terrain for per-Café loyalty (also on the #58 checklist).
+9. **Telegram-bot Ворожка first** (#68) — Telegram is Ukraine's default app; a fortune bot costs a weekend, needs no store review, validates the hook, builds a funnel audience, and doubles as the second consumer of the `AIProvider` seam (ADR 0007).
+10. **Recruit baristas, not just owners.** Baristas migrate between cafés and talk to each other — the industry's real social network. «Ворожка на зміну» (#62) makes them like the app; a barista referral makes them carry it to the next workplace.
+11. **«Підтримуй свою кав'ярню» positioning.** Loyalty to local business is genuinely felt in Ukraine now, and the per-Café never-pooled model (ADR 0001) *is* that value structurally — differentiates from bank-ecosystem loyalty that feels corporate.
+12. **Customer referral loop** (#69) — "bring a friend, you both get a Зернятко here", owner-toggled per Café.
+13. **Build in public on DOU.ua** — a "будую кавовий стартап з AI-агентами" series is marketing for Kavtsya *and* career visibility at once; arguably the highest-ROI artifact even if zero cafés ever pay.
+14. **Ukrainian startup ecosystem freebies** — Diia.Business consultations, Ukrainian Startup Fund, Google for Startups Ukraine: free mentorship, grants, and PR channels built for exactly this kind of project.
+
 ## AI scope
 
 AI is a **core learning goal**, not a gimmick. v1 keeps the AI surface simple but real:
