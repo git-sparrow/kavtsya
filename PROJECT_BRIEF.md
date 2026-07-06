@@ -30,7 +30,7 @@ A mobile loyalty app connecting coffee shops with their Customers, plus a CafeOw
 | Backend | **Hono on Node.js (Railway)** | TypeScript-first, standard Node.js environment, no TCP restrictions; Railway hosts both the server and PostgreSQL in one place |
 | Database | **PostgreSQL on Railway** + `postgres.js` driver + Zod | Plain SQL, no ORM; standard transferable skills; Zod validates all API inputs |
 | Auth | **Email/password + Google + Apple Sign-In** via Better Auth | Email/password as baseline; Google/Apple for UX; Apple Sign-In required by App Store when any social login is offered |
-| Customer QR | **Dynamic** — rotates every ~60s via signed token | Prevents QR screenshot sharing / stamp farming; app refreshes token from API |
+| Customer QR | **Dynamic** — short-lived signed token (Platform-tunable; currently 90s TTL + 30s grace), single-use for earning | Prevents QR screenshot sharing / stamp farming; app refreshes token from API |
 | Push | **Expo Push Notifications** | Built into Expo; store push tokens per Customer; CafeOwner one-tap campaigns (Paid Plan) |
 | AI service | **Custom provider abstraction** — Claude (Haiku) by default | TypeScript interface + per-provider implementations; swap model/provider via env var; starts with Anthropic, no external AI SDK dependency |
 | Repo structure | **Monorepo** — `apps/mobile` + `apps/api` + shared types | Shared TypeScript types between app and API; one repo to manage |
@@ -88,6 +88,17 @@ The Pro hero feature is **outreach + AI retention** (push campaigns + AI win-bac
 
 **Future**: pricing scales for CafeOwners with multiple Cafés — one CafeOwner, many Cafés pays more than a single-café CafeOwner. Not in v1.
 
+### Improving the odds — GTM recommendations (2026-07-06 review)
+
+Honest framing first: the real competitor is not Expirenza — it is the **paper stamp card** (zero cost, zero friction, works offline). The single most likely point of death is the **install-and-signup cliff** before the first Зернятко. Structural advantage to lean on: per-Café loyalty (ADR 0001) means the product is complete and useful with **exactly one Café** — a 2–3-café pilot is a real test, not a toy. Recommendations, by leverage:
+
+1. **Kill the install cliff.** A printed table-tent QR that opens something *instantly* — an iOS App Clip (the `expo:add-app-clip` skill is already vendored) or a tiny web page showing today's Ворожка + "install to start collecting". First fortune before first install: the fortune is the hook, the Зернятко is the retention.
+2. **Give the Free tier one teaser stat.** "27 Customers came back this month" on the CafeOwner home screen — free, one number, and it is the ad for Pro. Gating analytics entirely means Free owners never learn what they're missing.
+3. **Founding-café pilot.** First 5–10 Cafés get Pro free forever, in one neighborhood, in exchange for feedback + a table tent on every table. What we're buying is the **repeat-visit-rate** number — the only metric that sells Café #11.
+4. **Validate Ворожка before the app carries it.** A web/Instagram «ворожіння на кавовій гущі» costs a weekend, builds the brand's social footprint, and tests whether people actually share fortunes — de-risking the shareable-card backlog item for free.
+5. **Reframe the Pro pitch from "analytics" to "she came back".** Owners don't buy dashboards; they buy "Kavtsya brought Олена back after 3 weeks" — the AI win-back story ADR 0011 already names as the hero. The first Pro artifact should be a concrete win-back message, not a chart. (Related trial-design caveat: a 14-day trial of analytics over 14 days of data shows almost nothing — the trial should showcase outreach, which works from day one.)
+6. **Buy the domains** (#1) — the cheapest risk-elimination on the board.
+
 ## AI scope
 
 AI is a **core learning goal**, not a gimmick. v1 keeps the AI surface simple but real:
@@ -106,6 +117,15 @@ Surfaced during the architecture review on 2026-06-15; all four resolved on 2026
 2. ~~**"Instant signup reward" vs "credited at first Purchase" contradiction.**~~ ✓ **Resolved 2026-06-16** — Signup Reward postponed out of v1 to the Backlog. Removes the contradiction entirely; revisit after the core loop ships.
 3. ~~**Зернятко issuance must not depend on Ворожка.**~~ ✓ **Resolved 2026-06-16** — Confirmed, and the mechanism changed to make it structural: Ворожка is now a daily AI-generated batch served randomly per scan (see AI scope), so the Purchase scan makes **no live AI call at all**. Зернятко issuance is therefore trivially independent of the fortune. Captured as `docs/adr/0009`.
 4. ~~**Single-use QR token?**~~ ✓ **Resolved 2026-06-16** — Confirmed single-use. Each rotating token is consumed on first successful scan (by `jti`); re-scans are rejected. Closes the double-issuance / farming window. Captured in `docs/adr/0006`.
+
+## ⚠️ Open design questions (surfaced in the 2026-07-06 review — none block the current slices)
+
+1. **Staff at the counter** → tracked as **#56**. In real cafés the person scanning is usually a barista, not the CafeOwner — but the only way to scan today is to be signed in as the owner, whose account is *also* their personal Customer account (own QR, own balances at other Cafés) and will later hold campaigns/analytics. Sharing the owner login with staff is a privacy and security problem. Needs a decision before real-café pilots: a limited "scanner" session/PIN per Café, or accept shared-login for the pilot and note the risk.
+2. **Account deletion** → tracked as **#57**. App Store Guideline 5.1.1(v) requires in-app account deletion. The schema currently `on delete cascade`s `purchases` from `user`, so deleting an account silently rewrites every Café's history/analytics — at odds with the append-only-ledger intent (ADR 0010). Likely answer: anonymize (tombstone user, keep ledger rows) instead of cascade. Decide before the stores, not before #22.
+3. **Redemption lock target** → commented on **#22**. ADR 0010 plans the balance check-and-write under `FOR UPDATE` on "the membership row", but no `cafe_memberships` table exists yet — balances are derived straight from `purchases`. #22 must either introduce the memberships row or use a `pg_advisory_xact_lock` keyed on (Café, Customer). Decide at #22 planning time.
+4. **Member code is core resilience, not an edge case** → commented on **#21**. The rotating QR makes the happy path depend on the *Customer's* connectivity; in a basement café with no signal the loop simply fails until #21 ships. #21 should follow #22 closely, before any real-world pilot.
+
+Smaller notes filed where they'll be seen: Ворожка daily batch must anchor on Europe/Kyiv + validate Haiku's Ukrainian first (→ #23), Expo push receipts / `DeviceNotRegistered` token pruning (→ #24), and a pilot & store-submission readiness checklist (privacy policy, Play data declarations, Railway backups, domains) as **#58**.
 
 ## ⏳ Open action items
 
