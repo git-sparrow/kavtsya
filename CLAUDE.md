@@ -4,7 +4,7 @@
 
 ## Status
 
-**Build phase** — scope and architecture are locked. See `PROJECT_BRIEF.md` for the full brief and decisions, `CONTEXT.md` for the domain glossary, and `docs/adr/` for architecture decisions. Next milestone: PRD → issues → build.
+**Build phase** — scope and architecture are locked; PRD and issues are done, vertical slices are shipping (core loyalty loop wired end to end through #20). See `PROJECT_BRIEF.md` for the full brief and decisions, `CONTEXT.md` for the domain glossary, and `docs/adr/` for architecture decisions. Next slices: Redemption (#22), member code (#21), Ворожка (#23), Pro gating/push (#24), analytics (#25).
 
 ## What this is
 
