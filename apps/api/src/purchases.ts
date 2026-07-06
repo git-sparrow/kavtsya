@@ -20,6 +20,12 @@ export interface IssuePurchaseInput {
   jti: string;
 }
 
+/** Why issuing was refused — named so the wire mapping (#50) can be exhaustive over it. */
+export type IssuePurchaseRejection =
+  | "cafe_not_owned"
+  | "own_cafe"
+  | "token_used";
+
 export type IssuePurchaseOutcome =
   | {
       ok: true;
@@ -28,7 +34,7 @@ export type IssuePurchaseOutcome =
       threshold: number;
       reward: Reward | null;
     }
-  | { ok: false; reason: "cafe_not_owned" | "own_cafe" | "token_used" };
+  | { ok: false; reason: IssuePurchaseRejection };
 
 /** postgres.js surfaces Postgres errors with the SQLSTATE in `code`. */
 const UNIQUE_VIOLATION = "23505";

@@ -3,6 +3,7 @@ import {
   type CafeBalancesResponse,
   cafeBalancesResponseSchema,
   cafeSchema,
+  isScanRejection,
   type LoyaltyProgram,
   loyaltyProgramSchema,
   type MeResponse,
@@ -13,6 +14,7 @@ import {
   qrTokenResponseSchema,
   type RewardDefaults,
   rewardDefaultsSchema,
+  type ScanRejection,
 } from "@kavtsya/shared";
 
 import { apiFetch } from "@/lib/auth-client";
@@ -65,9 +67,10 @@ export async function fetchProgram(cafeId: string): Promise<LoyaltyProgram> {
 
 /**
  * What the scanner tells the CafeOwner for each rejection the API
- * distinguishes (#20). The message is the feedback — the screen just shows it.
+ * distinguishes (#20). Keyed by the shared taxonomy (#50), so a rejection code
+ * added there without copy here is a type error, not a fallback message.
  */
-const SCAN_REJECTIONS: Record<string, string> = {
+const SCAN_REJECTIONS: Record<ScanRejection, string> = {
   token_used: "Цей код уже використано — попросіть клієнта показати новий",
   expired_token: "Код протермінувався — попросіть клієнта показати новий",
   invalid_token: "Це не QR-код Кавці",
@@ -91,11 +94,8 @@ export async function issuePurchase(
     // Our API's error bodies are { error: "<code>" }; better-fetch folds the
     // parsed body into the error object, so the code sits on `error.error`.
     const code = (error as { error?: string }).error;
-    throw new Error(
-      (code && SCAN_REJECTIONS[code]) ??
-        error.message ??
-        "Не вдалося нарахувати зернятко",
-    );
+    if (code && isScanRejection(code)) throw new Error(SCAN_REJECTIONS[code]);
+    throw new Error(error.message ?? "Не вдалося нарахувати зернятко");
   }
   return purchaseResultSchema.parse(data);
 }

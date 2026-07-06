@@ -148,6 +148,37 @@ export const meResponseSchema = z.object({
 export type MeResponse = z.infer<typeof meResponseSchema>;
 
 /**
+ * Every way `POST /api/purchases` can turn down an authenticated, well-formed
+ * scan, with the HTTP status each code travels under. (Auth and body-validation
+ * failures stay outside the taxonomy — they signal a broken client, not a scan
+ * the CafeOwner can act on.) This is the single declaration of the
+ * scan-rejection taxonomy (#50): the API derives its wire responses from it and
+ * the mobile scanner keys its Ukrainian copy by it, so a new rejection reason
+ * (e.g. the ones #21/#22 add) is a compile error anywhere it isn't handled yet.
+ */
+export const scanRejectionStatuses = {
+  /** The token's life (+ grace) is over — the Customer must show a fresh code. */
+  expired_token: 401,
+  /** Not a token we minted: tampered, truncated, or not a Kavtsya QR at all. */
+  invalid_token: 401,
+  /** Self-farming guard (ADR 0003): a CafeOwner scanned their own code. */
+  own_cafe: 403,
+  /** The Café doesn't exist or the caller doesn't own it (indistinguishable). */
+  not_found: 404,
+  /** Single-use guard (ADR 0006): this token already earned its Зернятко. */
+  token_used: 409,
+} as const;
+
+export type ScanRejection = keyof typeof scanRejectionStatuses;
+
+/** Narrows an error code off the wire to the scan-rejection taxonomy. */
+export function isScanRejection(code: string): code is ScanRejection {
+  // Own keys only — `in` would also admit `Object.prototype` names
+  // ("toString", "constructor") arriving in a hostile or garbled error body.
+  return Object.hasOwn(scanRejectionStatuses, code);
+}
+
+/**
  * Body for `POST /api/purchases` — the CafeOwner's scan (#20): the Café they
  * are issuing at and the Customer's scanned rotating QR token (ADR 0006).
  */

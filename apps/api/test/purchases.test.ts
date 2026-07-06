@@ -157,6 +157,19 @@ test("a tampered token is rejected", async () => {
   expect(await res.json()).toEqual({ error: "invalid_token" });
 });
 
+test("a malformed token (not ours at all) is rejected", async () => {
+  const owner = await signUp(app(), "owner@example.com");
+  const cafeId = await registerCafe("Кавця", owner);
+
+  const res = await issuePurchase(
+    { cafeId, qrToken: "not-a-kavtsya-qr" },
+    owner,
+  );
+
+  expect(res.status).toBe(401);
+  expect(await res.json()).toEqual({ error: "invalid_token" });
+});
+
 test("issuing requires authentication", async () => {
   const owner = await signUp(app(), "owner@example.com");
   const cafeId = await registerCafe("Кавця", owner);
