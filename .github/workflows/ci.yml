@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    services:
+      # The API suite runs against a real Postgres (no mocks). The test harness
+      # defaults to postgres://kavtsya:kavtsya@localhost:5432/kavtsya_test
+      # (apps/api/test/helpers/testDb.ts) and runs migrations itself, so the
+      # container only has to exist with that user and database.
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kavtsya
+          POSTGRES_PASSWORD: kavtsya
+          POSTGRES_DB: kavtsya_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kavtsya -d kavtsya_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm (version from packageManager)
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Test
+        run: pnpm test
