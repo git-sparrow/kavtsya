@@ -28,7 +28,7 @@ See the Tech stack table in `PROJECT_BRIEF.md` and `docs/adr/` for full rational
 
 - Use the domain glossary in `CONTEXT.md` consistently — **Зернятко** not "stamp/point", **CafeOwner** not "owner", **Purchase** not "transaction".
 - Keep it simple: no redundant functionality.
-- Matt Pocock's workflow skills (tdd, to-prd, to-issues, triage, domain-modeling, …) are vendored into this repo and committed, not installed globally — the real files live in `.agents/skills/`, with `.claude/skills/` symlinks pointing at them and `skills-lock.json` pinning the `mattpocock/skills` sources/hashes. They're standalone (`/tdd`, not `/mp-engineering:tdd`) and travel with the repo, so no per-machine global install is needed. Update them with `npx skills@latest` against `skills-lock.json`. `.claude/settings.json` additionally pins project-relevant plugins (currently the Expo skills).
+- Matt Pocock's workflow skills (tdd, to-spec, to-tickets, triage, domain-modeling, …) are vendored into this repo and committed, not installed globally — the real files live in `.agents/skills/`, with `.claude/skills/` symlinks pointing at them and `skills-lock.json` pinning the `mattpocock/skills` sources/hashes. They're standalone and un-namespaced (`/tdd`) and travel with the repo, so no per-machine global install is needed. Update them with `npx skills@latest` against `skills-lock.json`. `.claude/settings.json` additionally pins project-relevant plugins (currently the Expo skills).
 
 ## Key files
 
