@@ -76,6 +76,7 @@ export function registerPurchaseRoutes(
     if (!outcome.ok) return reject(c, outcome.reason);
 
     const body: PurchaseResult = {
+      customerId: outcome.customerId,
       customerName: outcome.customerName,
       balance: outcome.balance,
       threshold: outcome.threshold,

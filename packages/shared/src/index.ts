@@ -192,15 +192,70 @@ export type IssuePurchaseBody = z.infer<typeof issuePurchaseBodySchema>;
  * Contract for a successful `POST /api/purchases`: who earned the Зернятко and
  * where they now stand against the Café's program, so the scan screen can
  * confirm ("Олена — 5/10") without a second request. `balance` is derived from
- * the ledger (ADR 0010), never a stored counter.
+ * the ledger (ADR 0010), never a stored counter. `customerId` is what makes
+ * Redemption "off the same single scan" (#22, ADR 0006): the one scan
+ * identified the Customer, so the confirm references them without a new token.
  */
 export const purchaseResultSchema = z.object({
+  customerId: z.string(),
   customerName: z.string(),
   balance: z.number().int().nonnegative(),
   threshold: z.number().int(),
   reward: rewardSchema.nullable(),
 });
 export type PurchaseResult = z.infer<typeof purchaseResultSchema>;
+
+/**
+ * Every way `POST /api/redemptions` can turn down an authenticated, well-formed
+ * confirm, with the HTTP status each code travels under — the same single-
+ * declaration taxonomy pattern as the scan (#50), so the CafeOwner screen's
+ * Ukrainian copy is a compile error to leave incomplete.
+ */
+export const redemptionRejectionStatuses = {
+  /** Self-farming guard (ADR 0003): Redemption is also rejected at one's own Café. */
+  own_cafe: 403,
+  /** The Café doesn't exist or the caller doesn't own it (indistinguishable). */
+  not_found: 404,
+  /** The Customer's balance is below the Café's current threshold. */
+  insufficient_balance: 409,
+  /** The Café has no Reward configured — there is nothing to claim. */
+  no_reward: 409,
+} as const;
+
+export type RedemptionRejection = keyof typeof redemptionRejectionStatuses;
+
+/** Narrows an error code off the wire to the redemption-rejection taxonomy. */
+export function isRedemptionRejection(
+  code: string,
+): code is RedemptionRejection {
+  return Object.hasOwn(redemptionRejectionStatuses, code);
+}
+
+/**
+ * Body for `POST /api/redemptions` — the CafeOwner confirms a Redemption as a
+ * distinct action off the one scan (#22): `customerId` comes from the scan's
+ * `PurchaseResult`, and `idempotencyKey` is minted per confirm tap so a flaky
+ * retry replays instead of double-spending, while an intentional second
+ * confirm (banking) carries a fresh key.
+ */
+export const confirmRedemptionBodySchema = z.object({
+  cafeId: z.string().uuid(),
+  customerId: z.string().min(1),
+  idempotencyKey: z.string().min(1).max(200),
+});
+export type ConfirmRedemptionBody = z.infer<typeof confirmRedemptionBodySchema>;
+
+/**
+ * Contract for a confirmed `POST /api/redemptions`: the Customer's new derived
+ * balance, and the `beansSpent` + `reward` the Redemption snapshotted at
+ * confirm time (ADR 0010) — later program changes never re-price it.
+ */
+export const redemptionResultSchema = z.object({
+  balance: z.number().int().nonnegative(),
+  beansSpent: z.number().int().positive(),
+  reward: rewardSchema,
+});
+export type RedemptionResult = z.infer<typeof redemptionResultSchema>;
 
 /**
  * One entry of `GET /api/me/balances` — a Café where the Customer holds

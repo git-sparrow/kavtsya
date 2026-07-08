@@ -1,3 +1,4 @@
+import type { PurchaseResult, Reward } from "@kavtsya/shared";
 import {
   CameraView as CameraViewBase,
   type CameraViewProps,
@@ -25,6 +26,17 @@ const CameraView = CameraViewBase as unknown as ComponentType<CameraViewProps>;
 const VIEWFINDER_SIZE = 260;
 
 /**
+ * Whether the confirm-Redemption action is offered (#22, CONTEXT → Redemption):
+ * the balance covers the Café's threshold and there is a Reward to claim. The
+ * server re-checks under its lock — this only decides what the screen shows.
+ */
+function canRedeem(
+  result: PurchaseResult,
+): result is PurchaseResult & { reward: Reward } {
+  return result.balance >= result.threshold && result.reward !== null;
+}
+
+/**
  * The CafeOwner's scan screen (#20): point the camera at the Customer's
  * rotating QR, the API validates it and appends the Purchase, and the outcome —
  * who earned the Зернятко, their new balance, or why the scan was rejected —
@@ -35,7 +47,7 @@ export default function ScanPurchase() {
   const { me } = useMe();
   const cafeName = me?.cafes.find((cafe) => cafe.id === cafeId)?.name ?? "";
   const [permission, requestPermission] = useCameraPermissions();
-  const { state, onScanned, scanNext } = useScanPurchase(cafeId);
+  const { state, onScanned, confirmReward, scanNext } = useScanPurchase(cafeId);
 
   if (!permission) {
     return (
@@ -96,12 +108,39 @@ export default function ScanPurchase() {
             <Muted>
               Зернятка: {state.result.balance} з {state.result.threshold}
             </Muted>
-            {state.result.balance >= state.result.threshold &&
-              state.result.reward && (
+            {canRedeem(state.result) && (
+              <>
                 <Muted>
                   Назбирано на винагороду: {rewardLabel(state.result.reward)}
                 </Muted>
-              )}
+                <Button
+                  title="Видати винагороду"
+                  onPress={() => void confirmReward()}
+                />
+              </>
+            )}
+            {state.confirmError && <ErrorText>{state.confirmError}</ErrorText>}
+            <Button title="Сканувати ще" onPress={scanNext} />
+          </>
+        )}
+        {state.phase === "confirming" && (
+          <ActivityIndicator color={colors.brand} />
+        )}
+        {state.phase === "redeemed" && (
+          <>
+            <Title>🎁 Винагороду видано</Title>
+            <Muted>{rewardLabel(state.redemption.reward)}</Muted>
+            <Muted>
+              Залишок: {state.result.balance} з {state.result.threshold}
+            </Muted>
+            {/* A banked balance (≥ 2× threshold) redeems again — its own confirm. */}
+            {canRedeem(state.result) && (
+              <Button
+                title="Видати ще одну"
+                onPress={() => void confirmReward()}
+              />
+            )}
+            {state.confirmError && <ErrorText>{state.confirmError}</ErrorText>}
             <Button title="Сканувати ще" onPress={scanNext} />
           </>
         )}
