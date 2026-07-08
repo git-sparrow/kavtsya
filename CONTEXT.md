@@ -28,6 +28,10 @@ _Avoid_: Admin, founder, superuser
 The section of the app unlocked for CafeOwners — separate UX from the Customer experience but within the same app and single App Store listing. CafeOwners switch into CafeOwner Mode to scan QR codes, configure their loyalty program, and manage push notifications.
 _Avoid_: Owner app, business app, admin panel
 
+**Зміна** (Shift) / **Scanner Grant**:
+How café staff scan without the CafeOwner's login (`docs/adr/0013`). A **Scanner Grant** is a café-scoped, time-boxed, revocable capability that lets a normal Customer account scan and confirm Redemptions for one Café — nothing else (no program config, no analytics). **«Зміна»** is its first surface: the CafeOwner opens a shift, the barista's own app becomes a scanner for that Café until the grant expires (default: end of business day) or is revoked («Закрити зміну»). Free tier. Nobody may scan their own QR (scanner ≠ scanned), but a barista may still earn Зернятка when a colleague scans them.
+_Avoid_: Staff account, employee login, barista mode (as an account type)
+
 ### Loyalty mechanics
 
 **Зернятко** (Zernyatko — "little bean"):
