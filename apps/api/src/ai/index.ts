@@ -7,11 +7,11 @@ export type { AIProvider } from "./provider";
 /**
  * Provider selection is an env concern (ADR 0007): `AI_PROVIDER` picks the
  * implementation, `AI_MODEL` the model — swapping either is a config change,
- * not a code change. Claude Haiku is the default (speed + cost). The schema
- * lives here rather than in `env.ts` because only the fortune-generation
- * script needs these variables — the API server never calls the model
- * (ADR 0009) and must not fail to boot over a missing AI key.
- * Default model: Claude Sonnet 5 (see ADR 0007 for the Haiku → Sonnet story).
+ * not a code change. The schema lives here rather than in `env.ts` because
+ * only the fortune-generation script needs these variables — the API server
+ * never calls the model (ADR 0009) and must not fail to boot over a missing
+ * AI key. Default model: Claude Sonnet 5 (see ADR 0007 for the Haiku →
+ * Sonnet story).
  */
 const aiEnvSchema = z.object({
   AI_PROVIDER: z.enum(["claude"]).default("claude"),

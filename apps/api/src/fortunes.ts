@@ -9,8 +9,11 @@ import type { Database } from "./db";
  * caller falls back, and the Зернятко is issued regardless.
  */
 
-/** How many fortunes one day's batch holds. */
-const DAILY_BATCH_SIZE = 30;
+/**
+ * How many fortunes one day's batch holds when the caller doesn't say —
+ * the batch script overrides this per environment via `FORTUNES_BATCH_SIZE`.
+ */
+export const DAILY_BATCH_SIZE = 30;
 
 /**
  * The pool is keyed to the Europe/Kyiv calendar day (not server/UTC): Ukrainian

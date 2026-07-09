@@ -9,8 +9,9 @@
 
 ## What this is
 
-Once a day a job asks Claude (Sonnet 5, see ADR 0007) for **30 short coffee
-fortunes in Ukrainian** and stores them as rows in the `fortunes` database
+Once a day a job asks Claude (Sonnet 5, see ADR 0007) for a batch of **short
+coffee fortunes in Ukrainian** — 30 by default, `FORTUNES_BATCH_SIZE` in
+`.env` changes that — and stores them as rows in the `fortunes` database
 table — there is no file. Every scan that day shows the Customer one random
 fortune from the batch (ADR 0009: the scan itself never talks to the AI, and
 the Зернятко is issued even if the batch is missing — five hand-written
@@ -68,6 +69,7 @@ _Марі: якщо якесь ворожіння звучить криво аб
 | Message | Fix |
 |---|---|
 | `Invalid AI environment: ANTHROPIC_API_KEY` | Add the key line to `.env` (see Prerequisites #2) |
+| `Invalid FORTUNES_BATCH_SIZE` | The `.env` override must be a whole number above 0 — fix or remove the line |
 | `relation "fortunes" does not exist` | Run the migrate command (Prerequisites #3) |
 | `ECONNREFUSED ... 5432` | Start Docker Desktop, then `docker compose up -d` |
 | `Claude Messages API responded 401` | The key is wrong or revoked — mint a new one at console.anthropic.com |
