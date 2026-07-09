@@ -32,7 +32,7 @@ A mobile loyalty app connecting coffee shops with their Customers, plus a CafeOw
 | Auth | **Email/password + Google + Apple Sign-In** via Better Auth | Email/password as baseline; Google/Apple for UX; Apple Sign-In required by App Store when any social login is offered |
 | Customer QR | **Dynamic** — short-lived signed token (Platform-tunable; currently 90s TTL + 30s grace), single-use for earning | Prevents QR screenshot sharing / stamp farming; app refreshes token from API |
 | Push | **Expo Push Notifications** | Built into Expo; store push tokens per Customer; CafeOwner one-tap campaigns (Paid Plan) |
-| AI service | **Custom provider abstraction** — Claude (Haiku) by default | TypeScript interface + per-provider implementations; swap model/provider via env var; starts with Anthropic, no external AI SDK dependency |
+| AI service | **Custom provider abstraction** — Claude (Sonnet 5) by default (ADR 0007, amended 2026-07-10) | TypeScript interface + per-provider implementations; swap model/provider via env var; starts with Anthropic, no external AI SDK dependency |
 | Repo structure | **Monorepo** — `apps/mobile` + `apps/api` + shared types | Shared TypeScript types between app and API; one repo to manage |
 
 ## Feature tiers

@@ -5,6 +5,7 @@ import {
   scanRejectionStatuses,
 } from "@kavtsya/shared";
 import type { AppDeps, AppEnv } from "../app";
+import { fortuneForScan } from "../fortunes";
 import { getQrTokenConfig } from "../platform-config";
 import type { IssuePurchaseRejection } from "../purchases";
 import { issuePurchase, listBalances } from "../purchases";
@@ -81,6 +82,9 @@ export function registerPurchaseRoutes(
       balance: outcome.balance,
       threshold: outcome.threshold,
       reward: outcome.reward,
+      // A cheap pool read (ADR 0009) — the Зернятко above is already issued,
+      // and no model is ever called from the scan path.
+      fortune: await fortuneForScan(db, clock),
     };
     return c.json(body, 201);
   });

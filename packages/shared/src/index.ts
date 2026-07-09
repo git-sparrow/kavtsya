@@ -202,6 +202,13 @@ export const purchaseResultSchema = z.object({
   balance: z.number().int().nonnegative(),
   threshold: z.number().int(),
   reward: rewardSchema.nullable(),
+  /**
+   * The Customer's Ворожка for this Purchase (#23, ADR 0009): drawn from the
+   * day's pre-generated pool (never a live AI call on the scan), with a
+   * built-in fallback — so it is always present, even when the daily job
+   * failed. Displayed on the Customer's side after the scan.
+   */
+  fortune: z.string().min(1),
 });
 export type PurchaseResult = z.infer<typeof purchaseResultSchema>;
 

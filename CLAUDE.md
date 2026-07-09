@@ -18,7 +18,7 @@ Twin goals: learn AI hands-on, and refresh JS/TS/React/React Native fundamentals
 - **Backend**: Hono on Node.js (Railway)
 - **Database**: PostgreSQL on Railway, raw SQL via `postgres.js` (no ORM), Zod for validation
 - **Auth**: Better Auth — email/password + Google + Apple Sign-In
-- **AI**: custom provider abstraction, Claude (Haiku) by default
+- **AI**: custom provider abstraction, Claude (Sonnet 5) by default — Ukrainian quality, see ADR 0007
 - **Push**: Expo Push Notifications
 - **Repo**: monorepo — `apps/mobile` + `apps/api` + shared types
 
