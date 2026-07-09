@@ -4,7 +4,7 @@
 
 ## Status
 
-**Build phase** — scope and architecture are locked; PRD and issues are done, vertical slices are shipping (core loyalty loop wired end to end through #20). See `PROJECT_BRIEF.md` for the full brief and decisions, `CONTEXT.md` for the domain glossary, and `docs/adr/` for architecture decisions. Next slices: Redemption (#22), member code (#21), Ворожка (#23), Pro gating/push (#24), analytics (#25).
+**Build phase** — scope and architecture are locked; the full core loop is live: earn (#20), Redemption (#22), and Ворожка (#23) are merged. See `PROJECT_BRIEF.md` for the full brief and decisions, `CONTEXT.md` for the domain glossary, and `docs/adr/` for architecture decisions. Next slices (specs frozen 2026-07-10, all `ready-for-agent`): member code (#21), Зміна scanner grants (#80), Pro gating/push (#24), account deletion (#81, pre-store), analytics (#25).
 
 ## What this is
 

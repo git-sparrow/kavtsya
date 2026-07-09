@@ -1,6 +1,6 @@
 # Kavtsya — Project Brief
 
-_Last updated: 2026-07-02 · Status: **building** — scope and architecture locked; PRD done, issues open, vertical slices shipping (core loyalty loop wired end to end through #20)_
+_Last updated: 2026-07-10 · Status: **building** — scope and architecture locked; the full core loop is live (earn #20, Redemption #22, Ворожка #23); next slices spec-frozen and `ready-for-agent` (#21, #80, #24, #81)_
 
 ## Purpose
 
@@ -84,6 +84,8 @@ Customers are always free. CafeOwners are the revenue source — freemium with a
 
 The Pro hero feature is **outreach + AI retention** (push campaigns + AI win-back of lapsing regulars), with analytics as the supporting layer.
 
+**v1 upgrade path (decided 2026-07-10, #24 spec)** — manual: the app shows the Pro pitch + a contact action, and the Platform flips `cafes.plan` by hand once payment is arranged off-app. In-app payments were considered and rejected for v1: selling a digital-service subscription inside the iOS app triggers Apple's IAP obligations (15–30% commission + review risk), and a web checkout needs provider research + ПРРО fiscalization — billing becomes its own issue when a pilot Café actually wants to pay. The 14-day trial is likewise deferred (manual flag flipping *is* the trial at pilot scale).
+
 **Pricing & positioning** — one Pro tier, flat monthly **per Café**, target ~**₴390–490/mo** with a **14-day trial** and an annual discount. Positioning: _"Лояльність і маркетинг для кав'ярні — без POS, без IT, лише QR-код."_ The wedge is **no POS required** — Ukrainian incumbents (Poster ₴600–2,142/mo; Expirenza/mono with free loyalty but POS-integration ~₴495/mo) all tie loyalty to a cash-register system, while most cafés use nothing or paper stamps. Main competitive threat: **Expirenza (by mono)**; defend on no-POS simplicity + Ворожка delight + AI, not on accrual mechanics.
 
 **Future Paid extras** (post-v1): Custom Rewards (beyond platform defaults), churn alerts, AI win-back, and **POS integration** (see Backlog). Other features uncovered during build may also land behind Pro.
@@ -133,12 +135,12 @@ Surfaced during the architecture review on 2026-06-15; all four resolved on 2026
 
 ## ⚠️ Open design questions (surfaced in the 2026-07-06 review; ✅ resolved at the 2026-07-08 decision sitting)
 
-1. ~~**Staff at the counter**~~ → ✅ **DECIDED** (`docs/adr/0013`, issue #56): café-scoped, time-boxed, revocable **scanner grant**, surfaced first as **«Зміна»** on the barista's own phone (Free tier; default lifetime = end of business day, owner-configurable); «Стійка» kiosk fast-follow; barista may still earn when a colleague scans them (guard generalized to scanner ≠ scanned); nullable `issued_by_user_id` on `purchases`. Spin-offs #61 (flip-QR) and #62 (staff attribution, Pro) stay in the Backlog. Build after #22/#21, before pilots.
-2. ~~**Account deletion**~~ → ✅ **DECIDED** (`docs/adr/0014`, issue #57): anonymize, never cascade — tombstone the user, keep ledger rows, drop the `on delete cascade`; a CafeOwner deleting their account archives their Café with a warning (deletion never blocked). FK/`archived_at` changes ride with #22's migration; the deletion UI is a pre-store slice (#58).
+1. ~~**Staff at the counter**~~ → ✅ **DECIDED** (`docs/adr/0013`, issue #56): café-scoped, time-boxed, revocable **scanner grant**, surfaced first as **«Зміна»** on the barista's own phone (Free tier; default lifetime = end of business day, owner-configurable); «Стійка» kiosk fast-follow; barista may still earn when a colleague scans them (guard generalized to scanner ≠ scanned); nullable `issued_by_user_id` on `purchases`. Spin-offs #61 (flip-QR) and #62 (staff attribution, Pro) stay in the Backlog. Implementation ticket: **#80** (spec frozen 2026-07-10; land after #21 — both touch the scan-rejection taxonomy). Build before pilots.
+2. ~~**Account deletion**~~ → ✅ **DECIDED** (`docs/adr/0014`, issue #57): anonymize, never cascade — tombstone the user, keep ledger rows, drop the `on delete cascade`; a CafeOwner deleting their account archives their Café with a warning (deletion never blocked). FK/`archived_at` changes shipped with #22's migration; the deletion flow is implementation ticket **#81** (spec frozen 2026-07-10) — a pre-store slice (#58).
 3. ~~**Redemption lock target**~~ → ✅ **DECIDED** (issue #22): #22 creates `cafe_memberships` and serializes earn/redeem per (Customer, Café) with `SELECT … FOR UPDATE` on the membership row, exactly as ADR 0010 planned. Advisory locks rejected (invisible in schema; the table is wanted by #56/#57 anyway).
-4. **Member code is core resilience, not an edge case** → commented on **#21** — still the standing priority note, not a decision. The rotating QR makes the happy path depend on the *Customer's* connectivity; #21 should follow #22 closely, before any real-world pilot.
+4. ~~**Member code is core resilience, not an edge case**~~ → ✅ **spec frozen into #21** (2026-07-10): single-endpoint body union on the purchase route, 8-char Crockford code generated lazily, ceiling 3/day per Customer/Café (Kyiv day, Platform-tunable), Redemption untouched. Still the priority order: next slice, before any real-world pilot.
 
-Smaller notes filed where they'll be seen: Ворожка daily batch must anchor on Europe/Kyiv + validate Haiku's Ukrainian first (→ #23), Expo push receipts / `DeviceNotRegistered` token pruning (→ #24), and a pilot & store-submission readiness checklist (privacy policy, Play data declarations, Railway backups, domains) as **#58**.
+Smaller notes filed where they'll be seen: Ворожка daily batch must anchor on Europe/Kyiv + validate Haiku's Ukrainian first (→ #23 — *validated 2026-07-10: Haiku's Ukrainian slipped even with few-shots; default model amended to Sonnet 5, ADR 0007*), Expo push receipts / `DeviceNotRegistered` token pruning (→ #24, in-slice), and a pilot & store-submission readiness checklist (privacy policy, Play data declarations, Railway backups, domains) as **#58**.
 
 ## ⏳ Open action items
 
@@ -157,7 +159,7 @@ Availability (checked 2026-06-13): no app named Kavtsya/Кавця on either sto
 2. ~~Finalize feature scope + AI scope.~~ ✓ done 2026-06-15 (see Feature tiers above)
 3. ~~Tech / architecture plan.~~ ✓ done 2026-06-15 (see Tech stack above + `docs/adr/`)
 4. ~~PRD → issues.~~ ✓ done — tracked in [GitHub Issues](https://github.com/git-sparrow/kavtsya/issues).
-5. **Build the vertical slices.** ← in progress. Merged so far: walking skeleton (#15), auth (#16), Cafés (#17), loyalty config (#18), rotating QR token (#19), core scan + Зернятко ledger (#20). Next: Redemption, Ворожка, push, analytics.
+5. **Build the vertical slices.** ← in progress. Merged so far: walking skeleton (#15), auth (#16), Cafés (#17), loyalty config (#18), rotating QR token (#19), core scan + Зернятко ledger (#20), scan-rejection taxonomy (#50), balance fold (#52), Redemption (#22), Ворожка (#23) — **the full core loop is live**. Next (specs frozen 2026-07-10): member code (#21), Зміна scanner grants (#80), Pro gating + push (#24), account deletion (#81, pre-store), analytics (#25); dev tooling: Argent (#79).
 
 ## Dev environment
 
