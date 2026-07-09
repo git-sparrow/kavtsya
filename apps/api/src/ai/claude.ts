@@ -31,6 +31,16 @@ function fortunePrompt(count: number): string {
   ].join(" ");
 }
 
+/**
+ * Models sometimes fence the JSON in ```json … ``` no matter what the prompt
+ * says (seen on the first live Haiku run). Strip an outer fence if present;
+ * anything still not a JSON array fails Zod below as before.
+ */
+function unfence(text: string): string {
+  const match = /^\s*```(?:json)?\s*([\s\S]*?)\s*```\s*$/.exec(text);
+  return match?.[1] ?? text;
+}
+
 export function createClaudeProvider({
   apiKey,
   model,
@@ -62,7 +72,7 @@ export function createClaudeProvider({
             .nonempty(),
         })
         .parse(reply).content[0].text;
-      return z.array(z.string().min(1)).parse(JSON.parse(text));
+      return z.array(z.string().min(1)).parse(JSON.parse(unfence(text)));
     },
   };
 }

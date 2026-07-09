@@ -92,6 +92,25 @@ describe("ClaudeProvider", () => {
     await expect(provider.generateFortunes(5)).rejects.toThrow(/429/);
   });
 
+  it("tolerates the array arriving inside a markdown code fence", async () => {
+    // Seen live on the first smoke run: Haiku fenced the JSON despite the
+    // prompt asking it not to. The parser strips the fence instead of hoping.
+    const { fetchImpl } = fetchReturning({
+      content: [
+        { type: "text", text: '```json\n["Кава підкаже дорогу."]\n```' },
+      ],
+    });
+    const provider = createClaudeProvider({
+      apiKey: "k",
+      model: "claude-haiku-4-5",
+      fetchImpl,
+    });
+
+    await expect(provider.generateFortunes(1)).resolves.toEqual([
+      "Кава підкаже дорогу.",
+    ]);
+  });
+
   it("rejects a reply whose text is not a JSON array of fortunes", async () => {
     const { fetchImpl } = fetchReturning({
       content: [{ type: "text", text: "Ось ваші ворожіння: 1. ..." }],
