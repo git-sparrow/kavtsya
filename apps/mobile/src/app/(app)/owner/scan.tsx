@@ -47,7 +47,8 @@ export default function ScanPurchase() {
   const { me } = useMe();
   const cafeName = me?.cafes.find((cafe) => cafe.id === cafeId)?.name ?? "";
   const [permission, requestPermission] = useCameraPermissions();
-  const { state, onScanned, confirmReward, scanNext } = useScanPurchase(cafeId);
+  const { state, onScanned, confirmRedemption, scanNext } =
+    useScanPurchase(cafeId);
 
   if (!permission) {
     return (
@@ -115,7 +116,7 @@ export default function ScanPurchase() {
                 </Muted>
                 <Button
                   title="Видати винагороду"
-                  onPress={() => void confirmReward()}
+                  onPress={() => void confirmRedemption()}
                 />
               </>
             )}
@@ -137,7 +138,7 @@ export default function ScanPurchase() {
             {canRedeem(state.result) && (
               <Button
                 title="Видати ще одну"
-                onPress={() => void confirmReward()}
+                onPress={() => void confirmRedemption()}
               />
             )}
             {state.confirmError && <ErrorText>{state.confirmError}</ErrorText>}

@@ -1,6 +1,7 @@
 import type { Reward } from "@kavtsya/shared";
 import { rewardSchema } from "@kavtsya/shared";
 import type { Database, Queryable } from "./db";
+import { isUniqueViolation } from "./db";
 import { programFromRow } from "./loyalty";
 import { balanceFor } from "./purchases";
 
@@ -91,9 +92,6 @@ export function applyRedemption({
   return { beansSpent: threshold, balance: balance - threshold };
 }
 
-/** postgres.js surfaces Postgres errors with the SQLSTATE in `code`. */
-const UNIQUE_VIOLATION = "23505";
-
 export async function confirmRedemption(
   db: Database,
   { cafeId, ownerUserId, customerId, idempotencyKey }: ConfirmRedemptionInput,
@@ -151,7 +149,7 @@ export async function confirmRedemption(
     } catch (err) {
       // Same key raced past the replay check in another transaction after the
       // lock ordering above couldn't help (e.g. a different membership row).
-      if ((err as { code?: string }).code === UNIQUE_VIOLATION) {
+      if (isUniqueViolation(err)) {
         const replay = await replayFor(tx, idempotencyKey, customerId, cafeId);
         if (replay) return replay;
       }

@@ -10,6 +10,16 @@ export type Database = ReturnType<typeof postgres>;
  */
 export type Queryable = Database | postgres.TransactionSql;
 
+/**
+ * Whether an error is Postgres signalling a unique-constraint conflict — the
+ * write paths lean on unique indexes as their guards (single-use `qr_jti`,
+ * the Redemption idempotency key), so this is how a duplicate announces itself.
+ * postgres.js surfaces Postgres errors with the SQLSTATE in `code`.
+ */
+export function isUniqueViolation(err: unknown): boolean {
+  return (err as { code?: string }).code === "23505";
+}
+
 export function createDb(databaseUrl: string): Database {
   return postgres(databaseUrl, {
     onnotice: () => {}, // silence NOTICE chatter (e.g. "IF EXISTS" warnings)

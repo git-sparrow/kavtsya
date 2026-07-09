@@ -2,7 +2,10 @@ import { useRef, useState } from "react";
 
 import type { PurchaseResult, RedemptionResult } from "@kavtsya/shared";
 
-import { confirmRedemption, issuePurchase } from "@/lib/api";
+import {
+  confirmRedemption as confirmRedemptionRequest,
+  issuePurchase,
+} from "@/lib/api";
 
 export type ScanState =
   | { phase: "scanning" }
@@ -53,7 +56,7 @@ export function useScanPurchase(cafeId: string) {
     }
   }
 
-  async function confirmReward() {
+  async function confirmRedemption() {
     if (state.phase !== "issued" && state.phase !== "redeemed") return;
     const before = state;
     // Uniqueness is all the key needs (it guards a retry, not a secret), so
@@ -61,7 +64,7 @@ export function useScanPurchase(cafeId: string) {
     confirmKey.current ??= `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
     setState({ phase: "confirming", result: before.result });
     try {
-      const redemption = await confirmRedemption(
+      const redemption = await confirmRedemptionRequest(
         cafeId,
         before.result.customerId,
         confirmKey.current,
@@ -87,5 +90,5 @@ export function useScanPurchase(cafeId: string) {
     setState({ phase: "scanning" });
   }
 
-  return { state, onScanned, confirmReward, scanNext };
+  return { state, onScanned, confirmRedemption, scanNext };
 }

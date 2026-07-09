@@ -1,5 +1,6 @@
 import type { CafeBalance, Reward } from "@kavtsya/shared";
 import type { Database, Queryable } from "./db";
+import { isUniqueViolation } from "./db";
 import { programFromRow } from "./loyalty";
 
 /**
@@ -44,9 +45,6 @@ export type IssuePurchaseOutcome =
     }
   | { ok: false; reason: IssuePurchaseRejection };
 
-/** postgres.js surfaces Postgres errors with the SQLSTATE in `code`. */
-const UNIQUE_VIOLATION = "23505";
-
 export async function issuePurchase(
   db: Database,
   { cafeId, ownerUserId, customerId, jti }: IssuePurchaseInput,
@@ -84,7 +82,7 @@ export async function issuePurchase(
       `;
     });
   } catch (err) {
-    if ((err as { code?: string }).code === UNIQUE_VIOLATION) {
+    if (isUniqueViolation(err)) {
       return { ok: false, reason: "token_used" };
     }
     throw err;
