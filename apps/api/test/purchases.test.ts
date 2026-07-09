@@ -5,7 +5,9 @@ import {
   purchaseResultSchema,
 } from "@kavtsya/shared";
 import type { Auth } from "../src/auth";
+import { fixedClock } from "../src/clock";
 import type { Database } from "../src/db";
+import { FALLBACK_FORTUNES, generateDailyFortunes } from "../src/fortunes";
 import { clearPlatformConfigCache } from "../src/platform-config";
 import { makeApp, registerCafe as registerCafeAt, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
@@ -27,6 +29,8 @@ afterAll(async () => {
 beforeEach(async () => {
   // cascade also clears `purchases` (it references "user" and cafes).
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
+  // The Ворожка pool is global (no FK) — each test controls its own day's pool.
+  await db`truncate fortunes`;
   clearPlatformConfigCache();
 });
 
@@ -80,7 +84,55 @@ test("a single scan identifies the Customer and issues one Зернятко", as
     balance: 1,
     threshold: 10,
     reward: null,
+    // Always present (#23): pool when seeded, built-in fallback otherwise.
+    fortune: expect.any(String),
   });
+});
+
+// --- Ворожка on the scan (#23, ADR 0009) -----------------------------------------
+
+test("the scan hands the Customer a Ворожка from today's pool — no live AI call", async () => {
+  const clock = fixedClock(new Date("2026-07-09T12:00:00Z"));
+  await generateDailyFortunes(db, {
+    // A provider that would explode if the scan ever reached for the model:
+    // the pool is seeded once here; the scan must only read it.
+    provider: { generateFortunes: async () => ["На дні горнятка — дорога."] },
+    clock,
+  });
+  const scanApp = makeApp({ db, auth, clock });
+  const owner = await signUp(scanApp, "owner@example.com");
+  const cafeId = await registerCafeAt(scanApp, "Кавця", owner);
+  const customer = await signUp(scanApp, "customer@example.com");
+  const qrRes = await scanApp.request("/api/qr-token", {
+    headers: { cookie: customer },
+  });
+  const { token } = (await qrRes.json()) as { token: string };
+
+  const res = await scanApp.request("/api/purchases", {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie: owner },
+    body: JSON.stringify({ cafeId, qrToken: token }),
+  });
+
+  expect(res.status).toBe(201);
+  const result = purchaseResultSchema.parse(await res.json());
+  expect(result.fortune).toBe("На дні горнятка — дорога.");
+});
+
+test("an empty pool never blocks the Зернятко — the scan falls back to a built-in fortune", async () => {
+  const owner = await signUp(app(), "owner@example.com");
+  const cafeId = await registerCafe("Кавця", owner);
+  const customer = await signUp(app(), "customer@example.com");
+  const qrToken = await qrTokenFor(customer);
+
+  const res = await issuePurchase({ cafeId, qrToken }, owner);
+
+  expect(res.status).toBe(201);
+  const result = purchaseResultSchema.parse(await res.json());
+  // The bean landed (ADR 0009)…
+  expect(result.balance).toBe(1);
+  // …and the Ворожка moment didn't go dark: one of the hand-written fallbacks.
+  expect(FALLBACK_FORTUNES).toContain(result.fortune);
 });
 
 test("a re-scanned token is rejected and issues no second Зернятко", async () => {

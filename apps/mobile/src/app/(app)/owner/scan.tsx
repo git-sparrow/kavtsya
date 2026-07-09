@@ -109,6 +109,8 @@ export default function ScanPurchase() {
             <Muted>
               Зернятка: {state.result.balance} з {state.result.threshold}
             </Muted>
+            {/* Ворожка (#23): the scan moment — show the Customer their fortune. */}
+            <Muted>☕ «{state.result.fortune}»</Muted>
             {canRedeem(state.result) && (
               <>
                 <Muted>
