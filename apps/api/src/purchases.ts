@@ -1,5 +1,4 @@
 import type { CafeBalance, Reward } from "@kavtsya/shared";
-import { deriveBalance } from "./balance";
 import type { Database } from "./db";
 import { programFromRow } from "./loyalty";
 
@@ -7,7 +6,16 @@ import { programFromRow } from "./loyalty";
  * Issuing a Зернятко — the append-only Purchase ledger (#20, ADR 0010). The
  * scan slice's core write: one validated scan appends one `purchases` row; the
  * Customer's balance is derived from the ledger, never mutated.
+ *
+ * The balance formula — count(purchases) − sum(redemptions.beans_spent) — has
+ * exactly one home: here, inside the ledger module (#52). The read functions
+ * below are the only balance interface; nothing outside this module spends or
+ * counts Зернятка. Nothing is spent until Redemption lands (#22), so the
+ * derived balance is simply the Purchase count for now.
  */
+function deriveBalance(purchases: number): number {
+  return purchases;
+}
 
 export interface IssuePurchaseInput {
   /** The Café the CafeOwner is issuing at. */
@@ -98,8 +106,7 @@ export async function balanceFor(
     from purchases
     where "customer_user_id" = ${customerId} and "cafe_id" = ${cafeId}
   `;
-  // Redemptions land in #22; until then nothing has been spent.
-  return deriveBalance({ purchases: row?.purchases ?? 0, beansSpent: 0 });
+  return deriveBalance(row?.purchases ?? 0);
 }
 
 /**
@@ -137,7 +144,7 @@ export async function listBalances(
     return {
       cafeId: row.cafe_id,
       cafeName: row.cafe_name,
-      balance: deriveBalance({ purchases: row.purchases, beansSpent: 0 }),
+      balance: deriveBalance(row.purchases),
       threshold: program.threshold,
       reward: program.reward,
     };
