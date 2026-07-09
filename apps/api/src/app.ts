@@ -8,6 +8,7 @@ import { registerHealthRoute } from "./routes/health";
 import { registerLoyaltyRoutes } from "./routes/loyalty";
 import { registerPurchaseRoutes } from "./routes/purchases";
 import { registerQrTokenRoutes } from "./routes/qr-token";
+import { registerRedemptionRoutes } from "./routes/redemptions";
 
 /**
  * Everything the app needs from the outside world. Injected (not imported as
@@ -53,5 +54,6 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   registerLoyaltyRoutes(app, deps);
   registerQrTokenRoutes(app, deps);
   registerPurchaseRoutes(app, deps);
+  registerRedemptionRoutes(app, deps);
   return app;
 }

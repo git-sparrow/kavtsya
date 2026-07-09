@@ -3,6 +3,7 @@ import {
   type CafeBalancesResponse,
   cafeBalancesResponseSchema,
   cafeSchema,
+  isRedemptionRejection,
   isScanRejection,
   type LoyaltyProgram,
   loyaltyProgramSchema,
@@ -12,6 +13,9 @@ import {
   purchaseResultSchema,
   type QrTokenResponse,
   qrTokenResponseSchema,
+  type RedemptionRejection,
+  type RedemptionResult,
+  redemptionResultSchema,
   type RewardDefaults,
   rewardDefaultsSchema,
   type ScanRejection,
@@ -98,6 +102,42 @@ export async function issuePurchase(
     throw new Error(error.message ?? "Не вдалося нарахувати зернятко");
   }
   return purchaseResultSchema.parse(data);
+}
+
+/**
+ * What the confirm screen tells the CafeOwner for each rejection the API
+ * distinguishes (#22) — same compile-checked pattern as the scan copy above.
+ */
+const REDEMPTION_REJECTIONS: Record<RedemptionRejection, string> = {
+  insufficient_balance: "Недостатньо зернят для винагороди",
+  no_reward: "Спершу оберіть винагороду в налаштуваннях програми",
+  own_cafe: "У власній кав'ярні винагороди не видаються",
+  not_found: "Кав'ярню не знайдено",
+};
+
+/**
+ * The CafeOwner confirms a Redemption (#22) — a distinct action off the one
+ * scan (ADR 0006): `customerId` comes from the scan result, no second token.
+ * The server subtracts the Café's threshold and snapshots the spend; the same
+ * `idempotencyKey` retried replays that outcome instead of spending twice.
+ */
+export async function confirmRedemption(
+  cafeId: string,
+  customerId: string,
+  idempotencyKey: string,
+): Promise<RedemptionResult> {
+  const { data, error } = await apiFetch("/api/redemptions", {
+    method: "POST",
+    body: { cafeId, customerId, idempotencyKey },
+  });
+  if (error) {
+    const code = (error as { error?: string }).error;
+    if (code && isRedemptionRejection(code)) {
+      throw new Error(REDEMPTION_REJECTIONS[code]);
+    }
+    throw new Error(error.message ?? "Не вдалося видати винагороду");
+  }
+  return redemptionResultSchema.parse(data);
 }
 
 /** The Cafés where the Customer holds Зернятка (most recently visited first). */

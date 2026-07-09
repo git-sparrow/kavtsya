@@ -63,6 +63,10 @@ test("a single scan identifies the Customer and issues one Зернятко", as
   const owner = await signUp(app(), "owner@example.com");
   const cafeId = await registerCafe("Кавця на Подолі", owner);
   const customer = await signUp(app(), "customer@example.com");
+  const meRes = await app().request("/api/me", {
+    headers: { cookie: customer },
+  });
+  const { id: customerId } = (await meRes.json()) as { id: string };
   const qrToken = await qrTokenFor(customer);
 
   const res = await issuePurchase({ cafeId, qrToken }, owner);
@@ -70,6 +74,8 @@ test("a single scan identifies the Customer and issues one Зернятко", as
   expect(res.status).toBe(201);
   const result = purchaseResultSchema.parse(await res.json());
   expect(result).toEqual({
+    // The id the Redemption confirm is keyed on (#22): the scan identified them.
+    customerId,
     customerName: "Test",
     balance: 1,
     threshold: 10,

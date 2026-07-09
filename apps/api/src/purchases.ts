@@ -1,5 +1,6 @@
 import type { CafeBalance, Reward } from "@kavtsya/shared";
-import type { Database } from "./db";
+import type { Database, Queryable } from "./db";
+import { isUniqueViolation } from "./db";
 import { programFromRow } from "./loyalty";
 
 /**
@@ -10,11 +11,10 @@ import { programFromRow } from "./loyalty";
  * The balance formula — count(purchases) − sum(redemptions.beans_spent) — has
  * exactly one home: here, inside the ledger module (#52). The read functions
  * below are the only balance interface; nothing outside this module spends or
- * counts Зернятка. Nothing is spent until Redemption lands (#22), so the
- * derived balance is simply the Purchase count for now.
+ * counts Зернятка.
  */
-function deriveBalance(purchases: number): number {
-  return purchases;
+function deriveBalance(purchases: number, beansSpent: number): number {
+  return purchases - beansSpent;
 }
 
 export interface IssuePurchaseInput {
@@ -37,15 +37,13 @@ export type IssuePurchaseRejection =
 export type IssuePurchaseOutcome =
   | {
       ok: true;
+      customerId: string;
       customerName: string;
       balance: number;
       threshold: number;
       reward: Reward | null;
     }
   | { ok: false; reason: IssuePurchaseRejection };
-
-/** postgres.js surfaces Postgres errors with the SQLSTATE in `code`. */
-const UNIQUE_VIOLATION = "23505";
 
 export async function issuePurchase(
   db: Database,
@@ -68,14 +66,23 @@ export async function issuePurchase(
   }
 
   // The consumed-token check and the issuance are the same write (ADR 0006):
-  // a duplicate `qr_jti` means this token already earned its Зернятко.
+  // a duplicate `qr_jti` means this token already earned its Зернятко. The
+  // same transaction ensures the (Customer, Café) membership row — Redemption's
+  // FOR UPDATE lock target (#22, ADR 0010) — exists whenever a Purchase does.
   try {
-    await db`
-      insert into purchases ("cafe_id", "customer_user_id", "qr_jti")
-      values (${cafeId}, ${customerId}, ${jti})
-    `;
+    await db.begin(async (tx) => {
+      await tx`
+        insert into purchases ("cafe_id", "customer_user_id", "qr_jti")
+        values (${cafeId}, ${customerId}, ${jti})
+      `;
+      await tx`
+        insert into cafe_memberships ("cafe_id", "customer_user_id")
+        values (${cafeId}, ${customerId})
+        on conflict do nothing
+      `;
+    });
   } catch (err) {
-    if ((err as { code?: string }).code === UNIQUE_VIOLATION) {
+    if (isUniqueViolation(err)) {
       return { ok: false, reason: "token_used" };
     }
     throw err;
@@ -88,6 +95,7 @@ export async function issuePurchase(
 
   return {
     ok: true,
+    customerId,
     customerName: customer?.name ?? "",
     balance: await balanceFor(db, customerId, cafeId),
     threshold: program.threshold,
@@ -97,16 +105,20 @@ export async function issuePurchase(
 
 /** The Customer's derived Зернятко balance at one Café (ADR 0010). */
 export async function balanceFor(
-  db: Database,
+  db: Queryable,
   customerId: string,
   cafeId: string,
 ): Promise<number> {
-  const [row] = await db<{ purchases: number }[]>`
-    select count(*)::int as purchases
-    from purchases
-    where "customer_user_id" = ${customerId} and "cafe_id" = ${cafeId}
+  const [row] = await db<{ purchases: number; beans_spent: number }[]>`
+    select
+      (select count(*)::int from purchases
+        where "customer_user_id" = ${customerId} and "cafe_id" = ${cafeId})
+        as purchases,
+      (select coalesce(sum("beans_spent"), 0)::int from redemptions
+        where "customer_user_id" = ${customerId} and "cafe_id" = ${cafeId})
+        as beans_spent
   `;
-  return deriveBalance(row?.purchases ?? 0);
+  return deriveBalance(row?.purchases ?? 0, row?.beans_spent ?? 0);
 }
 
 /**
@@ -123,6 +135,7 @@ export async function listBalances(
       cafe_id: string;
       cafe_name: string;
       purchases: number;
+      beans_spent: number;
       zernyatko_threshold: number;
       reward: unknown;
     }[]
@@ -131,12 +144,19 @@ export async function listBalances(
       c."id" as cafe_id,
       c."name" as cafe_name,
       count(p."id")::int as purchases,
+      coalesce(r."beans_spent", 0) as beans_spent,
       c."zernyatko_threshold",
       c."reward"
     from purchases p
     join cafes c on c."id" = p."cafe_id"
+    left join (
+      select "cafe_id", sum("beans_spent")::int as beans_spent
+      from redemptions
+      where "customer_user_id" = ${customerId}
+      group by "cafe_id"
+    ) r on r."cafe_id" = c."id"
     where p."customer_user_id" = ${customerId}
-    group by c."id"
+    group by c."id", r."beans_spent"
     order by max(p."created_at") desc
   `;
   return rows.map((row) => {
@@ -144,7 +164,7 @@ export async function listBalances(
     return {
       cafeId: row.cafe_id,
       cafeName: row.cafe_name,
-      balance: deriveBalance(row.purchases),
+      balance: deriveBalance(row.purchases, row.beans_spent),
       threshold: program.threshold,
       reward: program.reward,
     };
