@@ -146,7 +146,9 @@ describe("ClaudeProvider", () => {
 });
 
 describe("createAIProvider", () => {
-  it("defaults to Claude Haiku when AI_PROVIDER/AI_MODEL are unset", async () => {
+  it("defaults to Claude Sonnet 5 when AI_PROVIDER/AI_MODEL are unset", async () => {
+    // Decided 2026-07-10 after live A/B (ADR 0007): Haiku's Ukrainian slips,
+    // Sonnet 5's is clean, and 30 fortunes/day costs ~$1/month either way.
     const { fetchImpl, sentBody } = fetchReturning(messagesReply(["..."]));
     const provider = createAIProvider(
       { ANTHROPIC_API_KEY: "sk-ant-test-key" },
@@ -155,7 +157,7 @@ describe("createAIProvider", () => {
 
     await provider.generateFortunes(1);
 
-    expect(sentBody().model).toBe("claude-haiku-4-5");
+    expect(sentBody().model).toBe("claude-sonnet-5");
   });
 
   it("honours an AI_MODEL override without a code change (ADR 0007)", async () => {
@@ -163,7 +165,7 @@ describe("createAIProvider", () => {
     const provider = createAIProvider(
       {
         AI_PROVIDER: "claude",
-        AI_MODEL: "claude-sonnet-5",
+        AI_MODEL: "claude-haiku-4-5",
         ANTHROPIC_API_KEY: "sk-ant-test-key",
       },
       fetchImpl,
@@ -171,7 +173,7 @@ describe("createAIProvider", () => {
 
     await provider.generateFortunes(1);
 
-    expect(sentBody().model).toBe("claude-sonnet-5");
+    expect(sentBody().model).toBe("claude-haiku-4-5");
   });
 
   it("rejects an unknown AI_PROVIDER by name", () => {
