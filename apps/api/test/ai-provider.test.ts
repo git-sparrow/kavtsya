@@ -111,6 +111,26 @@ describe("ClaudeProvider", () => {
     ]);
   });
 
+  it("reads the fortunes past a leading thinking block (Sonnet 5 default)", async () => {
+    // Seen live: models with adaptive thinking put a `thinking` block first;
+    // the fortunes are in the first `text` block, wherever it sits.
+    const { fetchImpl } = fetchReturning({
+      content: [
+        { type: "thinking", thinking: "" },
+        { type: "text", text: '["Зерно до зерна — і буде кава."]' },
+      ],
+    });
+    const provider = createClaudeProvider({
+      apiKey: "k",
+      model: "claude-sonnet-5",
+      fetchImpl,
+    });
+
+    await expect(provider.generateFortunes(1)).resolves.toEqual([
+      "Зерно до зерна — і буде кава.",
+    ]);
+  });
+
   it("rejects a reply whose text is not a JSON array of fortunes", async () => {
     const { fetchImpl } = fetchReturning({
       content: [{ type: "text", text: "Ось ваші ворожіння: 1. ..." }],

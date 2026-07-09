@@ -17,16 +17,28 @@ export interface ClaudeProviderOptions {
 }
 
 /**
- * Ворожка's voice: the прompt asks for plain JSON so parsing stays a
- * `JSON.parse`, and pins the tone (warm, folk, no clichés) in Ukrainian
- * because the output must be Ukrainian.
+ * Ворожка's voice: the prompt asks for plain JSON so parsing stays a
+ * `JSON.parse`, pins the tone (warm, folk, no clichés) in Ukrainian because
+ * the output must be Ukrainian, and carries few-shot examples — the first
+ * smoke run (2026-07-09) showed the tone landing but the grammar slipping
+ * («швидче», «береги язик»), so the examples anchor clean modern Ukrainian.
  */
+const EXAMPLE_FORTUNES = [
+  "На дні горнятка — маленька радість, яку ти мало не проґавиш.",
+  "Тепла звістка знайде тебе ще до вечора.",
+  "Гуща лягла тонкою стежкою — дорога твоя довга, але попутна.",
+  "Хтось згадує тебе за кавою просто зараз.",
+];
+
 function fortunePrompt(count: number): string {
   return [
     `Згенеруй ${count} коротких кавових ворожінь українською мовою.`,
     "Це передбачення на день, у дусі ворожіння на кавовій гущі: теплі,",
     "трохи загадкові, з народним характером, без банальностей і без емодзі.",
     "Кожне — одне речення, до 120 символів.",
+    "Пиши бездоганною сучасною українською: без русизмів, кальок і",
+    "вигаданих слів; перевір кожне дієслово.",
+    `Ось приклади тону й мови (не повторюй їх дослівно): ${JSON.stringify(EXAMPLE_FORTUNES)}.`,
     "Відповідай ЛИШЕ JSON-масивом рядків, без пояснень і без markdown.",
   ].join(" ");
 }
@@ -65,13 +77,21 @@ export function createClaudeProvider({
         throw new Error(`Claude Messages API responded ${res.status}`);
       }
       const reply: unknown = await res.json();
-      const text = z
+      // Models with adaptive thinking (e.g. Sonnet 5) lead with a `thinking`
+      // block — the fortunes are in the first `text` block, wherever it sits.
+      const { content } = z
         .object({
-          content: z
-            .array(z.object({ type: z.string(), text: z.string() }))
-            .nonempty(),
+          content: z.array(
+            z.object({ type: z.string(), text: z.string().optional() }),
+          ),
         })
-        .parse(reply).content[0].text;
+        .parse(reply);
+      const text = content.find(
+        (block) => block.type === "text" && block.text !== undefined,
+      )?.text;
+      if (text === undefined) {
+        throw new Error("Claude reply carried no text block");
+      }
       return z.array(z.string().min(1)).parse(JSON.parse(unfence(text)));
     },
   };
