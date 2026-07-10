@@ -1,6 +1,6 @@
 import type { z } from "zod";
-import type { QrTokenConfig } from "@kavtsya/shared";
-import { qrTokenConfigSchema } from "@kavtsya/shared";
+import type { ManualEntryConfig, QrTokenConfig } from "@kavtsya/shared";
+import { manualEntryConfigSchema, qrTokenConfigSchema } from "@kavtsya/shared";
 import type { Database } from "./db";
 
 /**
@@ -68,5 +68,22 @@ export function getQrTokenConfig(db: Database): Promise<QrTokenConfig> {
     "qr_token",
     qrTokenConfigSchema,
     DEFAULT_QR_TOKEN_CONFIG,
+  );
+}
+
+/**
+ * Safety-net default for the manual-entry ceiling (#21), kept in sync with the
+ * value migration 0009 seeds — an unseeded DB still bounds a colluding pair
+ * instead of leaving manual entry unlimited.
+ */
+const DEFAULT_MANUAL_ENTRY_CONFIG: ManualEntryConfig = { dailyLimit: 3 };
+
+/** The Platform-tunable manual-entry ceiling, read from `platform_config` (#21, ADR 0006). */
+export function getManualEntryConfig(db: Database): Promise<ManualEntryConfig> {
+  return readPlatformConfig(
+    db,
+    "manual_entry",
+    manualEntryConfigSchema,
+    DEFAULT_MANUAL_ENTRY_CONFIG,
   );
 }

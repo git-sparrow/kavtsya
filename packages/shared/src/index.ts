@@ -135,6 +135,18 @@ export const qrTokenConfigSchema = z.object({
 export type QrTokenConfig = z.infer<typeof qrTokenConfigSchema>;
 
 /**
+ * Platform-tunable manual-entry settings, stored in `platform_config` under
+ * the `manual_entry` key (#21, ADR 0006): how many member-code issuances one
+ * Customer can receive at one Café per Kyiv day. Tunable without a deploy so a
+ * pilot café with a legitimate pattern (office bulk orders) can be
+ * accommodated.
+ */
+export const manualEntryConfigSchema = z.object({
+  dailyLimit: z.number().int().positive().max(1000),
+});
+export type ManualEntryConfig = z.infer<typeof manualEntryConfigSchema>;
+
+/**
  * Contract for `GET /api/me`: the account, its derived roles, and the Cafés it
  * owns. The mobile app reads `roles` to decide whether to offer CafeOwner Mode.
  */

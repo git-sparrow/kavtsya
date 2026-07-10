@@ -5,9 +5,10 @@ import {
   scanRejectionStatuses,
 } from "@kavtsya/shared";
 import type { AppDeps, AppEnv } from "../app";
+import { kyivDayOf } from "../clock";
 import { fortuneForScan } from "../fortunes";
 import { customerIdForMemberCode } from "../member-code";
-import { getQrTokenConfig } from "../platform-config";
+import { getManualEntryConfig, getQrTokenConfig } from "../platform-config";
 import type { IssuePurchaseRejection, PurchaseEntry } from "../purchases";
 import { issuePurchase, listBalances } from "../purchases";
 import type { QrTokenInvalidReason } from "../qr-token";
@@ -45,6 +46,7 @@ const wireCodes: Record<
   cafe_not_owned: "not_found",
   own_cafe: "own_cafe",
   token_used: "token_used",
+  manual_limit_reached: "manual_limit_reached",
 };
 
 /** The lookup lives inside, so no call site can skip the reason→code mapping. */
@@ -93,7 +95,15 @@ export function registerPurchaseRoutes(
         parsed.data.memberCode,
       );
       if (!customerId) return reject(c, "unknown_member_code");
-      identity = { customerId, entry: { source: "member_code" } };
+      const { dailyLimit } = await getManualEntryConfig(db);
+      identity = {
+        customerId,
+        entry: {
+          source: "member_code",
+          dailyLimit,
+          kyivDay: kyivDayOf(clock.now()),
+        },
+      };
     }
 
     const outcome = await issuePurchase(db, {
