@@ -23,6 +23,17 @@ export const authClient = createAuthClient({
 });
 
 /**
+ * Better Auth's client parses response bodies with a reviver that turns ISO
+ * date strings into Date objects, which our shared schemas (wire format:
+ * strings, e.g. `expiresAt: z.string().datetime()`) reject (#85). A per-call
+ * jsonParser overrides that for our routes only — Better Auth's own session
+ * handling keeps the parser it expects.
+ */
+function apiJsonParser(text: string): unknown {
+  return text ? JSON.parse(text) : null;
+}
+
+/**
  * Fetch one of our own (non-auth) API routes through the Better Auth client so
  * the Expo plugin still attaches the SecureStore session cookie — but against
  * the API root, not Better Auth's `/api/auth` base. Without the `baseURL`
@@ -35,5 +46,9 @@ export function apiFetch(
   path: string,
   options?: { method?: string; body?: unknown },
 ): Promise<{ data: unknown; error: { message?: string } | null }> {
-  return authClient.$fetch(path, { baseURL: API_URL, ...options } as never);
+  return authClient.$fetch(path, {
+    baseURL: API_URL,
+    jsonParser: apiJsonParser,
+    ...options,
+  } as never);
 }
