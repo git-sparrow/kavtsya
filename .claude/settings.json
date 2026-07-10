@@ -1,10 +1,16 @@
 {
   "extraKnownMarketplaces": {
     "expo-plugins": {
-      "source": { "source": "github", "repo": "expo/skills" }
+      "source": {
+        "source": "github",
+        "repo": "expo/skills"
+      }
     }
   },
   "enabledPlugins": {
     "expo@expo-plugins": true
+  },
+  "permissions": {
+    "allow": ["mcp__argent"]
   }
 }

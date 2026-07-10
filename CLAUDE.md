@@ -51,6 +51,10 @@ Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, 
 
 Single-context layout — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+### Simulator control (Argent)
+
+The `argent-*` skills + MCP server (Software Mansion's Argent, local devDependency) let Claude drive the app in the iOS simulator — tap, type, screenshot, record flows, diff screens. See `docs/argent-howto.md`, incl. the Mari design-review loop.
+
 ### LLM doc endpoints
 
 For current, version-specific facts about a stack tool, fetch its `llms.txt` rather than relying on training memory (prefer a vendored skill where one exists). Confirmed endpoints + the index-vs-condensed rule live in `docs/agents/llms-resources.md`.
