@@ -148,6 +148,32 @@ export const meResponseSchema = z.object({
 export type MeResponse = z.infer<typeof meResponseSchema>;
 
 /**
+ * The member-code alphabet (#21): Crockford base32 — digits and uppercase
+ * letters minus the look-alikes I, L, O, U, so the Customer can read the code
+ * aloud and the CafeOwner can type it right on the first try. 8 characters
+ * ≈ 40 bits: guessing a valid code is impractical (the rate limit isn't the
+ * only defence).
+ */
+export const MEMBER_CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+/** Length of a member code, in alphabet characters (hyphen not counted). */
+export const MEMBER_CODE_LENGTH = 8;
+
+const memberCodePattern = new RegExp(
+  `^[${MEMBER_CODE_ALPHABET}]{${MEMBER_CODE_LENGTH}}$`,
+);
+
+/**
+ * Contract for `GET /api/me/member-code`: the Customer's stable offline
+ * fallback identity (#21, ADR 0006). Minted lazily on first request, then
+ * permanent; the app caches it locally so it displays with no connectivity.
+ */
+export const memberCodeResponseSchema = z.object({
+  memberCode: z.string().regex(memberCodePattern),
+});
+export type MemberCodeResponse = z.infer<typeof memberCodeResponseSchema>;
+
+/**
  * Every way `POST /api/purchases` can turn down an authenticated, well-formed
  * scan, with the HTTP status each code travels under. (Auth and body-validation
  * failures stay outside the taxonomy — they signal a broken client, not a scan
