@@ -7,6 +7,7 @@ import {
   isScanRejection,
   type LoyaltyProgram,
   loyaltyProgramSchema,
+  memberCodeResponseSchema,
   type MeResponse,
   meResponseSchema,
   type PurchaseResult,
@@ -80,19 +81,23 @@ const SCAN_REJECTIONS: Record<ScanRejection, string> = {
   invalid_token: "Це не QR-код Кавці",
   own_cafe: "У власній кав'ярні зернятка не нараховуються",
   not_found: "Кав'ярню не знайдено",
+  unknown_member_code:
+    "Такого коду немає — попросіть клієнта перевірити код у застосунку",
+  manual_limit_reached:
+    "Денний ліміт ручних нарахувань для цього клієнта вичерпано",
 };
 
 /**
- * The CafeOwner's scan (#20): send the scanned rotating QR token and get back
- * who earned the Зернятко and their new derived balance.
+ * One issuance seam, two identifiers (#21): the scanned rotating QR token or
+ * the typed member code — the same request, ledger effects, and result either
+ * way. Only the wire body differs, so both public functions share this.
  */
-export async function issuePurchase(
-  cafeId: string,
-  qrToken: string,
+async function requestPurchase(
+  body: { cafeId: string } & ({ qrToken: string } | { memberCode: string }),
 ): Promise<PurchaseResult> {
   const { data, error } = await apiFetch("/api/purchases", {
     method: "POST",
-    body: { cafeId, qrToken },
+    body,
   });
   if (error) {
     // Our API's error bodies are { error: "<code>" }; better-fetch folds the
@@ -102,6 +107,38 @@ export async function issuePurchase(
     throw new Error(error.message ?? "Не вдалося нарахувати зернятко");
   }
   return purchaseResultSchema.parse(data);
+}
+
+/**
+ * The CafeOwner's scan (#20): send the scanned rotating QR token and get back
+ * who earned the Зернятко and their new derived balance.
+ */
+export function issuePurchase(
+  cafeId: string,
+  qrToken: string,
+): Promise<PurchaseResult> {
+  return requestPurchase({ cafeId, qrToken });
+}
+
+/**
+ * The offline fallback (#21): the CafeOwner types the Customer's member code
+ * when the QR can't be scanned. The caller normalizes before submitting.
+ */
+export function issuePurchaseByMemberCode(
+  cafeId: string,
+  memberCode: string,
+): Promise<PurchaseResult> {
+  return requestPurchase({ cafeId, memberCode });
+}
+
+/**
+ * The Customer's stable member code (#21): fetched once, then cached on the
+ * device (see `useMemberCode`) so it displays with no connectivity at all.
+ */
+export async function fetchMemberCode(): Promise<string> {
+  const { data, error } = await apiFetch("/api/me/member-code");
+  if (error) throw new Error(error.message ?? "Не вдалося отримати код");
+  return memberCodeResponseSchema.parse(data).memberCode;
 }
 
 /**

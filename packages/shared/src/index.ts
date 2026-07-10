@@ -194,6 +194,11 @@ export function isWellFormedMemberCode(normalized: string): boolean {
   return memberCodePattern.test(normalized);
 }
 
+/** A stored code as the Customer's screen shows it: grouped `XXXX-XXXX` (#21). */
+export function formatMemberCode(code: string): string {
+  return `${code.slice(0, 4)}-${code.slice(4)}`;
+}
+
 /**
  * Contract for `GET /api/me/member-code`: the Customer's stable offline
  * fallback identity (#21, ADR 0006). Minted lazily on first request, then
