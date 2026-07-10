@@ -67,9 +67,17 @@ Tips learned wiring this up (2026-07-10):
 - Expo Go's first-launch dev-menu sheet covers the app; Claude dismisses it by tapping outside the
   sheet (top of the screen), not "Continue".
 - Re-open the app deterministically with `open-url` → `exp://<lan-ip>:8081` (Metro prints it).
-- The demo owner account created while verifying #79: `demo.owner@kavtsya.test` /
-  `demo-password-1`, owns «Кавярня "Демо"» — in the **local** dev database only; recreate it with
-  two curl calls (sign-up, then `POST /api/cafes`) after a `db:reset`.
+- **Demo fixtures**: `pnpm db:seed-demo` (idempotent, local dev DB only) creates/restores the whole
+  demo world — run it after any `db:reset`, or before a session to pin the state:
+  - CafeOwner `demo.owner@kavtsya.test` / `demo-password-1`, owns «Кавярня «Демо»» (threshold 5,
+    reward = безкоштовний напій)
+  - Customer `demo.customer@kavtsya.test` / `demo-password-1`, member code **`KAVA-2026`** (#21),
+    balance seeded one Зернятко short of the threshold — a single scan demos earn → redeem → Ворожка.
+- **Recorded flows** (`.argent/flows/`, replay with `flow-execute`): `customer-qr-screen` and
+  `owner-to-scan-screen` walk from a fresh `open-url` to the respective screen — start every
+  verification/design session by replaying one instead of re-deriving navigation. Prerequisites:
+  stack running (`db:up` + `dev:api` + Metro), demo world seeded, simulator booted, the account
+  named in the flow's `executionPrerequisite` signed in.
 
 ## The Mari design loop / Дизайн-цикл з Марі
 
