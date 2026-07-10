@@ -38,4 +38,4 @@ That yields the wedge, in priority order:
 
 ## Consequence
 
-Pro entitlement is a per-Café flag (`cafes.plan`). Gating is checked at the feature boundary (campaigns, analytics endpoints), never in the core loyalty path — Зернятко issuance is Plan-independent, mirroring ADR 0009's independence rule. Future POS integration is an *optional enrichment* of the loyalty loop, never a dependency (see future direction below and the backlog).
+Pro entitlement is a per-Café flag (`cafes.plan`). Gating is checked at the feature boundary (campaigns, analytics endpoints), never in the core loyalty path — Зернятко issuance is Plan-independent, mirroring ADR 0009's independence rule. One deliberate, fenced exception (2026-07-10, #25 grilling): a **single permanent free teaser stat** — the returning-customers count on the owner's café home — is un-gated as the built-in ad for Pro. It is the *only* free analytics number; adding any other free-tier stat requires amending this ADR. Future POS integration is an *optional enrichment* of the loyalty loop, never a dependency (see future direction below and the backlog).
