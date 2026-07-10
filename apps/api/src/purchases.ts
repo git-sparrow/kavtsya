@@ -17,22 +17,43 @@ function deriveBalance(purchases: number, beansSpent: number): number {
   return purchases - beansSpent;
 }
 
+/**
+ * How the Customer was identified at the counter (#21, ADR 0006): the scanned
+ * rotating QR token, or the typed member code — the offline fallback. The
+ * ledger records the source (`purchases.entry_source`), and only the manual
+ * path is rate-limited (the QR token is its own proof of freshness).
+ */
+export type PurchaseEntry =
+  | {
+      source: "qr";
+      /** The validated token's unique id — `unique (qr_jti)` makes earning single-use. */
+      jti: string;
+    }
+  | {
+      source: "member_code";
+      /** Today's ceiling per (Customer, Café) — Platform-tunable (ADR 0006). */
+      dailyLimit: number;
+      /** The Kyiv calendar day the ceiling counts within (same convention as the Ворожка pool). */
+      kyivDay: string;
+    };
+
 export interface IssuePurchaseInput {
   /** The Café the CafeOwner is issuing at. */
   cafeId: string;
   /** The acting CafeOwner (`user.id`) — must own the Café. */
   ownerUserId: string;
-  /** The Customer the validated QR token authenticates. */
+  /** The Customer the validated QR token or resolved member code identifies. */
   customerId: string;
-  /** The validated token's unique id — `unique (qr_jti)` makes earning single-use. */
-  jti: string;
+  /** How the Customer was identified — recorded on the Purchase row. */
+  entry: PurchaseEntry;
 }
 
 /** Why issuing was refused — named so the wire mapping (#50) can be exhaustive over it. */
 export type IssuePurchaseRejection =
   | "cafe_not_owned"
   | "own_cafe"
-  | "token_used";
+  | "token_used"
+  | "manual_limit_reached";
 
 export type IssuePurchaseOutcome =
   | {
@@ -47,7 +68,7 @@ export type IssuePurchaseOutcome =
 
 export async function issuePurchase(
   db: Database,
-  { cafeId, ownerUserId, customerId, jti }: IssuePurchaseInput,
+  { cafeId, ownerUserId, customerId, entry }: IssuePurchaseInput,
 ): Promise<IssuePurchaseOutcome> {
   // Ownership check and program read are one query (same pattern as loyalty):
   // a Café that doesn't exist and one the caller doesn't own are indistinguishable.
@@ -65,24 +86,64 @@ export async function issuePurchase(
     return { ok: false, reason: "own_cafe" };
   }
 
-  // The consumed-token check and the issuance are the same write (ADR 0006):
-  // a duplicate `qr_jti` means this token already earned its Зернятко. The
-  // same transaction ensures the (Customer, Café) membership row — Redemption's
-  // FOR UPDATE lock target (#22, ADR 0010) — exists whenever a Purchase does.
+  // Both arms append the Purchase and ensure the (Customer, Café) membership
+  // row — Redemption's FOR UPDATE lock target (#22, ADR 0010) — exists
+  // whenever a Purchase does, in one transaction. They differ in their guard:
+  //
+  // QR: the consumed-token check and the issuance are the same write
+  // (ADR 0006) — a duplicate `qr_jti` means the token already earned its
+  // Зернятко.
+  //
+  // Manual: the daily ceiling is derived from the ledger under the membership
+  // lock. The membership row is inserted *before* locking (#21): on the
+  // Customer's first manual Purchase here there is nothing to lock yet, and a
+  // ceiling check with no lock would let two concurrent first entries both
+  // pass — the early insert makes one of them wait.
   try {
-    await db.begin(async (tx) => {
-      await tx`
-        insert into purchases ("cafe_id", "customer_user_id", "qr_jti")
-        values (${cafeId}, ${customerId}, ${jti})
-      `;
-      await tx`
-        insert into cafe_memberships ("cafe_id", "customer_user_id")
-        values (${cafeId}, ${customerId})
-        on conflict do nothing
-      `;
+    const limited = await db.begin(async (tx) => {
+      if (entry.source === "member_code") {
+        await tx`
+          insert into cafe_memberships ("cafe_id", "customer_user_id")
+          values (${cafeId}, ${customerId})
+          on conflict do nothing
+        `;
+        await tx`
+          select 1 from cafe_memberships
+          where "cafe_id" = ${cafeId} and "customer_user_id" = ${customerId}
+          for update
+        `;
+        const [today] = await tx<{ manual_count: number }[]>`
+          select count(*)::int as manual_count from purchases
+          where "customer_user_id" = ${customerId}
+            and "cafe_id" = ${cafeId}
+            and "entry_source" = 'member_code'
+            and ("created_at" at time zone 'Europe/Kyiv')::date
+                  = ${entry.kyivDay}::date
+        `;
+        if ((today?.manual_count ?? 0) >= entry.dailyLimit) return true;
+        await tx`
+          insert into purchases
+            ("cafe_id", "customer_user_id", "qr_jti", "entry_source")
+          values (${cafeId}, ${customerId}, null, 'member_code')
+        `;
+      } else {
+        await tx`
+          insert into purchases
+            ("cafe_id", "customer_user_id", "qr_jti", "entry_source")
+          values (${cafeId}, ${customerId}, ${entry.jti}, 'qr')
+        `;
+        await tx`
+          insert into cafe_memberships ("cafe_id", "customer_user_id")
+          values (${cafeId}, ${customerId})
+          on conflict do nothing
+        `;
+      }
+      return false;
     });
+    if (limited) return { ok: false, reason: "manual_limit_reached" };
   } catch (err) {
-    if (isUniqueViolation(err)) {
+    // Only the QR arm has a unique column to violate (`qr_jti`).
+    if (entry.source === "qr" && isUniqueViolation(err)) {
       return { ok: false, reason: "token_used" };
     }
     throw err;

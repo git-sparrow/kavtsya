@@ -6,6 +6,7 @@ import { registerAuthRoutes } from "./routes/auth";
 import { registerCafeRoutes } from "./routes/cafes";
 import { registerHealthRoute } from "./routes/health";
 import { registerLoyaltyRoutes } from "./routes/loyalty";
+import { registerMemberCodeRoutes } from "./routes/member-code";
 import { registerPurchaseRoutes } from "./routes/purchases";
 import { registerQrTokenRoutes } from "./routes/qr-token";
 import { registerRedemptionRoutes } from "./routes/redemptions";
@@ -53,6 +54,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   registerCafeRoutes(app, deps);
   registerLoyaltyRoutes(app, deps);
   registerQrTokenRoutes(app, deps);
+  registerMemberCodeRoutes(app, deps);
   registerPurchaseRoutes(app, deps);
   registerRedemptionRoutes(app, deps);
   return app;

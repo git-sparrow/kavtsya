@@ -1,5 +1,6 @@
 import type { AIProvider } from "./ai";
 import type { Clock } from "./clock";
+import { kyivDayOf } from "./clock";
 import type { Database } from "./db";
 
 /**
@@ -14,22 +15,6 @@ import type { Database } from "./db";
  * the batch script overrides this per environment via `FORTUNES_BATCH_SIZE`.
  */
 export const DAILY_BATCH_SIZE = 30;
-
-/**
- * The pool is keyed to the Europe/Kyiv calendar day (not server/UTC): Ukrainian
- * cafés must not see the pool roll over mid-evening. `en-CA` formats as
- * YYYY-MM-DD, which is exactly Postgres's `date` literal.
- */
-const kyivDayFormat = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Europe/Kyiv",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-function kyivDayOf(instant: Date): string {
-  return kyivDayFormat.format(instant);
-}
 
 export interface GenerateDailyFortunesOptions {
   provider: AIProvider;

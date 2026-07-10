@@ -1,11 +1,13 @@
+import { formatMemberCode } from "@kavtsya/shared";
 import type { ComponentType } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import QRCodeBase, { type QRCodeProps } from "react-native-qrcode-svg";
 
 import { Button } from "@/components/button";
 import { ErrorText, Muted } from "@/components/text";
 import { colors } from "@/theme/colors";
 
+import { useMemberCode } from "./use-member-code";
 import { useQrToken } from "./use-qr-token";
 
 // react-native-qrcode-svg ships its default export as an empty
@@ -25,6 +27,7 @@ const QR_SIZE = 220;
  */
 export function CustomerQr() {
   const { token, error, reload } = useQrToken();
+  const memberCode = useMemberCode();
 
   return (
     <View style={styles.container}>
@@ -48,6 +51,17 @@ export function CustomerQr() {
       ) : (
         <Muted>Покажіть кавовару, щоб отримати зернятко</Muted>
       )}
+
+      {/* The offline fallback (#21): always visible, cached on the device —
+          it also rescues a bad camera read, not only a dead connection. */}
+      {memberCode && (
+        <>
+          <Text selectable style={styles.memberCode}>
+            {formatMemberCode(memberCode)}
+          </Text>
+          <Muted>Не сканується? Продиктуйте кавовару цей код</Muted>
+        </>
+      )}
     </View>
   );
 }
@@ -62,5 +76,13 @@ const styles = StyleSheet.create({
     height: QR_SIZE,
     alignItems: "center",
     justifyContent: "center",
+  },
+  memberCode: {
+    fontSize: 24,
+    fontVariant: ["tabular-nums"],
+    letterSpacing: 3,
+    fontWeight: "600",
+    color: colors.brand,
+    textAlign: "center",
   },
 });

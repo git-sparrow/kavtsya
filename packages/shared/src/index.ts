@@ -135,6 +135,18 @@ export const qrTokenConfigSchema = z.object({
 export type QrTokenConfig = z.infer<typeof qrTokenConfigSchema>;
 
 /**
+ * Platform-tunable manual-entry settings, stored in `platform_config` under
+ * the `manual_entry` key (#21, ADR 0006): how many member-code issuances one
+ * Customer can receive at one Café per Kyiv day. Tunable without a deploy so a
+ * pilot café with a legitimate pattern (office bulk orders) can be
+ * accommodated.
+ */
+export const manualEntryConfigSchema = z.object({
+  dailyLimit: z.number().int().positive().max(1000),
+});
+export type ManualEntryConfig = z.infer<typeof manualEntryConfigSchema>;
+
+/**
  * Contract for `GET /api/me`: the account, its derived roles, and the Cafés it
  * owns. The mobile app reads `roles` to decide whether to offer CafeOwner Mode.
  */
@@ -146,6 +158,56 @@ export const meResponseSchema = z.object({
   cafes: z.array(cafeSchema),
 });
 export type MeResponse = z.infer<typeof meResponseSchema>;
+
+/**
+ * The member-code alphabet (#21): Crockford base32 — digits and uppercase
+ * letters minus the look-alikes I, L, O, U, so the Customer can read the code
+ * aloud and the CafeOwner can type it right on the first try. 8 characters
+ * ≈ 40 bits: guessing a valid code is impractical (the rate limit isn't the
+ * only defence).
+ */
+export const MEMBER_CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+/** Length of a member code, in alphabet characters (hyphen not counted). */
+export const MEMBER_CODE_LENGTH = 8;
+
+const memberCodePattern = new RegExp(
+  `^[${MEMBER_CODE_ALPHABET}]{${MEMBER_CODE_LENGTH}}$`,
+);
+
+/**
+ * Fold a typed member code into canonical form (#21): uppercase, separators
+ * (hyphens/spaces) stripped, Crockford confusables mapped (O→0, I/L→1) — so
+ * `k7q4-m2zx`, `K7Q4 M2ZX`, and `K7Q4M2ZX` all name the same Customer. Both
+ * sides speak this: the API before lookup, the app before submitting.
+ */
+export function normalizeMemberCode(typed: string): string {
+  return typed
+    .toUpperCase()
+    .replace(/[\s-]/g, "")
+    .replace(/O/g, "0")
+    .replace(/[IL]/g, "1");
+}
+
+/** Whether a normalized code is even lookup-worthy — the app's pre-submit check. */
+export function isWellFormedMemberCode(normalized: string): boolean {
+  return memberCodePattern.test(normalized);
+}
+
+/** A stored code as the Customer's screen shows it: grouped `XXXX-XXXX` (#21). */
+export function formatMemberCode(code: string): string {
+  return `${code.slice(0, 4)}-${code.slice(4)}`;
+}
+
+/**
+ * Contract for `GET /api/me/member-code`: the Customer's stable offline
+ * fallback identity (#21, ADR 0006). Minted lazily on first request, then
+ * permanent; the app caches it locally so it displays with no connectivity.
+ */
+export const memberCodeResponseSchema = z.object({
+  memberCode: z.string().regex(memberCodePattern),
+});
+export type MemberCodeResponse = z.infer<typeof memberCodeResponseSchema>;
 
 /**
  * Every way `POST /api/purchases` can turn down an authenticated, well-formed
@@ -167,6 +229,10 @@ export const scanRejectionStatuses = {
   not_found: 404,
   /** Single-use guard (ADR 0006): this token already earned its Зернятко. */
   token_used: 409,
+  /** No Customer holds this member code — ask them to re-read it (#21). */
+  unknown_member_code: 404,
+  /** The Customer's manual issuances at this Café hit today's ceiling (#21). */
+  manual_limit_reached: 429,
 } as const;
 
 export type ScanRejection = keyof typeof scanRejectionStatuses;
@@ -179,13 +245,21 @@ export function isScanRejection(code: string): code is ScanRejection {
 }
 
 /**
- * Body for `POST /api/purchases` — the CafeOwner's scan (#20): the Café they
- * are issuing at and the Customer's scanned rotating QR token (ADR 0006).
+ * Body for `POST /api/purchases` — one issuance seam, two ways to identify the
+ * Customer (#21, ADR 0006): the Café plus *either* the scanned rotating QR
+ * token (#20) *or* the typed member code — the offline fallback when the QR
+ * can't be scanned. Same ledger, same guards, same success contract.
  */
-export const issuePurchaseBodySchema = z.object({
-  cafeId: z.string().uuid(),
-  qrToken: z.string().min(1),
-});
+export const issuePurchaseBodySchema = z.union([
+  z.object({
+    cafeId: z.string().uuid(),
+    qrToken: z.string().min(1),
+  }),
+  z.object({
+    cafeId: z.string().uuid(),
+    memberCode: z.string().min(1),
+  }),
+]);
 export type IssuePurchaseBody = z.infer<typeof issuePurchaseBodySchema>;
 
 /**

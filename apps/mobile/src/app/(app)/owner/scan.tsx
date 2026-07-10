@@ -1,4 +1,5 @@
 import type { PurchaseResult, Reward } from "@kavtsya/shared";
+import { isWellFormedMemberCode, normalizeMemberCode } from "@kavtsya/shared";
 import {
   CameraView as CameraViewBase,
   type CameraViewProps,
@@ -6,12 +7,14 @@ import {
 } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
 import type { ComponentType } from "react";
+import { useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { Screen } from "@/components/screen";
 import { ErrorText, Muted, OwnerBadge, Title } from "@/components/text";
+import { TextField } from "@/components/text-field";
 import { useMe } from "@/features/account/me-context";
 import { rewardLabel } from "@/features/loyalty/reward";
 import { useScanPurchase } from "@/features/scan/use-scan-purchase";
@@ -47,8 +50,24 @@ export default function ScanPurchase() {
   const { me } = useMe();
   const cafeName = me?.cafes.find((cafe) => cafe.id === cafeId)?.name ?? "";
   const [permission, requestPermission] = useCameraPermissions();
-  const { state, onScanned, confirmRedemption, scanNext } =
+  const { state, onScanned, onMemberCode, confirmRedemption, scanNext } =
     useScanPurchase(cafeId);
+  // The offline fallback (#21): what the CafeOwner has typed of the Customer's
+  // member code, and the local malformed-input message (server rejections take
+  // the same "rejected" path a bad scan does).
+  const [typedCode, setTypedCode] = useState("");
+  const [typedCodeError, setTypedCodeError] = useState<string | null>(null);
+
+  function submitTypedCode() {
+    const normalized = normalizeMemberCode(typedCode);
+    if (!isWellFormedMemberCode(normalized)) {
+      setTypedCodeError("Код — 8 літер і цифр, наприклад K7Q4-M2ZX");
+      return;
+    }
+    setTypedCodeError(null);
+    setTypedCode("");
+    void onMemberCode(normalized);
+  }
 
   if (!permission) {
     return (
@@ -98,7 +117,27 @@ export default function ScanPurchase() {
         </View>
 
         {state.phase === "scanning" && (
-          <Muted>Наведіть камеру на QR-код клієнта</Muted>
+          <>
+            <Muted>Наведіть камеру на QR-код клієнта</Muted>
+            {/* The offline fallback (#21): a failed scan never dead-ends the
+                sale — type the member code from beneath the Customer's QR. */}
+            <TextField
+              value={typedCode}
+              onChangeText={setTypedCode}
+              placeholder="Або введіть код клієнта"
+              autoCapitalize="characters"
+              autoCorrect={false}
+              onSubmitEditing={submitTypedCode}
+            />
+            {typedCodeError && <ErrorText>{typedCodeError}</ErrorText>}
+            {typedCode.length > 0 && (
+              <Button
+                title="Нарахувати за кодом"
+                variant="secondary"
+                onPress={submitTypedCode}
+              />
+            )}
+          </>
         )}
         {state.phase === "sending" && (
           <ActivityIndicator color={colors.brand} />

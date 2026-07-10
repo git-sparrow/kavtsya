@@ -5,6 +5,7 @@ import type { PurchaseResult, RedemptionResult } from "@kavtsya/shared";
 import {
   confirmRedemption as confirmRedemptionRequest,
   issuePurchase,
+  issuePurchaseByMemberCode,
 } from "@/lib/api";
 
 export type ScanState =
@@ -31,6 +32,10 @@ export type ScanState =
  * Off the held outcome the CafeOwner can also confirm a Redemption (#22) — a
  * distinct action, no second scan. Banking works by confirming again while the
  * balance still covers the threshold.
+ *
+ * The typed member code (#21) enters the same machine through the same gate:
+ * one manual submission behaves exactly like one recognised QR, so the
+ * counter flow is one habit, not two.
  */
 export function useScanPurchase(cafeId: string) {
   const [state, setState] = useState<ScanState>({ phase: "scanning" });
@@ -40,12 +45,12 @@ export function useScanPurchase(cafeId: string) {
   // success so the next confirm (banking) is a genuine new spend.
   const confirmKey = useRef<string | null>(null);
 
-  async function onScanned(qrToken: string) {
+  async function send(request: () => Promise<PurchaseResult>) {
     if (inFlight.current) return;
     inFlight.current = true;
     setState({ phase: "sending" });
     try {
-      const result = await issuePurchase(cafeId, qrToken);
+      const result = await request();
       setState({ phase: "issued", result });
     } catch (e) {
       setState({
@@ -54,6 +59,15 @@ export function useScanPurchase(cafeId: string) {
           e instanceof Error ? e.message : "Не вдалося нарахувати зернятко",
       });
     }
+  }
+
+  function onScanned(qrToken: string) {
+    return send(() => issuePurchase(cafeId, qrToken));
+  }
+
+  /** The offline fallback (#21): the code is already normalized and well-formed. */
+  function onMemberCode(memberCode: string) {
+    return send(() => issuePurchaseByMemberCode(cafeId, memberCode));
   }
 
   async function confirmRedemption() {
@@ -90,5 +104,5 @@ export function useScanPurchase(cafeId: string) {
     setState({ phase: "scanning" });
   }
 
-  return { state, onScanned, confirmRedemption, scanNext };
+  return { state, onScanned, onMemberCode, confirmRedemption, scanNext };
 }

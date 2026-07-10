@@ -5,9 +5,11 @@ import {
   scanRejectionStatuses,
 } from "@kavtsya/shared";
 import type { AppDeps, AppEnv } from "../app";
+import { kyivDayOf } from "../clock";
 import { fortuneForScan } from "../fortunes";
-import { getQrTokenConfig } from "../platform-config";
-import type { IssuePurchaseRejection } from "../purchases";
+import { customerIdForMemberCode } from "../member-code";
+import { getManualEntryConfig, getQrTokenConfig } from "../platform-config";
+import type { IssuePurchaseRejection, PurchaseEntry } from "../purchases";
 import { issuePurchase, listBalances } from "../purchases";
 import type { QrTokenInvalidReason } from "../qr-token";
 import { validateQrToken } from "../qr-token";
@@ -17,7 +19,14 @@ import { validateQrToken } from "../qr-token";
  * (ADR 0006) and append one Purchase to the ledger (ADR 0010). Every failure
  * gets a distinct error code so the scan screen can tell the CafeOwner exactly
  * why — a stale token reads differently from an already-used one.
+ *
+ * The same endpoint is the offline fallback (#21): a body carrying the typed
+ * `memberCode` instead of `qrToken` identifies the Customer by their stable
+ * code — then issuing proceeds identically.
  */
+
+/** Why identifying the Customer by member code failed (#21) — route-level, like the token reasons. */
+type MemberCodeInvalidReason = "unknown_member_code";
 
 /**
  * How each domain reason travels the wire (#50): the only place a reason picks
@@ -27,21 +36,26 @@ import { validateQrToken } from "../qr-token";
  * help someone probing tokens.
  */
 const wireCodes: Record<
-  QrTokenInvalidReason | IssuePurchaseRejection,
+  QrTokenInvalidReason | MemberCodeInvalidReason | IssuePurchaseRejection,
   ScanRejection
 > = {
   expired: "expired_token",
   malformed: "invalid_token",
   bad_signature: "invalid_token",
+  unknown_member_code: "unknown_member_code",
   cafe_not_owned: "not_found",
   own_cafe: "own_cafe",
   token_used: "token_used",
+  manual_limit_reached: "manual_limit_reached",
 };
 
 /** The lookup lives inside, so no call site can skip the reason→code mapping. */
 function reject(
   c: Context<AppEnv>,
-  reason: QrTokenInvalidReason | IssuePurchaseRejection,
+  reason:
+    | QrTokenInvalidReason
+    | MemberCodeInvalidReason
+    | IssuePurchaseRejection,
 ) {
   const code = wireCodes[reason];
   return c.json({ error: code }, scanRejectionStatuses[code]);
@@ -60,19 +74,42 @@ export function registerPurchaseRoutes(
     );
     if (!parsed.success) return c.json({ error: "invalid_purchase" }, 400);
 
-    const { graceSeconds } = await getQrTokenConfig(db);
-    const token = validateQrToken(parsed.data.qrToken, {
-      clock,
-      secret: qrTokenSecret,
-      graceSeconds,
-    });
-    if (!token.valid) return reject(c, token.reason);
+    // Identify the Customer by whichever identifier the body carries (#21):
+    // the rotating QR token or the typed member code.
+    let identity: { customerId: string; entry: PurchaseEntry };
+    if ("qrToken" in parsed.data) {
+      const { graceSeconds } = await getQrTokenConfig(db);
+      const token = validateQrToken(parsed.data.qrToken, {
+        clock,
+        secret: qrTokenSecret,
+        graceSeconds,
+      });
+      if (!token.valid) return reject(c, token.reason);
+      identity = {
+        customerId: token.customerId,
+        entry: { source: "qr", jti: token.jti },
+      };
+    } else {
+      const customerId = await customerIdForMemberCode(
+        db,
+        parsed.data.memberCode,
+      );
+      if (!customerId) return reject(c, "unknown_member_code");
+      const { dailyLimit } = await getManualEntryConfig(db);
+      identity = {
+        customerId,
+        entry: {
+          source: "member_code",
+          dailyLimit,
+          kyivDay: kyivDayOf(clock.now()),
+        },
+      };
+    }
 
     const outcome = await issuePurchase(db, {
       cafeId: parsed.data.cafeId,
       ownerUserId: user.id,
-      customerId: token.customerId,
-      jti: token.jti,
+      ...identity,
     });
     if (!outcome.ok) return reject(c, outcome.reason);
 
