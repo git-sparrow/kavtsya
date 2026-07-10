@@ -1,15 +1,20 @@
 import {
+  type AcceptShiftInviteResult,
+  acceptShiftInviteResultSchema,
   type Cafe,
   type CafeBalancesResponse,
   cafeBalancesResponseSchema,
   cafeSchema,
   isRedemptionRejection,
   isScanRejection,
+  isShiftInviteRejection,
   type LoyaltyProgram,
   loyaltyProgramSchema,
   memberCodeResponseSchema,
   type MeResponse,
   meResponseSchema,
+  type MyShiftResponse,
+  myShiftResponseSchema,
   type PurchaseResult,
   purchaseResultSchema,
   type QrTokenResponse,
@@ -20,6 +25,11 @@ import {
   type RewardDefaults,
   rewardDefaultsSchema,
   type ScanRejection,
+  type ShiftInviteRejection,
+  type ShiftInviteResponse,
+  shiftInviteResponseSchema,
+  type ShiftsResponse,
+  shiftsResponseSchema,
 } from "@kavtsya/shared";
 
 import { apiFetch } from "@/lib/auth-client";
@@ -79,6 +89,7 @@ const SCAN_REJECTIONS: Record<ScanRejection, string> = {
   token_used: "Цей код уже використано — попросіть клієнта показати новий",
   expired_token: "Код протермінувався — попросіть клієнта показати новий",
   invalid_token: "Це не QR-код Кавці",
+  self_scan: "Власний код сканувати не можна",
   own_cafe: "У власній кав'ярні зернятка не нараховуються",
   not_found: "Кав'ярню не знайдено",
   unknown_member_code:
@@ -175,6 +186,81 @@ export async function confirmRedemption(
     throw new Error(error.message ?? "Не вдалося видати винагороду");
   }
   return redemptionResultSchema.parse(data);
+}
+
+/**
+ * The CafeOwner opens a «Зміна» (#80, ADR 0013): mints the single-use invite
+ * the barista will scan (QR) or type (short code). «Запросити ще» is simply
+ * calling this again. Omitting `durationMinutes` runs the shift to the end of
+ * the café's business day.
+ */
+export async function openShiftInvite(
+  cafeId: string,
+  durationMinutes?: number,
+): Promise<ShiftInviteResponse> {
+  const { data, error } = await apiFetch(`/api/cafes/${cafeId}/shift-invites`, {
+    method: "POST",
+    body: durationMinutes ? { durationMinutes } : {},
+  });
+  if (error) throw new Error(error.message ?? "Не вдалося відкрити зміну");
+  return shiftInviteResponseSchema.parse(data);
+}
+
+/**
+ * What the join screen tells the barista for each rejection the API
+ * distinguishes (#80) — same compile-checked pattern as the scan copy above.
+ */
+const SHIFT_INVITE_REJECTIONS: Record<ShiftInviteRejection, string> = {
+  invalid_invite: "Це не запрошення Кавці — перевірте QR або код",
+  expired_invite: "Запрошення протермінувалося — попросіть кавовара нове",
+  invite_used: "Це запрошення вже використано — попросіть кавовара нове",
+};
+
+/**
+ * The barista accepts the invite with their own account (#80): the scanned
+ * token or the typed code turns into the shift — scanner mode's scope and
+ * expiry come back in the result.
+ */
+export async function acceptShiftInvite(
+  invite: { inviteToken: string } | { inviteCode: string },
+): Promise<AcceptShiftInviteResult> {
+  const { data, error } = await apiFetch("/api/shift-invites/accept", {
+    method: "POST",
+    body: invite,
+  });
+  if (error) {
+    const code = (error as { error?: string }).error;
+    if (code && isShiftInviteRejection(code)) {
+      throw new Error(SHIFT_INVITE_REJECTIONS[code]);
+    }
+    throw new Error(error.message ?? "Не вдалося долучитися до зміни");
+  }
+  return acceptShiftInviteResultSchema.parse(data);
+}
+
+/** The owner's shift board (#80): who is behind the counter right now. */
+export async function fetchShifts(cafeId: string): Promise<ShiftsResponse> {
+  const { data, error } = await apiFetch(`/api/cafes/${cafeId}/shifts`);
+  if (error) throw new Error(error.message ?? "Не вдалося завантажити зміни");
+  return shiftsResponseSchema.parse(data);
+}
+
+/** Revocation is a tap (#80): the shift ends now instead of at closing time. */
+export async function revokeShift(
+  cafeId: string,
+  grantId: string,
+): Promise<void> {
+  const { error } = await apiFetch(`/api/cafes/${cafeId}/shifts/${grantId}`, {
+    method: "DELETE",
+  });
+  if (error) throw new Error(error.message ?? "Не вдалося завершити зміну");
+}
+
+/** The barista's side (#80): the active shift this account holds, or null. */
+export async function fetchMyShift(): Promise<MyShiftResponse["shift"]> {
+  const { data, error } = await apiFetch("/api/me/shift");
+  if (error) throw new Error(error.message ?? "Не вдалося перевірити зміну");
+  return myShiftResponseSchema.parse(data).shift;
 }
 
 /** The Cafés where the Customer holds Зернятка (most recently visited first). */

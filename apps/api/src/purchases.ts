@@ -2,6 +2,7 @@ import type { CafeBalance, Reward } from "@kavtsya/shared";
 import type { Database, Queryable } from "./db";
 import { isUniqueViolation } from "./db";
 import { programFromRow } from "./loyalty";
+import { hasActiveScannerGrant } from "./shifts";
 
 /**
  * Issuing a Зернятко — the append-only Purchase ledger (#20, ADR 0010). The
@@ -38,19 +39,22 @@ export type PurchaseEntry =
     };
 
 export interface IssuePurchaseInput {
-  /** The Café the CafeOwner is issuing at. */
+  /** The Café the scan happens at. */
   cafeId: string;
-  /** The acting CafeOwner (`user.id`) — must own the Café. */
-  ownerUserId: string;
+  /** Who is physically issuing (`user.id`): the owner or an active grant holder (ADR 0013). */
+  issuedByUserId: string;
   /** The Customer the validated QR token or resolved member code identifies. */
   customerId: string;
   /** How the Customer was identified — recorded on the Purchase row. */
   entry: PurchaseEntry;
+  /** The scan's instant — the grant-expiry check runs on the injected clock. */
+  now: Date;
 }
 
 /** Why issuing was refused — named so the wire mapping (#50) can be exhaustive over it. */
 export type IssuePurchaseRejection =
   | "cafe_not_owned"
+  | "self_scan"
   | "own_cafe"
   | "token_used"
   | "manual_limit_reached";
@@ -68,20 +72,33 @@ export type IssuePurchaseOutcome =
 
 export async function issuePurchase(
   db: Database,
-  { cafeId, ownerUserId, customerId, entry }: IssuePurchaseInput,
+  { cafeId, issuedByUserId, customerId, entry, now }: IssuePurchaseInput,
 ): Promise<IssuePurchaseOutcome> {
-  // Ownership check and program read are one query (same pattern as loyalty):
-  // a Café that doesn't exist and one the caller doesn't own are indistinguishable.
+  // The counter is open to the owner OR an active grant holder (ADR 0013). A
+  // Café that doesn't exist and one the caller may not operate stay
+  // indistinguishable — same "not found" the owner-only check always gave.
   const [cafe] = await db<
     { owner_user_id: string; zernyatko_threshold: number; reward: unknown }[]
   >`
     select "owner_user_id", "zernyatko_threshold", "reward"
     from cafes
-    where "id" = ${cafeId} and "owner_user_id" = ${ownerUserId}
+    where "id" = ${cafeId}
   `;
   if (!cafe) return { ok: false, reason: "cafe_not_owned" };
+  if (
+    cafe.owner_user_id !== issuedByUserId &&
+    !(await hasActiveScannerGrant(db, cafeId, issuedByUserId, now))
+  ) {
+    return { ok: false, reason: "cafe_not_owned" };
+  }
 
-  // Self-farming guard (ADR 0003): a CafeOwner cannot earn at a Café they own.
+  // The self-farm guards are additive (ADR 0013, clarified 2026-07-10).
+  // Scanner ≠ scanned: nobody may issue to their own code, whoever they are…
+  if (customerId === issuedByUserId) {
+    return { ok: false, reason: "self_scan" };
+  }
+  // …and the owner still earns nothing at their own Café, whoever scans them
+  // (ADR 0003) — a barista's scan doesn't reopen owner self-comping.
   if (customerId === cafe.owner_user_id) {
     return { ok: false, reason: "own_cafe" };
   }
@@ -123,14 +140,20 @@ export async function issuePurchase(
         if ((today?.manual_count ?? 0) >= entry.dailyLimit) return true;
         await tx`
           insert into purchases
-            ("cafe_id", "customer_user_id", "qr_jti", "entry_source")
-          values (${cafeId}, ${customerId}, null, 'member_code')
+            ("cafe_id", "customer_user_id", "qr_jti", "entry_source",
+             "issued_by_user_id")
+          values
+            (${cafeId}, ${customerId}, null, 'member_code',
+             ${issuedByUserId})
         `;
       } else {
         await tx`
           insert into purchases
-            ("cafe_id", "customer_user_id", "qr_jti", "entry_source")
-          values (${cafeId}, ${customerId}, ${entry.jti}, 'qr')
+            ("cafe_id", "customer_user_id", "qr_jti", "entry_source",
+             "issued_by_user_id")
+          values
+            (${cafeId}, ${customerId}, ${entry.jti}, 'qr',
+             ${issuedByUserId})
         `;
         await tx`
           insert into cafe_memberships ("cafe_id", "customer_user_id")

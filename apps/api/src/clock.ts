@@ -33,3 +33,23 @@ const kyivDayFormat = new Intl.DateTimeFormat("en-CA", {
 export function kyivDayOf(instant: Date): string {
   return kyivDayFormat.format(instant);
 }
+
+/**
+ * The instant the café's business day ends: the next Europe/Kyiv midnight
+ * after `instant` — the shift grant's default expiry (#80, ADR 0013). Ukraine
+ * switches DST at 03:00/04:00, never at midnight, so midnight always exists
+ * exactly once; probing the two possible offsets (+03:00 EEST, +02:00 EET)
+ * finds it without a timezone library: the EEST candidate is the true midnight
+ * exactly when it already renders as the next Kyiv day.
+ */
+export function kyivNextMidnight(instant: Date): Date {
+  const [y, m, d] = kyivDayOf(instant).split("-").map(Number) as [
+    number,
+    number,
+    number,
+  ];
+  const utcMidnight = Date.UTC(y, m - 1, d + 1);
+  const eest = new Date(utcMidnight - 3 * 3_600_000);
+  if (kyivDayOf(eest) !== kyivDayOf(instant)) return eest;
+  return new Date(utcMidnight - 2 * 3_600_000);
+}

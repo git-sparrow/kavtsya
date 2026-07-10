@@ -39,6 +39,16 @@ export default function OwnerHome() {
                 })
               }
             />
+            <Button
+              title="Зміна"
+              variant="secondary"
+              onPress={() =>
+                router.push({
+                  pathname: "/owner/shifts",
+                  params: { cafeId: cafe.id },
+                })
+              }
+            />
           </View>
         ))}
         <Button

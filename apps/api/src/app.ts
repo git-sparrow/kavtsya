@@ -10,6 +10,7 @@ import { registerMemberCodeRoutes } from "./routes/member-code";
 import { registerPurchaseRoutes } from "./routes/purchases";
 import { registerQrTokenRoutes } from "./routes/qr-token";
 import { registerRedemptionRoutes } from "./routes/redemptions";
+import { registerShiftRoutes } from "./routes/shifts";
 
 /**
  * Everything the app needs from the outside world. Injected (not imported as
@@ -57,5 +58,6 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   registerMemberCodeRoutes(app, deps);
   registerPurchaseRoutes(app, deps);
   registerRedemptionRoutes(app, deps);
+  registerShiftRoutes(app, deps);
   return app;
 }

@@ -154,15 +154,18 @@ test("a re-scanned token is rejected and issues no second Зернятко", asy
   expect(purchaseResultSchema.parse(await fresh.json()).balance).toBe(2);
 });
 
-test("a CafeOwner cannot earn Зернятка at their own Café (self-farming guard)", async () => {
+test("a CafeOwner scanning their own code is rejected — scanner ≠ scanned (ADR 0013)", async () => {
   const owner = await signUp(app(), "owner@example.com");
   const cafeId = await registerCafe("Кавця", owner);
   const ownQrToken = await qrTokenFor(owner);
 
   const res = await issuePurchase({ cafeId, qrToken: ownQrToken }, owner);
 
+  // Since #80 the general guard names this case: the ISSUER scanned their own
+  // code. The owner-earns-nothing-here rule (own_cafe) still stands — see the
+  // barista-scans-owner test in shifts.test.ts.
   expect(res.status).toBe(403);
-  expect(await res.json()).toEqual({ error: "own_cafe" });
+  expect(await res.json()).toEqual({ error: "self_scan" });
 });
 
 test("a CafeOwner CAN earn Зернятка at someone else's Café", async () => {

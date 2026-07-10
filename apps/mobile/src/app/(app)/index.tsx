@@ -9,6 +9,7 @@ import { useMe } from "@/features/account/me-context";
 import { RegisterCafeForm } from "@/features/cafe/register-cafe-form";
 import { CafeBalances } from "@/features/loyalty/cafe-balances";
 import { CustomerQr } from "@/features/loyalty/customer-qr";
+import { useMyShift } from "@/features/shift/use-my-shift";
 import { authClient } from "@/lib/auth-client";
 import { colors } from "@/theme/colors";
 
@@ -19,6 +20,9 @@ import { colors } from "@/theme/colors";
  */
 export default function Home() {
   const { me, error, reload } = useMe();
+  // The shift this account holds (#80): shows the scanner-mode entry while a
+  // barista is on duty, and the join entry otherwise.
+  const { shift } = useMyShift();
 
   if (error) {
     return (
@@ -67,6 +71,21 @@ export default function Home() {
           />
         ) : (
           <RegisterCafeForm onRegistered={reload} />
+        )}
+
+        {/* «Зміна» (#80): a barista on duty jumps straight into scanner mode;
+            anyone else can join one with the owner's invite. */}
+        {shift ? (
+          <Button
+            title={`Зміна у «${shift.cafeName}» — сканувати`}
+            onPress={() => router.push("/shift/scan")}
+          />
+        ) : (
+          <Button
+            title="Долучитися до зміни"
+            variant="secondary"
+            onPress={() => router.push("/shift/join")}
+          />
         )}
 
         <Button
