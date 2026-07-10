@@ -1,0 +1,30 @@
+executionPrerequisite: Stack running (pnpm db:up + dev:api on :3000 + Metro on
+  :8081), demo world seeded (pnpm db:seed-demo), iOS simulator booted with Expo
+  Go, an account already signed in (any — the QR screen is the app home).
+  Simulator udid is baked into steps; edit the YAML if the booted device
+  changes.
+steps:
+  - echo: Restart Expo Go first — open-url alone does NOT reset a warm app's
+      navigation stack, so a session already deep in a screen would stay there
+  - tool: restart-app
+    args:
+      udid: 4174BA11-C3D4-4A8E-8E72-0F5325BEC9A6
+      bundleId: host.exp.Exponent
+  - echo: Open the app at its root — lands on the Customer home (QR screen)
+  - tool: open-url
+    args:
+      udid: 4174BA11-C3D4-4A8E-8E72-0F5325BEC9A6
+      url: exp://127.0.0.1:8081
+  - echo: "Expect the Customer home: QR + hint «Покажіть кавовару…», member code
+      line beneath (cached offline)"
+  - tool: await-ui-element
+    args:
+      udid: 4174BA11-C3D4-4A8E-8E72-0F5325BEC9A6
+      condition: visible
+      selector:
+        text: Покажіть кавовару
+      timeoutMs: 30000
+  - echo: Final screenshot of the QR screen for the session log / Mari
+  - tool: screenshot
+    args:
+      udid: 4174BA11-C3D4-4A8E-8E72-0F5325BEC9A6

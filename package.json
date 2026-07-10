@@ -12,6 +12,7 @@
     "db:up": "docker compose up -d db",
     "db:down": "docker compose down",
     "db:reset": "docker compose down -v && docker compose up -d db",
+    "db:seed-demo": "pnpm --filter @kavtsya/api seed-demo",
     "migrate": "pnpm --filter @kavtsya/api migrate",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",

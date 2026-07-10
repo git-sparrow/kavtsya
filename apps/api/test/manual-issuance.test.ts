@@ -9,6 +9,7 @@ import { fixedClock } from "../src/clock";
 import type { Database } from "../src/db";
 import { clearPlatformConfigCache } from "../src/platform-config";
 import { makeApp, registerCafe as registerCafeAt, signUp } from "./helpers/app";
+import { withPlatformConfig } from "./helpers/platform-config";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 /**
@@ -203,29 +204,12 @@ test("the Platform can tune the ceiling without a deploy", async () => {
   const memberCode = await memberCodeFor(customer);
 
   // The Platform drops the ceiling to 1 (a config write, not a deploy).
-  const [original] = await db<{ value: unknown }[]>`
-    select "value" from platform_config where "key" = 'manual_entry'
-  `;
-  await db`
-    update platform_config set "value" = ${db.json({ dailyLimit: 1 })}
-    where "key" = 'manual_entry'
-  `;
-  // The write bypasses the app, so invalidate the read cache to observe it now.
-  clearPlatformConfigCache();
-
-  try {
+  await withPlatformConfig(db, "manual_entry", { dailyLimit: 1 }, async () => {
     expect((await issueManual({ cafeId, memberCode }, owner)).status).toBe(201);
     const second = await issueManual({ cafeId, memberCode }, owner);
     expect(second.status).toBe(429);
     expect(await second.json()).toEqual({ error: "manual_limit_reached" });
-  } finally {
-    // The test database persists across runs — put the seeded ceiling back.
-    await db`
-      update platform_config set "value" = ${db.json(original!.value as never)}
-      where "key" = 'manual_entry'
-    `;
-    clearPlatformConfigCache();
-  }
+  });
 });
 
 // --- existing guards can't be sidestepped by typing a code (#21) ----------------

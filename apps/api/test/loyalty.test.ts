@@ -5,6 +5,7 @@ import type { Auth } from "../src/auth";
 import type { Database } from "../src/db";
 import { clearPlatformConfigCache } from "../src/platform-config";
 import { makeApp, registerCafe as registerCafeAt, signUp } from "./helpers/app";
+import { withPlatformConfig } from "./helpers/platform-config";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 let db: Database;
@@ -202,32 +203,18 @@ test("a Reward type absent from the platform-default set is rejected", async () 
   const cafeId = await registerCafe("Кавця", cookie);
 
   // Platform retires percent_discount from the default set — no code deploy.
-  const [original] = await db<{ value: unknown }[]>`
-    select value from platform_config where key = 'reward_defaults'
-  `;
-  await db`
-    update platform_config
-    set value = ${db.json([
-      { type: "free_drink", label: "Безкоштовний напій" },
-    ])}
-    where key = 'reward_defaults'
-  `;
-  // The write bypasses the app, so invalidate the read cache to observe it now.
-  clearPlatformConfigCache();
+  await withPlatformConfig(
+    db,
+    "reward_defaults",
+    [{ type: "free_drink", label: "Безкоштовний напій" }],
+    async () => {
+      const res = await putProgram(
+        cafeId,
+        { threshold: 10, reward: { type: "percent_discount", percent: 10 } },
+        cookie,
+      );
 
-  try {
-    const res = await putProgram(
-      cafeId,
-      { threshold: 10, reward: { type: "percent_discount", percent: 10 } },
-      cookie,
-    );
-
-    expect(res.status).toBe(400);
-  } finally {
-    await db`
-      update platform_config set value = ${db.json(original!.value as never)}
-      where key = 'reward_defaults'
-    `;
-    clearPlatformConfigCache();
-  }
+      expect(res.status).toBe(400);
+    },
+  );
 });
