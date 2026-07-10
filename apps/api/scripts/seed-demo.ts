@@ -93,11 +93,11 @@ try {
 
   // Seed the ledger only when this pair has no history at all, so re-runs
   // never inflate a balance someone is mid-demo with.
-  const [{ count }] = await db<{ count: string }[]>`
+  const [existing] = await db<{ count: string }[]>`
     select count(*) from purchases
     where "customer_user_id" = ${customerId} and "cafe_id" = ${cafeId}
   `;
-  if (Number(count) === 0) {
+  if (Number(existing?.count ?? 0) === 0) {
     for (let i = 1; i <= SEEDED_PURCHASES; i++) {
       await db`
         insert into purchases
@@ -113,7 +113,7 @@ try {
     console.log(`seeded ${SEEDED_PURCHASES} purchases`);
   }
 
-  const [{ balance }] = await db<{ balance: number }[]>`
+  const [balanceRow] = await db<{ balance: number }[]>`
     select
       (select count(*)::int from purchases
         where "customer_user_id" = ${customerId} and "cafe_id" = ${cafeId})
@@ -127,7 +127,7 @@ Demo world ready:
   CafeOwner  ${OWNER.email} / ${OWNER.password}   (${CAFE_NAME})
   Customer   ${CUSTOMER.email} / ${CUSTOMER.password}
   Member code ${MEMBER_CODE.slice(0, 4)}-${MEMBER_CODE.slice(4)}  (type it on the scan screen)
-  Balance    ${balance} з ${THRESHOLD} — reward: безкоштовний напій`);
+  Balance    ${balanceRow?.balance ?? 0} з ${THRESHOLD} — reward: безкоштовний напій`);
 } finally {
   await authPool.end();
   await db.end();
