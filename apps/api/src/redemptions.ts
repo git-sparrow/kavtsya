@@ -4,6 +4,7 @@ import type { Database, Queryable } from "./db";
 import { isUniqueViolation } from "./db";
 import { programFromRow } from "./loyalty";
 import { balanceFor } from "./purchases";
+import { hasActiveScannerGrant } from "./shifts";
 
 /**
  * Confirming a Redemption — the spend side of the ledger (#22, ADR 0010). One
@@ -20,14 +21,16 @@ import { balanceFor } from "./purchases";
  */
 
 export interface ConfirmRedemptionInput {
-  /** The Café the CafeOwner is confirming at. */
+  /** The Café the confirm happens at. */
   cafeId: string;
-  /** The acting CafeOwner (`user.id`) — must own the Café. */
-  ownerUserId: string;
+  /** Who is confirming (`user.id`): the owner or an active grant holder (ADR 0013). */
+  actorUserId: string;
   /** The Customer the scan identified (`PurchaseResult.customerId`). */
   customerId: string;
   /** Minted per confirm tap; a retry reuses it, a banked second confirm doesn't. */
   idempotencyKey: string;
+  /** The confirm's instant — the grant-expiry check runs on the injected clock. */
+  now: Date;
 }
 
 /** Why confirming was refused — the wire mapping is exhaustive over it (#50). */
@@ -94,18 +97,31 @@ export function applyRedemption({
 
 export async function confirmRedemption(
   db: Database,
-  { cafeId, ownerUserId, customerId, idempotencyKey }: ConfirmRedemptionInput,
+  {
+    cafeId,
+    actorUserId,
+    customerId,
+    idempotencyKey,
+    now,
+  }: ConfirmRedemptionInput,
 ): Promise<ConfirmRedemptionOutcome> {
-  // Ownership check and program read are one query (same pattern as issuing):
-  // a Café that doesn't exist and one the caller doesn't own are indistinguishable.
+  // Confirm is the shift's second counter power (ADR 0013): the owner OR an
+  // active grant holder. A Café that doesn't exist and one the caller may not
+  // operate stay indistinguishable — same semantics as issuing.
   const [cafe] = await db<
     { owner_user_id: string; zernyatko_threshold: number; reward: unknown }[]
   >`
     select "owner_user_id", "zernyatko_threshold", "reward"
     from cafes
-    where "id" = ${cafeId} and "owner_user_id" = ${ownerUserId}
+    where "id" = ${cafeId}
   `;
   if (!cafe) return { ok: false, reason: "cafe_not_owned" };
+  if (
+    cafe.owner_user_id !== actorUserId &&
+    !(await hasActiveScannerGrant(db, cafeId, actorUserId, now))
+  ) {
+    return { ok: false, reason: "cafe_not_owned" };
+  }
 
   // Self-farming guard (ADR 0003): Redemption is also rejected at one's own Café.
   if (customerId === cafe.owner_user_id) {

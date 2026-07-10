@@ -223,7 +223,9 @@ export const scanRejectionStatuses = {
   expired_token: 401,
   /** Not a token we minted: tampered, truncated, or not a Kavtsya QR at all. */
   invalid_token: 401,
-  /** Self-farming guard (ADR 0003): a CafeOwner scanned their own code. */
+  /** Scanner ≠ scanned (ADR 0013): the issuing user scanned their OWN code — owner and barista alike. */
+  self_scan: 403,
+  /** Self-farming guard (ADR 0003): the scanned Customer owns this Café — they earn nothing here, whoever scans. */
   own_cafe: 403,
   /** The Café doesn't exist or the caller doesn't own it (indistinguishable). */
   not_found: 404,
@@ -337,6 +339,108 @@ export const redemptionResultSchema = z.object({
   reward: rewardSchema,
 });
 export type RedemptionResult = z.infer<typeof redemptionResultSchema>;
+
+/**
+ * Body for `POST /api/cafes/:id/shift-invites` — the CafeOwner opens a shift
+ * («Зміна», #80, ADR 0013). By default the grant runs to the end of the café's
+ * business day (next Europe/Kyiv midnight); an explicit `durationMinutes` cuts
+ * it shorter (a trial barista's two-hour window) and is clamped to that same
+ * midnight — a shift never outlives the business day.
+ */
+export const openShiftInviteBodySchema = z.object({
+  durationMinutes: z.number().int().min(5).max(1440).optional(),
+});
+export type OpenShiftInviteBody = z.infer<typeof openShiftInviteBodySchema>;
+
+/**
+ * Contract for a minted shift invite (#80): the signed token the owner's
+ * screen renders as a QR, and the short code fallback — same 8-char Crockford
+ * format as the member code (#21), so the entry affordance is shared. The
+ * invite is single-use and dies at `inviteExpiresAt` (~10 min); the grant an
+ * accept mints lives until `grantExpiresAt`.
+ */
+export const shiftInviteResponseSchema = z.object({
+  inviteToken: z.string().min(1),
+  inviteCode: z.string().regex(memberCodePattern),
+  inviteExpiresAt: z.string().datetime(),
+  grantExpiresAt: z.string().datetime(),
+});
+export type ShiftInviteResponse = z.infer<typeof shiftInviteResponseSchema>;
+
+/**
+ * Body for `POST /api/shift-invites/accept` — the barista's side of the
+ * handshake (#80): *either* the invite token their camera scanned *or* the
+ * short code they typed, mirroring the scan/member-code split of
+ * `issuePurchaseBodySchema`. Same invite, same grant either way.
+ */
+export const acceptShiftInviteBodySchema = z.union([
+  z.object({ inviteToken: z.string().min(1) }),
+  z.object({ inviteCode: z.string().min(1) }),
+]);
+export type AcceptShiftInviteBody = z.infer<typeof acceptShiftInviteBodySchema>;
+
+/**
+ * Contract for an accepted invite (#80): the shift the barista's app now
+ * carries — which Café the scanner mode is scoped to, and when the grant
+ * self-expires. The persistent shift banner renders from exactly this.
+ */
+export const acceptShiftInviteResultSchema = z.object({
+  cafeId: z.string().uuid(),
+  cafeName: z.string(),
+  expiresAt: z.string().datetime(),
+});
+export type AcceptShiftInviteResult = z.infer<
+  typeof acceptShiftInviteResultSchema
+>;
+
+/**
+ * Every way `POST /api/shift-invites/accept` can turn down an authenticated,
+ * well-formed accept — the same single-declaration taxonomy pattern as the
+ * scan (#50), so the barista-side Ukrainian copy is compile-checked complete.
+ */
+export const shiftInviteRejectionStatuses = {
+  /** Not an invite we minted: tampered, foreign, malformed — or an unknown typed code. */
+  invalid_invite: 401,
+  /** The invite's ten minutes are over — the owner mints a fresh one in one tap. */
+  expired_invite: 401,
+  /** One invite admits one barista (#80): this one already did. «Запросити ще». */
+  invite_used: 409,
+} as const;
+
+export type ShiftInviteRejection = keyof typeof shiftInviteRejectionStatuses;
+
+/** Narrows an error code off the wire to the invite-rejection taxonomy. */
+export function isShiftInviteRejection(
+  code: string,
+): code is ShiftInviteRejection {
+  return Object.hasOwn(shiftInviteRejectionStatuses, code);
+}
+
+/**
+ * One entry of `GET /api/cafes/:id/shifts` — an active shift on the owner's
+ * board (#80): who is behind the counter and when their grant self-expires.
+ * `id` is what `DELETE /api/cafes/:id/shifts/:grantId` revokes.
+ */
+export const shiftGrantSchema = z.object({
+  id: z.string().uuid(),
+  baristaName: z.string(),
+  expiresAt: z.string().datetime(),
+});
+export type ShiftGrant = z.infer<typeof shiftGrantSchema>;
+
+export const shiftsResponseSchema = z.array(shiftGrantSchema);
+export type ShiftsResponse = z.infer<typeof shiftsResponseSchema>;
+
+/**
+ * Contract for `GET /api/me/shift` — the barista side (#80): the active shift
+ * this account holds (the scanner mode's scope + the banner's expiry), or null
+ * when it lapsed or was revoked. Same shape the accept handed back, so the app
+ * renders both from one type.
+ */
+export const myShiftResponseSchema = z.object({
+  shift: acceptShiftInviteResultSchema.nullable(),
+});
+export type MyShiftResponse = z.infer<typeof myShiftResponseSchema>;
 
 /**
  * One entry of `GET /api/me/balances` — a Café where the Customer holds

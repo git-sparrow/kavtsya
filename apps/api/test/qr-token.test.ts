@@ -1,18 +1,17 @@
-import { createHmac } from "node:crypto";
 import { expect, test } from "vitest";
 import { fixedClock } from "../src/clock";
 import { signQrToken, validateQrToken } from "../src/qr-token";
+import { deriveTokenKey, encodeSignedToken } from "../src/signed-token";
 
 const SECRET = "qr-token-test-secret-at-least-32-chars-long";
 
-/** Mint a correctly-signed token for an arbitrary (possibly malformed) payload. */
+/**
+ * Mint a correctly-signed token for an arbitrary (possibly malformed) payload —
+ * under the QR family's derived key (#80), like the real signer, so what these
+ * tests exercise is the payload schema and not the signature check.
+ */
 function forgeSignedToken(payload: unknown, secret: string): string {
-  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const sig = createHmac("sha256", secret)
-    .update(body)
-    .digest()
-    .toString("base64url");
-  return `${body}.${sig}`;
+  return encodeSignedToken(payload, deriveTokenKey(secret, "qr"));
 }
 
 // --- sign → validate round-trip ----------------------------------------------

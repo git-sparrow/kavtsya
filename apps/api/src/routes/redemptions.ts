@@ -25,7 +25,7 @@ const wireCodes: Record<ConfirmRedemptionRejection, RedemptionRejection> = {
 
 export function registerRedemptionRoutes(
   app: Hono<AppEnv>,
-  { db }: AppDeps,
+  { db, clock }: AppDeps,
 ): void {
   app.post("/api/redemptions", async (c) => {
     const user = c.get("user");
@@ -38,9 +38,10 @@ export function registerRedemptionRoutes(
 
     const outcome = await confirmRedemption(db, {
       cafeId: parsed.data.cafeId,
-      ownerUserId: user.id,
+      actorUserId: user.id,
       customerId: parsed.data.customerId,
       idempotencyKey: parsed.data.idempotencyKey,
+      now: clock.now(),
     });
     if (!outcome.ok) {
       const code = wireCodes[outcome.reason];

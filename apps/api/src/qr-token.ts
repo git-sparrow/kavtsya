@@ -1,6 +1,11 @@
-import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type { Clock } from "./clock";
+import {
+  decodeSignedToken,
+  deriveTokenKey,
+  encodeSignedToken,
+} from "./signed-token";
 
 /**
  * The Customer's rotating QR token (ADR 0006): a short-lived, HMAC-signed token
@@ -62,14 +67,6 @@ export type QrTokenValidation =
   | { valid: true; customerId: string; jti: string }
   | { valid: false; reason: QrTokenInvalidReason };
 
-function base64url(buf: Buffer): string {
-  return buf.toString("base64url");
-}
-
-function sign(body: string, secret: string): string {
-  return base64url(createHmac("sha256", secret).update(body).digest());
-}
-
 export function signQrToken(
   customerId: string,
   { clock, secret, ttlSeconds }: SignQrTokenOptions,
@@ -79,8 +76,9 @@ export function signQrToken(
   const jti = randomUUID();
   const payload: QrTokenPayload = { sub: customerId, jti, iat, exp };
 
-  const body = base64url(Buffer.from(JSON.stringify(payload)));
-  const token = `${body}.${sign(body, secret)}`;
+  // Signed under the QR family's derived key (#80): a shift invite signed off
+  // the same secret can never scan as a Customer QR, and vice versa.
+  const token = encodeSignedToken(payload, deriveTokenKey(secret, "qr"));
 
   return { token, jti, expiresAt: new Date(exp * 1000) };
 }
@@ -89,28 +87,12 @@ export function validateQrToken(
   token: string,
   { clock, secret, graceSeconds }: ValidateQrTokenOptions,
 ): QrTokenValidation {
-  const dot = token.indexOf(".");
-  if (dot <= 0) return { valid: false, reason: "malformed" };
-
-  const body = token.slice(0, dot);
-  const sig = token.slice(dot + 1);
-
-  // Verify integrity before trusting anything in the payload (incl. `exp`).
-  const expected = sign(body, secret);
-  if (!timingSafeEqualStr(sig, expected)) {
-    return { valid: false, reason: "bad_signature" };
-  }
-
-  let raw: unknown;
-  try {
-    raw = JSON.parse(Buffer.from(body, "base64url").toString());
-  } catch {
-    return { valid: false, reason: "malformed" };
-  }
+  const decoded = decodeSignedToken(token, deriveTokenKey(secret, "qr"));
+  if (!decoded.ok) return { valid: false, reason: decoded.reason };
 
   // The signature only proves *we* minted this body, not that its shape is sound
   // — validate the claims before trusting `exp`/`sub` (see schema note above).
-  const parsed = qrTokenPayloadSchema.safeParse(raw);
+  const parsed = qrTokenPayloadSchema.safeParse(decoded.payload);
   if (!parsed.success) return { valid: false, reason: "malformed" };
   const payload: QrTokenPayload = parsed.data;
 
@@ -120,12 +102,4 @@ export function validateQrToken(
   }
 
   return { valid: true, customerId: payload.sub, jti: payload.jti };
-}
-
-/** Constant-time string compare that tolerates length mismatch without throwing. */
-function timingSafeEqualStr(a: string, b: string): boolean {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
 }

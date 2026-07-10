@@ -221,8 +221,10 @@ test("a CafeOwner cannot manually issue themselves Зернятка at their own
 
   const res = await issueManual({ cafeId, memberCode: ownCode }, owner);
 
+  // Since #80 the guard names the general case: the issuer typed their OWN
+  // code (scanner ≠ scanned, ADR 0013) — same rejection as the QR path.
   expect(res.status).toBe(403);
-  expect(await res.json()).toEqual({ error: "own_cafe" });
+  expect(await res.json()).toEqual({ error: "self_scan" });
 });
 
 test("manual issuance at a Café the caller does not own is not found", async () => {

@@ -44,6 +44,7 @@ const wireCodes: Record<
   bad_signature: "invalid_token",
   unknown_member_code: "unknown_member_code",
   cafe_not_owned: "not_found",
+  self_scan: "self_scan",
   own_cafe: "own_cafe",
   token_used: "token_used",
   manual_limit_reached: "manual_limit_reached",
@@ -108,7 +109,8 @@ export function registerPurchaseRoutes(
 
     const outcome = await issuePurchase(db, {
       cafeId: parsed.data.cafeId,
-      ownerUserId: user.id,
+      issuedByUserId: user.id,
+      now: clock.now(),
       ...identity,
     });
     if (!outcome.ok) return reject(c, outcome.reason);
