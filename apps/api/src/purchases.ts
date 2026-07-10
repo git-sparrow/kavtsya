@@ -17,15 +17,29 @@ function deriveBalance(purchases: number, beansSpent: number): number {
   return purchases - beansSpent;
 }
 
+/**
+ * How the Customer was identified at the counter (#21, ADR 0006): the scanned
+ * rotating QR token, or the typed member code — the offline fallback. The
+ * ledger records the source (`purchases.entry_source`), and only the manual
+ * path is rate-limited (the QR token is its own proof of freshness).
+ */
+export type PurchaseEntry =
+  | {
+      source: "qr";
+      /** The validated token's unique id — `unique (qr_jti)` makes earning single-use. */
+      jti: string;
+    }
+  | { source: "member_code" };
+
 export interface IssuePurchaseInput {
   /** The Café the CafeOwner is issuing at. */
   cafeId: string;
   /** The acting CafeOwner (`user.id`) — must own the Café. */
   ownerUserId: string;
-  /** The Customer the validated QR token authenticates. */
+  /** The Customer the validated QR token or resolved member code identifies. */
   customerId: string;
-  /** The validated token's unique id — `unique (qr_jti)` makes earning single-use. */
-  jti: string;
+  /** How the Customer was identified — recorded on the Purchase row. */
+  entry: PurchaseEntry;
 }
 
 /** Why issuing was refused — named so the wire mapping (#50) can be exhaustive over it. */
@@ -47,7 +61,7 @@ export type IssuePurchaseOutcome =
 
 export async function issuePurchase(
   db: Database,
-  { cafeId, ownerUserId, customerId, jti }: IssuePurchaseInput,
+  { cafeId, ownerUserId, customerId, entry }: IssuePurchaseInput,
 ): Promise<IssuePurchaseOutcome> {
   // Ownership check and program read are one query (same pattern as loyalty):
   // a Café that doesn't exist and one the caller doesn't own are indistinguishable.
@@ -72,8 +86,11 @@ export async function issuePurchase(
   try {
     await db.begin(async (tx) => {
       await tx`
-        insert into purchases ("cafe_id", "customer_user_id", "qr_jti")
-        values (${cafeId}, ${customerId}, ${jti})
+        insert into purchases
+          ("cafe_id", "customer_user_id", "qr_jti", "entry_source")
+        values
+          (${cafeId}, ${customerId},
+           ${entry.source === "qr" ? entry.jti : null}, ${entry.source})
       `;
       await tx`
         insert into cafe_memberships ("cafe_id", "customer_user_id")
@@ -82,7 +99,8 @@ export async function issuePurchase(
       `;
     });
   } catch (err) {
-    if (isUniqueViolation(err)) {
+    // Only the QR arm has a unique column to violate (`qr_jti`).
+    if (entry.source === "qr" && isUniqueViolation(err)) {
       return { ok: false, reason: "token_used" };
     }
     throw err;

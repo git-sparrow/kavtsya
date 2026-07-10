@@ -1,5 +1,9 @@
 import { randomInt } from "node:crypto";
-import { MEMBER_CODE_ALPHABET, MEMBER_CODE_LENGTH } from "@kavtsya/shared";
+import {
+  MEMBER_CODE_ALPHABET,
+  MEMBER_CODE_LENGTH,
+  normalizeMemberCode,
+} from "@kavtsya/shared";
 import type { Database } from "./db";
 import { isUniqueViolation } from "./db";
 
@@ -51,4 +55,21 @@ export async function getOrCreateMemberCode(
       if (!isUniqueViolation(err)) throw err;
     }
   }
+}
+
+/**
+ * The Customer a typed member code identifies, or null when no one holds it.
+ * The counterpart of `validateQrToken` on the manual path (#21): the route
+ * resolves the identifier first, then issuing proceeds identically. Input is
+ * normalized (case, separators, confusables) before lookup, so fast counter
+ * typing still lands.
+ */
+export async function customerIdForMemberCode(
+  db: Database,
+  typedCode: string,
+): Promise<string | null> {
+  const [row] = await db<{ id: string }[]>`
+    select "id" from "user" where "member_code" = ${normalizeMemberCode(typedCode)}
+  `;
+  return row?.id ?? null;
 }

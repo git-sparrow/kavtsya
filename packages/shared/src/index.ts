@@ -164,6 +164,25 @@ const memberCodePattern = new RegExp(
 );
 
 /**
+ * Fold a typed member code into canonical form (#21): uppercase, separators
+ * (hyphens/spaces) stripped, Crockford confusables mapped (O→0, I/L→1) — so
+ * `k7q4-m2zx`, `K7Q4 M2ZX`, and `K7Q4M2ZX` all name the same Customer. Both
+ * sides speak this: the API before lookup, the app before submitting.
+ */
+export function normalizeMemberCode(typed: string): string {
+  return typed
+    .toUpperCase()
+    .replace(/[\s-]/g, "")
+    .replace(/O/g, "0")
+    .replace(/[IL]/g, "1");
+}
+
+/** Whether a normalized code is even lookup-worthy — the app's pre-submit check. */
+export function isWellFormedMemberCode(normalized: string): boolean {
+  return memberCodePattern.test(normalized);
+}
+
+/**
  * Contract for `GET /api/me/member-code`: the Customer's stable offline
  * fallback identity (#21, ADR 0006). Minted lazily on first request, then
  * permanent; the app caches it locally so it displays with no connectivity.
@@ -193,6 +212,10 @@ export const scanRejectionStatuses = {
   not_found: 404,
   /** Single-use guard (ADR 0006): this token already earned its Зернятко. */
   token_used: 409,
+  /** No Customer holds this member code — ask them to re-read it (#21). */
+  unknown_member_code: 404,
+  /** The Customer's manual issuances at this Café hit today's ceiling (#21). */
+  manual_limit_reached: 429,
 } as const;
 
 export type ScanRejection = keyof typeof scanRejectionStatuses;
@@ -205,13 +228,21 @@ export function isScanRejection(code: string): code is ScanRejection {
 }
 
 /**
- * Body for `POST /api/purchases` — the CafeOwner's scan (#20): the Café they
- * are issuing at and the Customer's scanned rotating QR token (ADR 0006).
+ * Body for `POST /api/purchases` — one issuance seam, two ways to identify the
+ * Customer (#21, ADR 0006): the Café plus *either* the scanned rotating QR
+ * token (#20) *or* the typed member code — the offline fallback when the QR
+ * can't be scanned. Same ledger, same guards, same success contract.
  */
-export const issuePurchaseBodySchema = z.object({
-  cafeId: z.string().uuid(),
-  qrToken: z.string().min(1),
-});
+export const issuePurchaseBodySchema = z.union([
+  z.object({
+    cafeId: z.string().uuid(),
+    qrToken: z.string().min(1),
+  }),
+  z.object({
+    cafeId: z.string().uuid(),
+    memberCode: z.string().min(1),
+  }),
+]);
 export type IssuePurchaseBody = z.infer<typeof issuePurchaseBodySchema>;
 
 /**
