@@ -29,7 +29,7 @@ The section of the app unlocked for CafeOwners — separate UX from the Customer
 _Avoid_: Owner app, business app, admin panel
 
 **Зміна** (Shift) / **Scanner Grant**:
-How café staff scan without the CafeOwner's login (`docs/adr/0013`). A **Scanner Grant** is a café-scoped, time-boxed, revocable capability that lets a normal Customer account scan and confirm Redemptions for one Café — nothing else (no program config, no analytics). **«Зміна»** is its first surface: the CafeOwner opens a shift, the barista's own app becomes a scanner for that Café until the grant expires (default: end of business day) or is revoked («Закрити зміну»). Free tier. Nobody may scan their own QR (scanner ≠ scanned), but a barista may still earn Зернятка when a colleague scans them.
+How café staff scan without the CafeOwner's login (`docs/adr/0013`). A **Scanner Grant** is a café-scoped, time-boxed, revocable capability that lets a normal Customer account scan and confirm Redemptions for one Café — nothing else (no program config, no analytics). **«Зміна»** is its first surface: the CafeOwner opens a shift, the barista's own app becomes a scanner for that Café until the grant expires (default: end of business day) or is revoked («Закрити зміну»). One invite admits exactly one barista — a second barista gets a fresh invite («Запросити ще»). Free tier. Nobody may scan their own QR (scanner ≠ scanned), but a barista may still earn Зернятка when a colleague scans them.
 _Avoid_: Staff account, employee login, barista mode (as an account type)
 
 ### Loyalty mechanics
@@ -57,7 +57,7 @@ _Avoid_: Welcome bonus, onboarding reward, first-visit discount
 ### Business model
 
 **Plan**:
-The subscription tier a CafeOwner is on — Free or Paid. Customers are always free. The split is **feature-gated, not usage-capped**: the Free Plan includes the full core loyalty loop with no limits — QR scan, unlimited Зернятка issuance, and Reward configuration from platform defaults. The Paid Plan unlocks push notifications and analytics (and future paid extras — Custom Rewards, churn alerts). There is no cap on how many Customers a Free Café can serve.
+The subscription tier a Café is on — Free or **Pro** (the single Paid tier, `docs/adr/0011`). Customers are always free. The split is **feature-gated, not usage-capped**: the Free Plan includes the full core loyalty loop with no limits — QR scan, unlimited Зернятка issuance, and Reward configuration from platform defaults. The Pro Plan unlocks push campaigns and analytics (and future paid extras — Custom Rewards, churn alerts). There is no cap on how many Customers a Free Café can serve.
 _Avoid_: Subscription, tier, account type
 
 **Active Customer**:
