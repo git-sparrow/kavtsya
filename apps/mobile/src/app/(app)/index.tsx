@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { useEffect } from "react";
 import { ActivityIndicator } from "react-native";
 
 import { Button } from "@/components/button";
@@ -9,6 +10,8 @@ import { useMe } from "@/features/account/me-context";
 import { RegisterCafeForm } from "@/features/cafe/register-cafe-form";
 import { CafeBalances } from "@/features/loyalty/cafe-balances";
 import { CustomerQr } from "@/features/loyalty/customer-qr";
+import { ConsentCard } from "@/features/push/consent-card";
+import { registerDeviceForPush } from "@/features/push/push-registration";
 import { useMyShift } from "@/features/shift/use-my-shift";
 import { authClient } from "@/lib/auth-client";
 import { colors } from "@/theme/colors";
@@ -23,6 +26,13 @@ export default function Home() {
   // The shift this account holds (#80): shows the scanner-mode entry while a
   // barista is on duty, and the join entry otherwise.
   const { shift } = useMyShift();
+
+  // Token upkeep (#24): a consenting account refreshes this device's push
+  // token on arrival — a rotated token re-homes itself without user action.
+  const consentsToPush = me?.pushConsent ?? false;
+  useEffect(() => {
+    if (consentsToPush) void registerDeviceForPush();
+  }, [consentsToPush]);
 
   if (error) {
     return (
@@ -64,6 +74,9 @@ export default function Home() {
 
         <CafeBalances />
 
+        {/* The café-news moment (#24): asked once, after the first Зернятко. */}
+        <ConsentCard />
+
         {isOwner ? (
           <Button
             title="Режим Кавовара"
@@ -87,6 +100,12 @@ export default function Home() {
             onPress={() => router.push("/shift/join")}
           />
         )}
+
+        <Button
+          title="Налаштування"
+          variant="secondary"
+          onPress={() => router.push("/settings")}
+        />
 
         <Button
           title="Вийти"

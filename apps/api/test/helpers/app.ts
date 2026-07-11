@@ -5,6 +5,7 @@ import { type AppEnv, createApp } from "../../src/app";
 import type { Auth } from "../../src/auth";
 import { type Clock, systemClock } from "../../src/clock";
 import type { Database } from "../../src/db";
+import type { PushProvider } from "../../src/push";
 
 /**
  * Driving the app over HTTP from a test (the request seam), kept apart from
@@ -20,6 +21,17 @@ import type { Database } from "../../src/db";
  */
 const DEFAULT_QR_TOKEN_SECRET = "test-qr-token-secret-at-least-32-chars";
 
+/**
+ * The push transport most suites don't care about: swallows sends (minting
+ * ticket ids so the send path completes) and reports no receipts.
+ * `campaigns.test.ts` injects a recording fake when it needs to observe.
+ */
+const swallowingPushProvider: PushProvider = {
+  send: async (messages) =>
+    messages.map((_, i) => ({ ticketId: `default-fake-${i}` })),
+  fetchReceipts: async () => ({}),
+};
+
 export interface MakeAppOptions {
   db: Database;
   auth: Auth;
@@ -27,6 +39,8 @@ export interface MakeAppOptions {
   clock?: Clock;
   /** Defaults to {@link DEFAULT_QR_TOKEN_SECRET}. */
   qrTokenSecret?: string;
+  /** Defaults to {@link swallowingPushProvider}. */
+  pushProvider?: PushProvider;
 }
 
 /** Build the app with test defaults; override only the dep a suite cares about. */
@@ -35,8 +49,9 @@ export function makeApp({
   auth,
   clock = systemClock,
   qrTokenSecret = DEFAULT_QR_TOKEN_SECRET,
+  pushProvider = swallowingPushProvider,
 }: MakeAppOptions): Hono<AppEnv> {
-  return createApp({ db, clock, auth, qrTokenSecret });
+  return createApp({ db, clock, auth, qrTokenSecret, pushProvider });
 }
 
 /** Fold a response's Set-Cookie headers into a Cookie request header value. */

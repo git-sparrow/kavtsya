@@ -31,10 +31,20 @@ export const createCafeBodySchema = z.object({
 });
 export type CreateCafeBody = z.infer<typeof createCafeBodySchema>;
 
-/** A registered Café as the API returns it. */
+/**
+ * A Café's Plan (#24, ADR 0011 — per-Café pricing, CONTEXT → Plan). Default
+ * `free`; in v1 only the Platform's hand flips it (billing deferred). Read at
+ * exactly one server boundary — the requires-Pro guard — never in the loyalty
+ * loop.
+ */
+export const planSchema = z.enum(["free", "pro"]);
+export type Plan = z.infer<typeof planSchema>;
+
+/** A registered Café as the API returns it. `plan` drives the mobile Pro section. */
 export const cafeSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
+  plan: planSchema,
 });
 export type Cafe = z.infer<typeof cafeSchema>;
 
@@ -147,6 +157,17 @@ export const manualEntryConfigSchema = z.object({
 export type ManualEntryConfig = z.infer<typeof manualEntryConfigSchema>;
 
 /**
+ * Platform-tunable campaign pacing (#24), stored in `platform_config` under
+ * the `campaigns` key: how many campaigns one Café may send per Kyiv day.
+ * Tunable without a deploy so a legitimate special case (a café's anniversary
+ * week) can be accommodated — same pattern as the manual-entry ceiling.
+ */
+export const campaignConfigSchema = z.object({
+  dailyLimit: z.number().int().positive().max(100),
+});
+export type CampaignConfig = z.infer<typeof campaignConfigSchema>;
+
+/**
  * Contract for `GET /api/me`: the account, its derived roles, and the Cafés it
  * owns. The mobile app reads `roles` to decide whether to offer CafeOwner Mode.
  */
@@ -156,8 +177,31 @@ export const meResponseSchema = z.object({
   name: z.string(),
   roles: z.array(roleSchema),
   cafes: z.array(cafeSchema),
+  /** Café-news consent (#24): explicit opt-in, default false — the settings toggle reads this. */
+  pushConsent: z.boolean(),
 });
 export type MeResponse = z.infer<typeof meResponseSchema>;
+
+/**
+ * Body for `PUT /api/me/push-consent` (#24): the Customer's explicit café-news
+ * opt-in — asked in-app after their first earned Зернятко, togglable any time.
+ * Checked server-side at every fan-out; off means excluded, whatever tokens exist.
+ */
+export const pushConsentBodySchema = z.object({
+  consent: z.boolean(),
+});
+export type PushConsentBody = z.infer<typeof pushConsentBodySchema>;
+
+/**
+ * Body for `POST /api/me/push-token` (#24): register/refresh THIS device's
+ * Expo push token. Per device, not per account — `deviceId` is an opaque
+ * stable device identity the app supplies.
+ */
+export const registerPushTokenBodySchema = z.object({
+  token: z.string().min(1).max(400),
+  deviceId: z.string().min(1).max(200),
+});
+export type RegisterPushTokenBody = z.infer<typeof registerPushTokenBodySchema>;
 
 /**
  * The member-code alphabet (#21): Crockford base32 — digits and uppercase
@@ -441,6 +485,48 @@ export const myShiftResponseSchema = z.object({
   shift: acceptShiftInviteResultSchema.nullable(),
 });
 export type MyShiftResponse = z.infer<typeof myShiftResponseSchema>;
+
+/**
+ * Body for `POST /api/cafes/:id/campaigns` (#24): the short push message a
+ * Pro CafeOwner sends to their Café's recently-active, consenting Customers.
+ * Trimmed and capped — push notifications truncate long text anyway.
+ */
+export const sendCampaignBodySchema = z.object({
+  message: z.string().trim().min(1).max(200),
+});
+export type SendCampaignBody = z.infer<typeof sendCampaignBodySchema>;
+
+/**
+ * Contract for a sent campaign (#24): the result summary the owner sees —
+ * how many recipients the send actually reached (consenting, recently-active
+ * members with live tokens).
+ */
+export const campaignResultSchema = z.object({
+  recipients: z.number().int().nonnegative(),
+});
+export type CampaignResult = z.infer<typeof campaignResultSchema>;
+
+/**
+ * Every way `POST /api/cafes/:id/campaigns` can turn down an authenticated,
+ * well-formed send — the same single-declaration taxonomy pattern as the scan
+ * (#50), so the campaigns screen's Ukrainian copy is compile-checked complete.
+ * `pro_required` is THE Plan-gate code (#24): #25's analytics reuses it.
+ */
+export const campaignRejectionStatuses = {
+  /** The Café doesn't exist or the caller doesn't own it (indistinguishable). */
+  not_found: 404,
+  /** The Café is on Free — the campaign section is the upgrade pitch (ADR 0011). */
+  pro_required: 403,
+  /** Today's campaign already went out — 1 per Café per Kyiv day (Platform-tunable). */
+  campaign_limit_reached: 429,
+} as const;
+
+export type CampaignRejection = keyof typeof campaignRejectionStatuses;
+
+/** Narrows an error code off the wire to the campaign-rejection taxonomy. */
+export function isCampaignRejection(code: string): code is CampaignRejection {
+  return Object.hasOwn(campaignRejectionStatuses, code);
+}
 
 /**
  * One entry of `GET /api/me/balances` — a Café where the Customer holds

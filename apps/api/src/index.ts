@@ -5,6 +5,7 @@ import { createAuth } from "./auth";
 import { systemClock } from "./clock";
 import { createDb } from "./db";
 import { loadDotEnv, loadEnv } from "./env";
+import { createPushProvider } from "./push";
 
 loadDotEnv();
 const env = loadEnv();
@@ -22,6 +23,9 @@ const app = createApp({
   clock: systemClock,
   auth,
   qrTokenSecret: env.QR_TOKEN_SECRET,
+  // Expo push (#24) — no required env: unauthenticated sends unless the
+  // account enables enhanced security (then EXPO_ACCESS_TOKEN applies).
+  pushProvider: createPushProvider(),
 });
 
 serve({ fetch: app.fetch, port: env.PORT }, (info) => {

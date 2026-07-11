@@ -1,6 +1,14 @@
 import type { z } from "zod";
-import type { ManualEntryConfig, QrTokenConfig } from "@kavtsya/shared";
-import { manualEntryConfigSchema, qrTokenConfigSchema } from "@kavtsya/shared";
+import type {
+  CampaignConfig,
+  ManualEntryConfig,
+  QrTokenConfig,
+} from "@kavtsya/shared";
+import {
+  campaignConfigSchema,
+  manualEntryConfigSchema,
+  qrTokenConfigSchema,
+} from "@kavtsya/shared";
 import type { Database } from "./db";
 
 /**
@@ -85,5 +93,22 @@ export function getManualEntryConfig(db: Database): Promise<ManualEntryConfig> {
     "manual_entry",
     manualEntryConfigSchema,
     DEFAULT_MANUAL_ENTRY_CONFIG,
+  );
+}
+
+/**
+ * Safety-net default for the campaign pacing cap (#24), kept in sync with the
+ * value migration 0011 seeds — an unseeded DB still paces sends instead of
+ * letting one café burn the platform's push reputation.
+ */
+const DEFAULT_CAMPAIGN_CONFIG: CampaignConfig = { dailyLimit: 1 };
+
+/** The Platform-tunable campaign pacing cap, read from `platform_config` (#24). */
+export function getCampaignConfig(db: Database): Promise<CampaignConfig> {
+  return readPlatformConfig(
+    db,
+    "campaigns",
+    campaignConfigSchema,
+    DEFAULT_CAMPAIGN_CONFIG,
   );
 }

@@ -86,7 +86,10 @@ test("registering a Café unlocks the cafe_owner role on the same account", asyn
   // One account, both roles (ADR 0003).
   expect(me.roles).toContain("customer");
   expect(me.roles).toContain("cafe_owner");
-  expect(me.cafes).toEqual([{ id: cafe.id, name: "Кавця на Подолі" }]);
+  // Every Café is born Free (#24, ADR 0011) — the Plan rides on the same read.
+  expect(me.cafes).toEqual([
+    { id: cafe.id, name: "Кавця на Подолі", plan: "free" },
+  ]);
 });
 
 test("an empty Café name is rejected", async () => {
