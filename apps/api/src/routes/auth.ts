@@ -2,6 +2,7 @@ import type { Hono } from "hono";
 import type { MeResponse } from "@kavtsya/shared";
 import type { AppDeps, AppEnv } from "../app";
 import { listCafesByOwner, rolesFor } from "../cafes";
+import { pushConsentFor } from "../push-tokens";
 
 /**
  * App-owned routes that depend on an authenticated session. Better Auth's own
@@ -22,6 +23,8 @@ export function registerAuthRoutes(app: Hono<AppEnv>, { db }: AppDeps): void {
       name: user.name,
       roles: rolesFor(cafes),
       cafes,
+      // Custom column, not a Better Auth field — read from our side (#24).
+      pushConsent: await pushConsentFor(db, user.id),
     };
     return c.json(body);
   });

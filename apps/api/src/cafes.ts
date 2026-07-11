@@ -1,4 +1,5 @@
-import type { Cafe, Role } from "@kavtsya/shared";
+import type { Cafe, Plan, Role } from "@kavtsya/shared";
+import { planSchema } from "@kavtsya/shared";
 import type { Database } from "./db";
 
 /**
@@ -8,33 +9,55 @@ import type { Database } from "./db";
  * self-farming guard reads later).
  */
 
-/** Register a Café owned by the given account. */
+/** Register a Café owned by the given account. Every Café is born Free (#24). */
 export async function createCafe(
   db: Database,
   ownerUserId: string,
   name: string,
 ): Promise<Cafe> {
-  const [row] = await db<{ id: string; name: string }[]>`
+  const [row] = await db<{ id: string; name: string; plan: string }[]>`
     insert into cafes ("owner_user_id", "name")
     values (${ownerUserId}, ${name})
-    returning "id", "name"
+    returning "id", "name", "plan"
   `;
   if (!row) throw new Error("insert into cafes returned no row");
-  return { id: row.id, name: row.name };
+  return { id: row.id, name: row.name, plan: planSchema.parse(row.plan) };
 }
 
-/** The Cafés an account owns, oldest first. */
+/** The Cafés an account owns, oldest first. `plan` rides along (#24). */
 export async function listCafesByOwner(
   db: Database,
   ownerUserId: string,
 ): Promise<Cafe[]> {
-  const rows = await db<{ id: string; name: string }[]>`
-    select "id", "name"
+  const rows = await db<{ id: string; name: string; plan: string }[]>`
+    select "id", "name", "plan"
     from cafes
     where "owner_user_id" = ${ownerUserId}
     order by "created_at" asc
   `;
-  return rows.map((r) => ({ id: r.id, name: r.name }));
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    plan: planSchema.parse(r.plan),
+  }));
+}
+
+/**
+ * The requires-Pro guard's read (#24, ADR 0011): the Café's Plan IF the caller
+ * owns it — a Café that doesn't exist and one the caller doesn't own stay
+ * indistinguishable, like every ownership miss. This is the only query the
+ * Plan gate needs; campaign (and later analytics, #25) endpoints share it.
+ */
+export async function planForOwnedCafe(
+  db: Database,
+  cafeId: string,
+  ownerUserId: string,
+): Promise<Plan | null> {
+  const [row] = await db<{ plan: string }[]>`
+    select "plan" from cafes
+    where "id" = ${cafeId} and "owner_user_id" = ${ownerUserId}
+  `;
+  return row ? planSchema.parse(row.plan) : null;
 }
 
 /**

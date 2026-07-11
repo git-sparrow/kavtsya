@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Auth, AuthSession, AuthUser } from "./auth";
 import type { Clock } from "./clock";
 import type { Database } from "./db";
+import type { PushProvider } from "./push";
 import { registerAuthRoutes } from "./routes/auth";
 import { registerCafeRoutes } from "./routes/cafes";
 import { registerHealthRoute } from "./routes/health";
@@ -9,6 +10,8 @@ import { registerLoyaltyRoutes } from "./routes/loyalty";
 import { registerMemberCodeRoutes } from "./routes/member-code";
 import { registerPurchaseRoutes } from "./routes/purchases";
 import { registerQrTokenRoutes } from "./routes/qr-token";
+import { registerCampaignRoutes } from "./routes/campaigns";
+import { registerPushRoutes } from "./routes/push";
 import { registerRedemptionRoutes } from "./routes/redemptions";
 import { registerShiftRoutes } from "./routes/shifts";
 
@@ -23,6 +26,8 @@ export interface AppDeps {
   auth: Auth;
   /** HMAC secret signing the rotating Customer QR token (ADR 0006). */
   qrTokenSecret: string;
+  /** The push transport (#24) — Expo in production, a fake under test. */
+  pushProvider: PushProvider;
 }
 
 /** Per-request context: the resolved session, populated by the auth middleware. */
@@ -59,5 +64,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   registerPurchaseRoutes(app, deps);
   registerRedemptionRoutes(app, deps);
   registerShiftRoutes(app, deps);
+  registerCampaignRoutes(app, deps);
+  registerPushRoutes(app, deps);
   return app;
 }

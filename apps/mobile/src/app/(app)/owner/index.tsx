@@ -49,6 +49,16 @@ export default function OwnerHome() {
                 })
               }
             />
+            <Button
+              title="Розсилка"
+              variant="secondary"
+              onPress={() =>
+                router.push({
+                  pathname: "/owner/campaigns",
+                  params: { cafeId: cafe.id },
+                })
+              }
+            />
           </View>
         ))}
         <Button

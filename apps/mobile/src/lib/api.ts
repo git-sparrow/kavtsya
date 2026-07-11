@@ -5,6 +5,10 @@ import {
   type CafeBalancesResponse,
   cafeBalancesResponseSchema,
   cafeSchema,
+  type CampaignRejection,
+  type CampaignResult,
+  campaignResultSchema,
+  isCampaignRejection,
   isRedemptionRejection,
   isScanRejection,
   isShiftInviteRejection,
@@ -269,6 +273,62 @@ export async function fetchBalances(): Promise<CafeBalancesResponse> {
   if (error)
     throw new Error(error.message ?? "Не вдалося завантажити зернятка");
   return cafeBalancesResponseSchema.parse(data);
+}
+
+/**
+ * What the campaigns screen tells the CafeOwner for each rejection the API
+ * distinguishes (#24) — same compile-checked pattern as the scan copy above.
+ */
+const CAMPAIGN_REJECTIONS: Record<CampaignRejection, string> = {
+  not_found: "Кав'ярню не знайдено",
+  pro_required: "Розсилки доступні на тарифі Pro",
+  campaign_limit_reached:
+    "Сьогоднішню розсилку вже надіслано — наступна можлива завтра",
+};
+
+/**
+ * The Pro CafeOwner sends a push campaign (#24): one short message to the
+ * Café's recently-active Customers who opted in to café news. Returns how
+ * many people it reached.
+ */
+export async function sendCampaign(
+  cafeId: string,
+  message: string,
+): Promise<CampaignResult> {
+  const { data, error } = await apiFetch(`/api/cafes/${cafeId}/campaigns`, {
+    method: "POST",
+    body: { message },
+  });
+  if (error) {
+    const code = (error as { error?: string }).error;
+    if (code && isCampaignRejection(code)) {
+      throw new Error(CAMPAIGN_REJECTIONS[code]);
+    }
+    throw new Error(error.message ?? "Не вдалося надіслати розсилку");
+  }
+  return campaignResultSchema.parse(data);
+}
+
+/** The Customer's explicit café-news opt-in (#24): flip it on the server. */
+export async function updatePushConsent(consent: boolean): Promise<void> {
+  const { error } = await apiFetch("/api/me/push-consent", {
+    method: "PUT",
+    body: { consent },
+  });
+  if (error) throw new Error(error.message ?? "Не вдалося зберегти вибір");
+}
+
+/** Register/refresh THIS device's Expo push token (#24). */
+export async function registerPushToken(
+  token: string,
+  deviceId: string,
+): Promise<void> {
+  const { error } = await apiFetch("/api/me/push-token", {
+    method: "POST",
+    body: { token, deviceId },
+  });
+  if (error)
+    throw new Error(error.message ?? "Не вдалося зареєструвати пристрій");
 }
 
 export async function updateProgram(
