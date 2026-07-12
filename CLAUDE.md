@@ -30,6 +30,16 @@ See the Tech stack table in `PROJECT_BRIEF.md` and `docs/adr/` for full rational
 - Keep it simple: no redundant functionality.
 - Matt Pocock's workflow skills (tdd, to-spec, to-tickets, triage, domain-modeling, …) are vendored into this repo and committed, not installed globally — the real files live in `.agents/skills/`, with `.claude/skills/` symlinks pointing at them and `skills-lock.json` pinning the `mattpocock/skills` sources/hashes. They're standalone and un-namespaced (`/tdd`) and travel with the repo, so no per-machine global install is needed. Update them with `npx skills@latest` against `skills-lock.json`. `.claude/settings.json` additionally pins project-relevant plugins (currently the Expo skills).
 
+## Product principles
+
+The bar for every change. When these collide, resolve in priority order: **security & data integrity → logical consistency → UX → architectural elegance → speed**.
+
+- **Simple** = fewest *concepts* the user must hold, not fewest screens. Prefer one obvious path over three configurable ones.
+- **Role-aware** = each Mode shows only what that role needs, in that role's language — no role sees another's clutter or terminology (ADR 0015).
+- **Beautiful** = consistent spacing/typography, and every interaction has *designed* loading, empty, error, and success states — not left to chance.
+- **Non-negotiable floor** (not trade-offs): authorization is enforced server-side and never trusts client-supplied role/ID/permission; the same action gives the same result everywhere (no contradicting special cases); no new architectural debt (no duplicated business logic, no state in two places, no bypassing layers).
+- When UX collides with the floor, accept neither a weaker floor nor a silently worse UX — propose 2–3 designs that satisfy both, with trade-offs. Friction that protects the user is fine; friction that only saves the developer is not.
+
 ## Key files
 
 - `PROJECT_BRIEF.md` — source of truth for scope, decisions, naming, roadmap.
