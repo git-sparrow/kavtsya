@@ -11,7 +11,7 @@ A person who uses the app to collect Зернятка and redeem Rewards at part
 _Avoid_: User, member, guest
 
 **Кавовар** (CafeOwner in code and docs):
-The operator of a participating Café — scans Customer QR codes, configures the loyalty program, and sends push notifications. A CafeOwner is also a Customer: one account holds both roles, and CafeOwner Mode is simply unlocked on top of the standard Customer experience. Café registration happens as part of CafeOwner signup — one combined flow.
+The operator of a participating Café — scans Customer QR codes, configures the loyalty program, and sends push notifications. A CafeOwner is also a Customer: one account holds both roles, and CafeOwner Mode is simply unlocked on top of the standard Customer experience. Café registration is a post-signup action from Settings; registering unlocks CafeOwner Mode, which then becomes the account's primary surface (ADR 0015).
 _Avoid_: Owner, admin, merchant, barista, manager
 
 **Café**:
@@ -24,13 +24,25 @@ _Avoid_: Admin, founder, superuser
 
 ### App structure
 
+**Customer Mode**:
+The default app surface — the Customer's own identity screen (their QR and Зернятка balances) and nothing role-specific. Every account has it; it is the primary surface for a plain Customer and a secondary, opt-in surface (reached via Settings) for a CafeOwner or a barista on shift.
+_Avoid_: Customer home, main screen, default view
+
 **CafeOwner Mode**:
-The section of the app unlocked for CafeOwners — separate UX from the Customer experience but within the same app and single App Store listing. CafeOwners switch into CafeOwner Mode to scan QR codes, configure their loyalty program, and manage push notifications.
+The section of the app unlocked for CafeOwners — separate UX from the Customer experience but within the same app and single App Store listing. It is the **primary, default surface** for a CafeOwner: they land here on launch and reach their own Customer Mode only via a Settings excursion (ADR 0015). CafeOwners use it to scan QR codes, configure their loyalty program, manage push notifications, and run the Barista Roster.
 _Avoid_: Owner app, business app, admin panel
 
-**Зміна** (Shift) / **Scanner Grant**:
-How café staff scan without the CafeOwner's login (`docs/adr/0013`). A **Scanner Grant** is a café-scoped, time-boxed, revocable capability that lets a normal Customer account scan and confirm Redemptions for one Café — nothing else (no program config, no analytics). **«Зміна»** is its first surface: the CafeOwner opens a shift, the barista's own app becomes a scanner for that Café until the grant expires (default: end of business day) or is revoked («Закрити зміну»). One invite admits exactly one barista — a second barista gets a fresh invite («Запросити ще»). Free tier. Nobody may scan their own QR (scanner ≠ scanned), but a barista may still earn Зернятка when a colleague scans them.
-_Avoid_: Staff account, employee login, barista mode (as an account type)
+**Scanner Mode**:
+The app surface a barista's own app becomes during an active Shift — a focused, near-kiosk scanner (scan + Redemption confirm) with a single exit, «Завершити зміну». It is not an account type: the account stays a Customer; only the app's surface is commandeered while a Shift is active. Reached by landing precedence — an active Shift wins over CafeOwner and Customer Modes (ADR 0015).
+_Avoid_: Barista mode (as an account type), staff mode
+
+**Barista Roster**:
+A Café's persistent, café-scoped list of approved baristas — a trust relationship on a normal Customer account, not a separate account. The CafeOwner **approves** an account onto the roster once (turning a pending request into a rostered barista) and **removes** it once when they leave. Roster membership — not the printed poster QR — is the security boundary: only a rostered barista can start a Shift (`docs/adr/0013`).
+_Avoid_: Staff list, employee roster, team (as the code term)
+
+**Shift** («Зміна» in the UI):
+One working session of Scanner Mode at a Café. A barista on that Café's Barista Roster scans the Café's **printed wall poster** to start one; a non-rostered scan instead raises a deduped, rate-limited pending approval request. A Shift grants scan + Redemption confirm for that one Café only (no program config, no analytics), is limited to one active per account, and ends when the barista ends it («Завершити зміну»), the owner ends it, or a rolling safety-net cap auto-expires it (`docs/adr/0013`). Free tier. Nobody may scan their own QR (scanner ≠ scanned), but a barista may still earn Зернятка when a colleague scans them.
+_Avoid_: Зміна (in code/docs — use Shift), Scanner Grant, staff account, employee login, barista mode (as an account type)
 
 ### Loyalty mechanics
 
