@@ -7,7 +7,7 @@ import { Screen } from "@/components/screen";
 import { ErrorText } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { authClient } from "@/lib/auth-client";
-import { colors } from "@/theme/colors";
+import { fontFamily, theme } from "@/theme";
 
 type Mode = "signin" | "signup";
 
@@ -88,8 +88,9 @@ export default function SignIn() {
 
 const styles = StyleSheet.create({
   link: {
-    color: colors.accent,
-    fontSize: 14,
+    color: theme.c.link,
+    fontSize: theme.font.size.sm,
+    fontFamily: fontFamily.body.medium,
     textAlign: "center",
     marginTop: 4,
   },

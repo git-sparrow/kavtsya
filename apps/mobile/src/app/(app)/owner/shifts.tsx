@@ -12,7 +12,7 @@ import { Screen } from "@/components/screen";
 import { ErrorText, Muted, OwnerBadge, Title } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
 import { fetchShifts, openShiftInvite, revokeShift } from "@/lib/api";
-import { colors, radius } from "@/theme/colors";
+import { fontFamily, theme } from "@/theme";
 
 // Same React 19 strict-JSX workaround as customer-qr.tsx.
 const QRCode = QRCodeBase as unknown as ComponentType<QRCodeProps>;
@@ -110,7 +110,7 @@ export default function OwnerShifts() {
               <QRCode
                 value={invite.inviteToken}
                 size={QR_SIZE}
-                color={colors.brand}
+                color={theme.c.foreground}
               />
             </View>
             <Text selectable style={styles.inviteCode}>
@@ -150,7 +150,7 @@ export default function OwnerShifts() {
 
         <Title>На зміні</Title>
         {shifts === null ? (
-          <ActivityIndicator color={colors.brand} />
+          <ActivityIndicator color={theme.c.foreground} />
         ) : shifts.length === 0 ? (
           <Muted>{"Наразі нікого — прийняте запрошення з'явиться тут."}</Muted>
         ) : (
@@ -198,16 +198,16 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontVariant: ["tabular-nums"],
     letterSpacing: 3,
-    fontWeight: "600",
-    color: colors.brand,
+    fontFamily: fontFamily.body.semibold,
+    color: theme.c.foreground,
     textAlign: "center",
   },
   shiftRow: {
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    gap: 8,
+    borderColor: theme.c.border,
+    borderRadius: theme.radius.md,
+    paddingVertical: theme.space[3],
+    paddingHorizontal: theme.space[3],
+    gap: theme.space[2],
   },
 });

@@ -9,7 +9,7 @@ import { ErrorText, Muted, OwnerBadge, Title } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
 import { registerDeviceForPush } from "@/features/push/push-registration";
 import { updatePushConsent } from "@/lib/api";
-import { colors } from "@/theme/colors";
+import { theme } from "@/theme";
 
 /**
  * Settings (#24): today just the café-news toggle — opting out at any time is
@@ -54,7 +54,7 @@ export default function Settings() {
             value={me?.pushConsent ?? false}
             disabled={busy || !me}
             onValueChange={(next) => void toggle(next)}
-            trackColor={{ true: colors.brand, false: colors.border }}
+            trackColor={{ true: theme.c.primary, false: theme.c.border }}
           />
         </View>
         {error && <ErrorText>{error}</ErrorText>}

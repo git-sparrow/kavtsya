@@ -15,7 +15,7 @@ import { Screen } from "@/components/screen";
 import { ErrorText, Muted, OwnerBadge } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { acceptShiftInvite } from "@/lib/api";
-import { colors, radius } from "@/theme/colors";
+import { theme } from "@/theme";
 
 // Same React 19 strict-JSX workaround as scan-workstation.tsx.
 const CameraView = CameraViewBase as unknown as ComponentType<CameraViewProps>;
@@ -68,7 +68,7 @@ export default function JoinShift() {
   if (!permission) {
     return (
       <Screen>
-        <ActivityIndicator size="large" color={colors.brand} />
+        <ActivityIndicator size="large" color={theme.c.foreground} />
       </Screen>
     );
   }
@@ -105,7 +105,7 @@ export default function JoinShift() {
         )}
 
         {sending ? (
-          <ActivityIndicator color={colors.brand} />
+          <ActivityIndicator color={theme.c.foreground} />
         ) : (
           <>
             <Muted>
@@ -146,8 +146,8 @@ const styles = StyleSheet.create({
     width: VIEWFINDER_SIZE,
     height: VIEWFINDER_SIZE,
     alignSelf: "center",
-    borderRadius: radius,
+    borderRadius: theme.radius.md,
     overflow: "hidden",
-    backgroundColor: colors.border,
+    backgroundColor: theme.c.border,
   },
 });
