@@ -1,49 +1,82 @@
-import { StyleSheet, Text, type TextProps } from "react-native";
+import { Text, type TextProps } from "react-native";
 
-import { colors } from "@/theme/colors";
+import { fontFamily, useTheme } from "@/theme";
 
 /** Primary body line — a person's name, a Café name. */
 export function Title({ style, ...rest }: TextProps) {
-  return <Text style={[styles.title, style]} {...rest} />;
+  const t = useTheme();
+  return (
+    <Text
+      style={[
+        {
+          fontSize: t.font.size.lg,
+          fontFamily: fontFamily.body.semibold,
+          color: t.c.foreground,
+          textAlign: "center",
+        },
+        style,
+      ]}
+      {...rest}
+    />
+  );
 }
 
 /** De-emphasised helper text. */
 export function Muted({ style, ...rest }: TextProps) {
-  return <Text style={[styles.muted, style]} {...rest} />;
+  const t = useTheme();
+  return (
+    <Text
+      style={[
+        {
+          fontSize: t.font.size.sm,
+          fontFamily: fontFamily.body.regular,
+          color: t.c["text-muted"],
+          textAlign: "center",
+        },
+        style,
+      ]}
+      {...rest}
+    />
+  );
 }
 
 /** An error message; selectable so the user can copy it. */
 export function ErrorText({ style, ...rest }: TextProps) {
-  return <Text selectable style={[styles.error, style]} {...rest} />;
+  const t = useTheme();
+  return (
+    <Text
+      selectable
+      style={[
+        {
+          fontSize: t.font.size.sm,
+          fontFamily: fontFamily.body.medium,
+          color: t.c.danger,
+          textAlign: "center",
+        },
+        style,
+      ]}
+      {...rest}
+    />
+  );
 }
 
 /** The uppercase "Режим Кавовара" mode label. */
 export function OwnerBadge({ style, ...rest }: TextProps) {
-  return <Text style={[styles.ownerBadge, style]} {...rest} />;
+  const t = useTheme();
+  return (
+    <Text
+      style={[
+        {
+          fontSize: t.font.size.sm,
+          fontFamily: fontFamily.body.bold,
+          letterSpacing: 1,
+          textTransform: "uppercase",
+          color: t.c["text-secondary"],
+          textAlign: "center",
+        },
+        style,
+      ]}
+      {...rest}
+    />
+  );
 }
-
-const styles = StyleSheet.create({
-  title: {
-    fontSize: 18,
-    color: colors.brand,
-    textAlign: "center",
-  },
-  muted: {
-    fontSize: 13,
-    color: colors.muted,
-    textAlign: "center",
-  },
-  error: {
-    fontSize: 14,
-    color: colors.error,
-    textAlign: "center",
-  },
-  ownerBadge: {
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    color: colors.accent,
-    textAlign: "center",
-  },
-});

@@ -16,7 +16,7 @@ import { ErrorText, Muted, Title } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { rewardLabel } from "@/features/loyalty/reward";
 import { useScanPurchase } from "@/features/scan/use-scan-purchase";
-import { colors, radius } from "@/theme/colors";
+import { theme } from "@/theme";
 
 // Same React 19 strict-JSX workaround as react-native-qrcode-svg in
 // customer-qr.tsx: expo-camera declares CameraView as a class whose type React
@@ -80,7 +80,7 @@ export function ScanWorkstation({
   if (!permission) {
     return (
       <Screen>
-        <ActivityIndicator size="large" color={colors.brand} />
+        <ActivityIndicator size="large" color={theme.c.foreground} />
       </Screen>
     );
   }
@@ -144,7 +144,7 @@ export function ScanWorkstation({
           </>
         )}
         {state.phase === "sending" && (
-          <ActivityIndicator color={colors.brand} />
+          <ActivityIndicator color={theme.c.foreground} />
         )}
         {state.phase === "issued" && (
           <>
@@ -170,7 +170,7 @@ export function ScanWorkstation({
           </>
         )}
         {state.phase === "confirming" && (
-          <ActivityIndicator color={colors.brand} />
+          <ActivityIndicator color={theme.c.foreground} />
         )}
         {state.phase === "redeemed" && (
           <>
@@ -208,8 +208,8 @@ const styles = StyleSheet.create({
     width: VIEWFINDER_SIZE,
     height: VIEWFINDER_SIZE,
     alignSelf: "center",
-    borderRadius: radius,
+    borderRadius: theme.radius.md,
     overflow: "hidden",
-    backgroundColor: colors.border,
+    backgroundColor: theme.c.border,
   },
 });

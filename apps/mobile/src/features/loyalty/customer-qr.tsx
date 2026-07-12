@@ -5,7 +5,7 @@ import QRCodeBase, { type QRCodeProps } from "react-native-qrcode-svg";
 
 import { Button } from "@/components/button";
 import { ErrorText, Muted } from "@/components/text";
-import { colors } from "@/theme/colors";
+import { fontFamily, theme } from "@/theme";
 
 import { useMemberCode } from "./use-member-code";
 import { useQrToken } from "./use-qr-token";
@@ -33,9 +33,9 @@ export function CustomerQr() {
     <View style={styles.container}>
       <View style={styles.frame}>
         {token ? (
-          <QRCode value={token} size={QR_SIZE} color={colors.brand} />
+          <QRCode value={token} size={QR_SIZE} color={theme.c.foreground} />
         ) : (
-          <ActivityIndicator size="large" color={colors.brand} />
+          <ActivityIndicator size="large" color={theme.c.foreground} />
         )}
       </View>
 
@@ -69,7 +69,7 @@ export function CustomerQr() {
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
-    gap: 12,
+    gap: theme.space[3],
   },
   frame: {
     width: QR_SIZE,
@@ -81,8 +81,8 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontVariant: ["tabular-nums"],
     letterSpacing: 3,
-    fontWeight: "600",
-    color: colors.brand,
+    fontFamily: fontFamily.body.semibold,
+    color: theme.c.foreground,
     textAlign: "center",
   },
 });

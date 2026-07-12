@@ -6,7 +6,7 @@ import { Card } from "@/components/card";
 import { Screen } from "@/components/screen";
 import { OwnerBadge, Title } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
-import { colors, radius } from "@/theme/colors";
+import { theme } from "@/theme";
 
 /** CafeOwner Mode landing: the owner's Cafés — scan a Customer QR (#20) or open the program editor. */
 export default function OwnerHome() {
@@ -74,10 +74,10 @@ export default function OwnerHome() {
 const styles = StyleSheet.create({
   cafeRow: {
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    gap: 8,
+    borderColor: theme.c.border,
+    borderRadius: theme.radius.md,
+    paddingVertical: theme.space[3],
+    paddingHorizontal: theme.space[3],
+    gap: theme.space[2],
   },
 });

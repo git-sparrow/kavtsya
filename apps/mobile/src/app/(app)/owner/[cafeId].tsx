@@ -9,7 +9,7 @@ import { ErrorText, Muted, OwnerBadge } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { useMe } from "@/features/account/me-context";
 import { useProgramEditor } from "@/features/loyalty/use-program-editor";
-import { colors } from "@/theme/colors";
+import { theme } from "@/theme";
 
 /**
  * Loyalty program config for one Café (#18): the CafeOwner sets the Зернятко
@@ -24,7 +24,7 @@ export default function CafeProgram() {
   if (editor.loading) {
     return (
       <Screen>
-        <ActivityIndicator size="large" color={colors.brand} />
+        <ActivityIndicator size="large" color={theme.c.foreground} />
       </Screen>
     );
   }

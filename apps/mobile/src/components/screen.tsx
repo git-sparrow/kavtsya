@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { ScrollView, StyleSheet, Text } from "react-native";
+import { ScrollView, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { colors } from "@/theme/colors";
+import { fontFamily, useTheme } from "@/theme";
 
 /**
  * The app's outer chrome: brand wordmark over a vertically-centred, scrollable
@@ -10,35 +10,31 @@ import { colors } from "@/theme/colors";
  * layout and safe-area handling live in exactly one place.
  */
 export function Screen({ children }: { children: ReactNode }) {
+  const t = useTheme();
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: t.c.background }}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={{
+          flexGrow: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          gap: t.space[4],
+          padding: t.space[6],
+        }}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.brand}>Кавця</Text>
+        <Text
+          style={{
+            fontSize: t.font.size.display,
+            fontFamily: fontFamily.display.bold,
+            color: t.c.foreground,
+          }}
+        >
+          Кавця
+        </Text>
         {children}
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    flexGrow: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
-    padding: 24,
-  },
-  brand: {
-    fontSize: 40,
-    fontWeight: "700",
-    color: colors.brand,
-  },
-});

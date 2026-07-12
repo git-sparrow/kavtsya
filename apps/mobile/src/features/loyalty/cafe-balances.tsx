@@ -2,7 +2,7 @@ import { StyleSheet, View } from "react-native";
 
 import { Button } from "@/components/button";
 import { ErrorText, Muted, Title } from "@/components/text";
-import { colors, radius } from "@/theme/colors";
+import { fontFamily, theme } from "@/theme";
 
 import { rewardLabel } from "./reward";
 import { useBalances } from "./use-balances";
@@ -63,14 +63,14 @@ const styles = StyleSheet.create({
   },
   row: {
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    borderColor: theme.c.border,
+    borderRadius: theme.radius.md,
+    paddingVertical: theme.space[3],
+    paddingHorizontal: theme.space[3],
     gap: 2,
   },
   ready: {
-    color: colors.accent,
-    fontWeight: "600",
+    color: theme.c.success,
+    fontFamily: fontFamily.body.semibold,
   },
 });

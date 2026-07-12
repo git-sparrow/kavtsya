@@ -8,7 +8,7 @@ import { useMe } from "@/features/account/me-context";
 import { useBalances } from "@/features/loyalty/use-balances";
 import { registerDeviceForPush } from "@/features/push/push-registration";
 import { updatePushConsent } from "@/lib/api";
-import { colors, radius } from "@/theme/colors";
+import { theme } from "@/theme";
 
 /**
  * Whether THIS account already answered the consent question on this device —
@@ -93,10 +93,10 @@ export function ConsentCard() {
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: radius,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    gap: 10,
+    borderColor: theme.c.primary,
+    borderRadius: theme.radius.md,
+    paddingVertical: theme.space[3],
+    paddingHorizontal: theme.space[3],
+    gap: theme.space[2],
   },
 });

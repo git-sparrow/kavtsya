@@ -7,7 +7,7 @@ import { Screen } from "@/components/screen";
 import { ErrorText, Muted, OwnerBadge } from "@/components/text";
 import { ScanWorkstation } from "@/features/scan/scan-workstation";
 import { useMyShift } from "@/features/shift/use-my-shift";
-import { colors, radius } from "@/theme/colors";
+import { theme } from "@/theme";
 
 /** An instant as the wall-clock time the barista reasons in. */
 function timeOf(iso: string): string {
@@ -45,7 +45,7 @@ export default function ShiftScan() {
             />
           </Card>
         ) : (
-          <ActivityIndicator size="large" color={colors.brand} />
+          <ActivityIndicator size="large" color={theme.c.foreground} />
         )}
       </Screen>
     );
@@ -93,10 +93,10 @@ export default function ShiftScan() {
 const styles = StyleSheet.create({
   banner: {
     borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: radius,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    borderColor: theme.c["border-strong"],
+    borderRadius: theme.radius.md,
+    paddingVertical: theme.space[2],
+    paddingHorizontal: theme.space[3],
     gap: 2,
   },
 });

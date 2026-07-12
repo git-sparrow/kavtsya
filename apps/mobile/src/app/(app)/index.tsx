@@ -14,7 +14,7 @@ import { ConsentCard } from "@/features/push/consent-card";
 import { registerDeviceForPush } from "@/features/push/push-registration";
 import { useMyShift } from "@/features/shift/use-my-shift";
 import { authClient } from "@/lib/auth-client";
-import { colors } from "@/theme/colors";
+import { theme } from "@/theme";
 
 /**
  * Customer home. A CafeOwner can switch into CafeOwner Mode (a view toggle, not
@@ -57,7 +57,7 @@ export default function Home() {
   if (!me) {
     return (
       <Screen>
-        <ActivityIndicator size="large" color={colors.brand} />
+        <ActivityIndicator size="large" color={theme.c.foreground} />
       </Screen>
     );
   }

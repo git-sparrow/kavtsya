@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, Text } from "react-native";
 
-import { colors, radius } from "@/theme/colors";
+import { fontFamily, useTheme } from "@/theme";
 
 type Variant = "primary" | "secondary";
 
@@ -21,50 +21,41 @@ export function Button({
   disabled?: boolean;
   busy?: boolean;
 }) {
+  const t = useTheme();
   const isPrimary = variant === "primary";
   const isDisabled = disabled || busy;
 
   return (
     <Pressable
       style={[
-        isPrimary ? styles.primary : styles.secondary,
-        isDisabled && styles.disabled,
+        {
+          borderRadius: t.radius.md,
+          paddingVertical: t.space[3],
+          minHeight: 48, // ≥44pt touch target (INTEGRATION.md a11y)
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        isPrimary
+          ? { backgroundColor: t.c.primary }
+          : {
+              marginTop: t.space[2],
+              borderWidth: 1,
+              borderColor: t.c.border,
+            },
+        isDisabled && { opacity: 0.6 },
       ]}
       disabled={isDisabled}
       onPress={onPress}
     >
-      <Text style={isPrimary ? styles.primaryText : styles.secondaryText}>
+      <Text
+        style={{
+          color: isPrimary ? t.c["primary-foreground"] : t.c.foreground,
+          fontSize: t.font.size.base,
+          fontFamily: isPrimary ? fontFamily.body.bold : fontFamily.body.medium,
+        }}
+      >
         {busy ? "..." : title}
       </Text>
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  primary: {
-    backgroundColor: colors.brand,
-    borderRadius: radius,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  primaryText: {
-    color: colors.onBrand,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  secondary: {
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  secondaryText: {
-    color: colors.brand,
-    fontSize: 16,
-  },
-  disabled: {
-    opacity: 0.6,
-  },
-});

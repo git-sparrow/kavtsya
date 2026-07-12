@@ -1,21 +1,28 @@
-import { StyleSheet, TextInput, type TextInputProps } from "react-native";
+import { TextInput, type TextInputProps } from "react-native";
 
-import { colors, radius } from "@/theme/colors";
+import { fontFamily, useTheme } from "@/theme";
 
 /** A text input carrying the shared field styling; forwards all TextInput props. */
 export function TextField({ style, ...rest }: TextInputProps) {
-  return <TextInput style={[styles.input, style]} {...rest} />;
+  const t = useTheme();
+  return (
+    <TextInput
+      placeholderTextColor={t.c["text-muted"]}
+      style={[
+        {
+          borderWidth: 1,
+          borderColor: t.c.border,
+          borderRadius: t.radius.md,
+          paddingHorizontal: t.space[3],
+          paddingVertical: t.space[3],
+          fontSize: t.font.size.base,
+          fontFamily: fontFamily.body.regular,
+          backgroundColor: t.c.surface,
+          color: t.c.foreground,
+        },
+        style,
+      ]}
+      {...rest}
+    />
+  );
 }
-
-const styles = StyleSheet.create({
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: colors.surface,
-    color: colors.brand,
-  },
-});
