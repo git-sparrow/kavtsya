@@ -1,8 +1,6 @@
-import { router } from "expo-router";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { Screen } from "@/components/screen";
 import { Surface } from "@/components/surface";
@@ -12,7 +10,6 @@ import { CafeBalances } from "@/features/loyalty/cafe-balances";
 import { CustomerQr } from "@/features/loyalty/customer-qr";
 import { ConsentCard } from "@/features/push/consent-card";
 import { registerDeviceForPush } from "@/features/push/push-registration";
-import { authClient } from "@/lib/auth-client";
 
 /**
  * Customer Mode (#96, ADR 0015): the clean identity surface for a plain
@@ -32,7 +29,7 @@ export function CustomerMode() {
   }, [consentsToPush]);
 
   return (
-    <Screen>
+    <Screen settings>
       <Card>
         <View style={styles.greeting}>
           <Heading>Вітаємо, {me?.name || me?.email}!</Heading>
@@ -51,17 +48,6 @@ export function CustomerMode() {
           Мої кав&apos;ярні
         </SectionLabel>
         <CafeBalances />
-
-        <Button
-          title="Налаштування"
-          variant="secondary"
-          onPress={() => router.push("/settings")}
-        />
-        <Button
-          title="Вийти"
-          variant="secondary"
-          onPress={() => authClient.signOut()}
-        />
       </Card>
     </Screen>
   );

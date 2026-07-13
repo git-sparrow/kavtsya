@@ -6,7 +6,6 @@ import { Card } from "@/components/card";
 import { Screen } from "@/components/screen";
 import { OwnerBadge, Title } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
-import { authClient } from "@/lib/auth-client";
 import { useTheme } from "@/theme";
 
 /**
@@ -22,7 +21,7 @@ export function OwnerMode() {
   const cafes = me?.cafes ?? [];
 
   return (
-    <Screen>
+    <Screen settings>
       <Card>
         <OwnerBadge>Режим Кавовара</OwnerBadge>
         {cafes.map((cafe) => (
@@ -75,16 +74,6 @@ export function OwnerMode() {
             />
           </View>
         ))}
-        <Button
-          title="Налаштування"
-          variant="secondary"
-          onPress={() => router.push("/settings")}
-        />
-        <Button
-          title="Вийти"
-          variant="secondary"
-          onPress={() => authClient.signOut()}
-        />
       </Card>
     </Screen>
   );

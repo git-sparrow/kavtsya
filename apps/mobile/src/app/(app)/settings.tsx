@@ -17,6 +17,7 @@ import { RegisterCafeForm } from "@/features/cafe/register-cafe-form";
 import { useMode } from "@/features/mode/mode-context";
 import { registerDeviceForPush } from "@/features/push/push-registration";
 import { updatePushConsent } from "@/lib/api";
+import { authClient } from "@/lib/auth-client";
 import { useTheme } from "@/theme";
 
 /**
@@ -114,6 +115,15 @@ export default function Settings() {
           title="Долучитися до зміни"
           variant="secondary"
           onPress={() => router.push("/shift/join")}
+        />
+
+        {/* Account. Sign-out lives here (ADR 0015): every role reaches it the
+            one way, through the gear — and the Scanner kiosk cannot. */}
+        <SectionLabel style={styles.sectionLabel}>Акаунт</SectionLabel>
+        <Button
+          title="Вийти"
+          variant="secondary"
+          onPress={() => authClient.signOut()}
         />
 
         <Button

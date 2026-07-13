@@ -1,6 +1,10 @@
+import { router } from "expo-router";
 import type { ReactNode } from "react";
-import { ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 import { fontFamily, useTheme } from "@/theme";
 
@@ -8,11 +12,43 @@ import { fontFamily, useTheme } from "@/theme";
  * The app's outer chrome: brand wordmark over a vertically-centred, scrollable
  * content area on the warm background. Every screen renders inside one so the
  * layout and safe-area handling live in exactly one place.
+ *
+ * `settings` opts a screen into the top-left gear that opens Settings — the one
+ * consistent way every role reaches account actions (ADR 0015). It is placed
+ * only on the Mode landings (Customer, CafeOwner), never on Scanner Mode (the
+ * kiosk: leaving requires ending the shift) nor on sign-in. A single glyph for
+ * now — a custom icon set can replace it later without touching call sites.
  */
-export function Screen({ children }: { children: ReactNode }) {
+export function Screen({
+  children,
+  settings = false,
+}: {
+  children: ReactNode;
+  settings?: boolean;
+}) {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.c.background }}>
+      {settings && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Налаштування"
+          hitSlop={16}
+          onPress={() => router.push("/settings")}
+          style={{
+            position: "absolute",
+            // Below the status bar / Dynamic Island, or taps land in the
+            // system dead zone instead of the app.
+            top: insets.top + t.space[1],
+            left: t.space[4],
+            zIndex: 10,
+            padding: t.space[2],
+          }}
+        >
+          <Text style={{ fontSize: 26, color: t.c["text-secondary"] }}>⚙</Text>
+        </Pressable>
+      )}
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
