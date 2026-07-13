@@ -15,6 +15,7 @@ import type { AppDeps, AppEnv } from "../app";
 import {
   acceptShiftInvite,
   activeShiftFor,
+  endMyShift,
   listActiveShifts,
   openShiftInvite,
   revokeShiftGrant,
@@ -149,6 +150,17 @@ export function registerShiftRoutes(
       clock.now(),
     );
     if (!revoked) return c.json({ error: "not_found" }, 404);
+    return c.body(null, 204);
+  });
+
+  // The barista ends their OWN shift (#96, ADR 0015): «Завершити зміну» drops
+  // them out of the near-kiosk Scanner Mode. Self-authorized and idempotent —
+  // a double-tap or a caller with no active shift is a no-op, always 204.
+  app.delete("/api/me/shift", async (c) => {
+    const user = c.get("user");
+    if (!user) return c.json({ error: "unauthorized" }, 401);
+
+    await endMyShift(db, user.id, clock.now());
     return c.body(null, 204);
   });
 

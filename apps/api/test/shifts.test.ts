@@ -797,6 +797,94 @@ test("GET /api/me/shift carries the active shift the banner renders — and null
   });
 });
 
+// --- the barista ends their own shift (#96, ADR 0015) -------------------------------
+//
+// Under the derived-landing Modes an active grant pins the app to the near-kiosk
+// Scanner Mode; «Завершити зміну» must actually END the grant (not merely leave
+// the screen) or the barista is stranded. This is self-authorized: you may
+// always end your OWN shift, no ownership needed.
+
+function endMyShift(app: ReturnType<typeof makeApp>, cookie?: string) {
+  return app.request("/api/me/shift", {
+    method: "DELETE",
+    headers: { ...(cookie ? { cookie } : {}) },
+  });
+}
+
+test("«Завершити зміну» ends the barista's own shift: the next scan is out, and the owner's board clears", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
+  const { owner, cafeId, barista } = await shiftOnDuty(app);
+  const customer = await signUp(app, "customer@example.com");
+
+  const res = await endMyShift(app, barista);
+  expect(res.status).toBe(204);
+
+  // The barista's app re-derives to a non-scanner Mode: no active shift left.
+  const mine = await app.request("/api/me/shift", {
+    headers: { cookie: barista },
+  });
+  expect(myShiftResponseSchema.parse(await mine.json())).toEqual({
+    shift: null,
+  });
+  // The grant is gone, not just hidden — the very next scan is rejected.
+  const scan = await issuePurchase(
+    app,
+    { cafeId, qrToken: await qrTokenFor(app, customer) },
+    barista,
+  );
+  expect(scan.status).toBe(404);
+  // And the owner's board no longer lists them.
+  const board = await app.request(`/api/cafes/${cafeId}/shifts`, {
+    headers: { cookie: owner },
+  });
+  expect(shiftsResponseSchema.parse(await board.json())).toEqual([]);
+});
+
+test("ending a shift is idempotent — a second «Завершити зміну» with none active still succeeds", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
+  const { barista } = await shiftOnDuty(app);
+
+  expect((await endMyShift(app, barista)).status).toBe(204);
+  // A double-tap, or a barista who was never on shift, is a no-op — not an error.
+  expect((await endMyShift(app, barista)).status).toBe(204);
+});
+
+test("ending my shift never touches a colleague's — each grant is its own", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
+  const { owner, cafeId, barista } = await shiftOnDuty(app);
+  // A colleague joins the same Café through «Запросити ще».
+  const secondInvite = shiftInviteResponseSchema.parse(
+    await (await openShiftInvite(app, cafeId, owner)).json(),
+  );
+  const colleague = await signUp(app, "colleague@example.com");
+  expect(
+    (
+      await acceptInvite(
+        app,
+        { inviteToken: secondInvite.inviteToken },
+        colleague,
+      )
+    ).status,
+  ).toBe(201);
+
+  expect((await endMyShift(app, barista)).status).toBe(204);
+
+  // The colleague is still on shift.
+  const theirs = await app.request("/api/me/shift", {
+    headers: { cookie: colleague },
+  });
+  expect(myShiftResponseSchema.parse(await theirs.json()).shift?.cafeId).toBe(
+    cafeId,
+  );
+});
+
+test("ending a shift requires authentication", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
+  await shiftOnDuty(app);
+
+  expect((await endMyShift(app)).status).toBe(401);
+});
+
 test("an invite short code typed into the member-code field identifies nobody", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
   const { owner, cafeId, invite } = await shiftFixture(app);

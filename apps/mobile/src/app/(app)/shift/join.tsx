@@ -14,6 +14,7 @@ import { Card } from "@/components/card";
 import { Screen } from "@/components/screen";
 import { ErrorText, Muted, OwnerBadge } from "@/components/text";
 import { TextField } from "@/components/text-field";
+import { useMode } from "@/features/mode/mode-context";
 import { acceptShiftInvite } from "@/lib/api";
 import { theme } from "@/theme";
 
@@ -29,6 +30,7 @@ const VIEWFINDER_SIZE = 260;
  * A successful accept replaces this screen with the scanner mode.
  */
 export default function JoinShift() {
+  const { reloadShift } = useMode();
   const [permission, requestPermission] = useCameraPermissions();
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +47,9 @@ export default function JoinShift() {
     setSending(true);
     try {
       await acceptShiftInvite(invite);
-      router.replace("/shift/scan");
+      // Re-derive the Mode: the new grant makes the dispatcher land on Scanner.
+      await reloadShift();
+      router.replace("/");
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Не вдалося долучитися до зміни",

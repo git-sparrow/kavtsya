@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ScrollView, Text } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { fontFamily, useTheme } from "@/theme";
@@ -24,15 +24,25 @@ export function Screen({ children }: { children: ReactNode }) {
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
       >
-        <Text
+        <View
           style={{
-            fontSize: t.font.size.display,
-            fontFamily: fontFamily.display.bold,
-            color: t.c.foreground,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: t.space[3],
           }}
         >
-          Кавця
-        </Text>
+          <Text style={{ fontSize: t.font.size.xl, color: t.c.accent }}>✦</Text>
+          <Text
+            style={{
+              fontSize: t.font.size.display,
+              fontFamily: fontFamily.display.bold,
+              color: t.c.foreground,
+            }}
+          >
+            Кавця
+          </Text>
+          <Text style={{ fontSize: t.font.size.xl, color: t.c.accent }}>✦</Text>
+        </View>
         {children}
       </ScrollView>
     </SafeAreaView>
