@@ -192,6 +192,29 @@ export async function activeShiftFor(
 }
 
 /**
+ * End the caller's OWN shift (#96, ADR 0015): revoke every active scanner grant
+ * this account holds, so «Завершити зміну» drops the barista out of the
+ * near-kiosk Scanner Mode at once — under the derived-landing Modes an active
+ * grant pins the app to Scanner, so leaving the screen is not enough; the grant
+ * itself must end. Self-authorized (you may always end your own shift, no
+ * ownership) and idempotent: with none active it revokes nothing. Returns how
+ * many grants it ended.
+ */
+export async function endMyShift(
+  db: Database,
+  userId: string,
+  now: Date,
+): Promise<number> {
+  const rows = await db<{ id: string }[]>`
+    update cafe_scanner_grants set "revoked_at" = ${now}
+    where "user_id" = ${userId}
+      and "revoked_at" is null and "expires_at" > ${now}
+    returning "id"
+  `;
+  return rows.length;
+}
+
+/**
  * How the barista presented the invite: the scanned signed token or the typed
  * short code — the same split as the Purchase's QR/member-code identity (#21).
  */

@@ -6,19 +6,32 @@ import { Card } from "@/components/card";
 import { Screen } from "@/components/screen";
 import { OwnerBadge, Title } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
-import { theme } from "@/theme";
+import { useTheme } from "@/theme";
 
-/** CafeOwner Mode landing: the owner's Cafés — scan a Customer QR (#20) or open the program editor. */
-export default function OwnerHome() {
+/**
+ * CafeOwner Mode (#96, ADR 0015): the owner's default landing — their Cafés and
+ * the operator controls for each (scan a Customer, tune the program, run a
+ * «Зміна», send a Розсилка). Owner-primary: reaching their own Customer Mode is
+ * a Settings excursion, not a button here, so the operator surface stays
+ * focused on running the café.
+ */
+export function OwnerMode() {
+  const t = useTheme();
   const { me } = useMe();
   const cafes = me?.cafes ?? [];
 
   return (
-    <Screen>
+    <Screen settings>
       <Card>
         <OwnerBadge>Режим Кавовара</OwnerBadge>
         {cafes.map((cafe) => (
-          <View key={cafe.id} style={styles.cafeRow}>
+          <View
+            key={cafe.id}
+            style={[
+              styles.cafeRow,
+              { borderColor: t.c.border, borderRadius: t.radius.md },
+            ]}
+          >
             <Title>{cafe.name}</Title>
             <Button
               title="Сканувати QR клієнта"
@@ -61,11 +74,6 @@ export default function OwnerHome() {
             />
           </View>
         ))}
-        <Button
-          title="Повернутися в режим клієнта"
-          variant="secondary"
-          onPress={() => router.back()}
-        />
       </Card>
     </Screen>
   );
@@ -74,10 +82,8 @@ export default function OwnerHome() {
 const styles = StyleSheet.create({
   cafeRow: {
     borderWidth: 1,
-    borderColor: theme.c.border,
-    borderRadius: theme.radius.md,
-    paddingVertical: theme.space[3],
-    paddingHorizontal: theme.space[3],
-    gap: theme.space[2],
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 8,
   },
 });

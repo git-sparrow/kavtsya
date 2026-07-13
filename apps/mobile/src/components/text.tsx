@@ -2,6 +2,44 @@ import { Text, type TextProps } from "react-native";
 
 import { fontFamily, useTheme } from "@/theme";
 
+/** A display-serif heading — the Cormorant greeting at the top of a Mode. */
+export function Heading({ style, ...rest }: TextProps) {
+  const t = useTheme();
+  return (
+    <Text
+      style={[
+        {
+          fontSize: t.font.size["2xl"],
+          fontFamily: fontFamily.display.semibold,
+          color: t.c.foreground,
+        },
+        style,
+      ]}
+      {...rest}
+    />
+  );
+}
+
+/** A quiet, left-aligned uppercase section heading, e.g. «МОЇ КАВ'ЯРНІ». */
+export function SectionLabel({ style, ...rest }: TextProps) {
+  const t = useTheme();
+  return (
+    <Text
+      style={[
+        {
+          fontSize: t.font.size.xs,
+          fontFamily: fontFamily.body.bold,
+          letterSpacing: 1,
+          textTransform: "uppercase",
+          color: t.c["text-muted"],
+        },
+        style,
+      ]}
+      {...rest}
+    />
+  );
+}
+
 /** Primary body line — a person's name, a Café name. */
 export function Title({ style, ...rest }: TextProps) {
   const t = useTheme();

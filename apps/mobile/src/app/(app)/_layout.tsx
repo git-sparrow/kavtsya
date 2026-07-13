@@ -1,16 +1,21 @@
 import { Stack } from "expo-router";
 
 import { MeProvider } from "@/features/account/me-context";
+import { ModeProvider } from "@/features/mode/mode-context";
 
 /**
- * The authenticated area. Wraps every signed-in screen in the MeProvider so the
- * account is loaded once and shared, and hides native headers (each screen
- * carries its own brand wordmark + back controls).
+ * The authenticated area. Wraps every signed-in screen in the MeProvider (the
+ * account, loaded once and shared) and the ModeProvider (the derived Role Mode,
+ * ADR 0015 — it reads the account + active shift and owns the excursion
+ * override). Native headers are hidden; each screen carries its own brand
+ * wordmark + back controls.
  */
 export default function AppLayout() {
   return (
     <MeProvider>
-      <Stack screenOptions={{ headerShown: false }} />
+      <ModeProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+      </ModeProvider>
     </MeProvider>
   );
 }

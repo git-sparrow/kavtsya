@@ -260,6 +260,16 @@ export async function revokeShift(
   if (error) throw new Error(error.message ?? "Не вдалося завершити зміну");
 }
 
+/**
+ * The barista ends their own shift (#96, ADR 0015): «Завершити зміну» revokes
+ * the grant server-side so the app re-derives out of the near-kiosk Scanner
+ * Mode. Idempotent on the server — a no-op when nothing is active.
+ */
+export async function endMyShift(): Promise<void> {
+  const { error } = await apiFetch("/api/me/shift", { method: "DELETE" });
+  if (error) throw new Error(error.message ?? "Не вдалося завершити зміну");
+}
+
 /** The barista's side (#80): the active shift this account holds, or null. */
 export async function fetchMyShift(): Promise<MyShiftResponse["shift"]> {
   const { data, error } = await apiFetch("/api/me/shift");
