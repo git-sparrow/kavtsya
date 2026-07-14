@@ -29,6 +29,8 @@ const CUSTOMER = {
 const CAFE_NAME = "Кавярня «Демо»";
 /** Crockford-valid, memorable, and printed on every run for manual entry (#21). */
 const MEMBER_CODE = "KAVA2026";
+/** The demo Café's stable poster join-code (#97) — Crockford-valid (no O/I/L/U), what a barista scans to request the roster. */
+const POSTER_CODE = "PSTR2026";
 /** Low threshold + seeded balance one short of it: the next scan can redeem. */
 const THRESHOLD = 5;
 const SEEDED_PURCHASES = THRESHOLD - 1;
@@ -74,15 +76,16 @@ try {
     existingCafe?.id ??
     (
       await db<{ id: string }[]>`
-        insert into cafes ("name", "owner_user_id")
-        values (${CAFE_NAME}, ${ownerId})
+        insert into cafes ("name", "owner_user_id", "poster_code")
+        values (${CAFE_NAME}, ${ownerId}, ${POSTER_CODE})
         returning "id"
       `
     )[0]!.id;
   await db`
     update cafes
     set "zernyatko_threshold" = ${THRESHOLD},
-        "reward" = ${db.json({ type: "free_drink" })}
+        "reward" = ${db.json({ type: "free_drink" })},
+        "poster_code" = ${POSTER_CODE}
     where "id" = ${cafeId}
   `;
 

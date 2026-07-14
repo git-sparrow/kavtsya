@@ -63,6 +63,16 @@ export function OwnerMode() {
               }
             />
             <Button
+              title="Ростер бариста"
+              variant="secondary"
+              onPress={() =>
+                router.push({
+                  pathname: "/owner/roster",
+                  params: { cafeId: cafe.id },
+                })
+              }
+            />
+            <Button
               title="Розсилка"
               variant="secondary"
               onPress={() =>
