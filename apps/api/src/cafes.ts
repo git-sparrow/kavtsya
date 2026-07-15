@@ -1,6 +1,8 @@
 import type { Cafe, Plan, Role } from "@kavtsya/shared";
 import { planSchema } from "@kavtsya/shared";
 import type { Database } from "./db";
+import { isUniqueViolation } from "./db";
+import { generateMemberCode } from "./member-code";
 
 /**
  * Café persistence + the derived CafeOwner role (ADR 0003). The `cafe_owner`
@@ -9,19 +11,31 @@ import type { Database } from "./db";
  * self-farming guard reads later).
  */
 
-/** Register a Café owned by the given account. Every Café is born Free (#24). */
+/**
+ * Register a Café owned by the given account. Every Café is born Free (#24) with
+ * a printed poster join-code (#97, ADR 0013) — the same 8-char Crockford base32
+ * shape as the member code, minted here with the same redraw-on-collision loop.
+ */
 export async function createCafe(
   db: Database,
   ownerUserId: string,
   name: string,
 ): Promise<Cafe> {
-  const [row] = await db<{ id: string; name: string; plan: string }[]>`
-    insert into cafes ("owner_user_id", "name")
-    values (${ownerUserId}, ${name})
-    returning "id", "name", "plan"
-  `;
-  if (!row) throw new Error("insert into cafes returned no row");
-  return { id: row.id, name: row.name, plan: planSchema.parse(row.plan) };
+  for (;;) {
+    try {
+      const [row] = await db<{ id: string; name: string; plan: string }[]>`
+        insert into cafes ("owner_user_id", "name", "poster_code")
+        values (${ownerUserId}, ${name}, ${generateMemberCode()})
+        returning "id", "name", "plan"
+      `;
+      if (!row) throw new Error("insert into cafes returned no row");
+      return { id: row.id, name: row.name, plan: planSchema.parse(row.plan) };
+    } catch (err) {
+      // Another Café already holds this poster code — redraw (~40 bits, so this
+      // practically never happens).
+      if (!isUniqueViolation(err)) throw err;
+    }
+  }
 }
 
 /** The Cafés an account owns, oldest first. `plan` rides along (#24). */

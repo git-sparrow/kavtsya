@@ -28,6 +28,10 @@ import {
   redemptionResultSchema,
   type RewardDefaults,
   rewardDefaultsSchema,
+  type RosterBoardResponse,
+  rosterBoardResponseSchema,
+  type RosterRequestResult,
+  rosterRequestResultSchema,
   type ScanRejection,
   type ShiftInviteRejection,
   type ShiftInviteResponse,
@@ -339,6 +343,63 @@ export async function registerPushToken(
   });
   if (error)
     throw new Error(error.message ?? "Не вдалося зареєструвати пристрій");
+}
+
+/**
+ * The barista requests a Café's Barista Roster (#97, ADR 0013) by presenting
+ * the scanned (or typed) wall poster code. Grants nothing — it raises a pending
+ * request the owner approves. `rostered` comes back when this account is already
+ * trusted at the Café. A poster code nobody printed is surfaced as its own
+ * message; the shared taxonomy has no rejection type since the only failure is
+ * `unknown_poster`.
+ */
+export async function requestRoster(
+  posterCode: string,
+): Promise<RosterRequestResult> {
+  const { data, error } = await apiFetch("/api/roster-requests", {
+    method: "POST",
+    body: { posterCode },
+  });
+  if (error) {
+    const code = (error as { error?: string }).error;
+    if (code === "unknown_poster") {
+      throw new Error("Такого коду немає — перевірте код на постері кав'ярні");
+    }
+    throw new Error(error.message ?? "Не вдалося надіслати запит");
+  }
+  return rosterRequestResultSchema.parse(data);
+}
+
+/** The owner's Roster board (#97): poster code, pending requests, rostered baristas. */
+export async function fetchRoster(
+  cafeId: string,
+): Promise<RosterBoardResponse> {
+  const { data, error } = await apiFetch(`/api/cafes/${cafeId}/roster`);
+  if (error) throw new Error(error.message ?? "Не вдалося завантажити ростер");
+  return rosterBoardResponseSchema.parse(data);
+}
+
+/** Approve a pending request → rostered (#97). */
+export async function approveBarista(
+  cafeId: string,
+  userId: string,
+): Promise<void> {
+  const { error } = await apiFetch(
+    `/api/cafes/${cafeId}/roster/${userId}/approve`,
+    { method: "POST" },
+  );
+  if (error) throw new Error(error.message ?? "Не вдалося підтвердити бариста");
+}
+
+/** Remove a barista (rostered or pending) → none (#97). */
+export async function removeBarista(
+  cafeId: string,
+  userId: string,
+): Promise<void> {
+  const { error } = await apiFetch(`/api/cafes/${cafeId}/roster/${userId}`, {
+    method: "DELETE",
+  });
+  if (error) throw new Error(error.message ?? "Не вдалося видалити бариста");
 }
 
 export async function updateProgram(

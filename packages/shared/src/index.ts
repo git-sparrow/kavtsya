@@ -487,6 +487,60 @@ export const myShiftResponseSchema = z.object({
 export type MyShiftResponse = z.infer<typeof myShiftResponseSchema>;
 
 /**
+ * Body for `POST /api/roster-requests` (#97, ADR 0013): the barista scans a
+ * Café's wall poster and presents its non-secret join-code. Same 8-char
+ * Crockford base32 shape + normalization as the member code (#21) — the shared
+ * `memberCodeSchema` pattern isn't reused here because the field is named for
+ * its role and a sloppy typed code is normalized server-side before lookup.
+ */
+export const rosterRequestBodySchema = z.object({
+  posterCode: z.string().min(1),
+});
+export type RosterRequestBody = z.infer<typeof rosterRequestBodySchema>;
+
+/**
+ * Contract for `POST /api/roster-requests` (#97): what the barista sees after a
+ * poster scan. `pending` — a request is now in front of the owner (a fresh one,
+ * or a duplicate quietly folded into the existing one); `rostered` — this
+ * account is already trusted at the Café. Security lives in the roster, so the
+ * scan never grants anything here; starting a Shift from it is #98.
+ */
+export const rosterRequestResultSchema = z.object({
+  status: z.enum(["pending", "rostered"]),
+  cafeName: z.string(),
+});
+export type RosterRequestResult = z.infer<typeof rosterRequestResultSchema>;
+
+/** One pending join request on the owner's Roster board — awaiting approval. */
+export const rosterPendingEntrySchema = z.object({
+  userId: z.string(),
+  name: z.string(),
+  requestedAt: z.string().datetime(),
+});
+export type RosterPendingEntry = z.infer<typeof rosterPendingEntrySchema>;
+
+/** One rostered barista on the owner's Roster board — approved, removable. */
+export const rosterMemberEntrySchema = z.object({
+  userId: z.string(),
+  name: z.string(),
+  approvedAt: z.string().datetime(),
+});
+export type RosterMemberEntry = z.infer<typeof rosterMemberEntrySchema>;
+
+/**
+ * Contract for `GET /api/cafes/:id/roster` (#97): the CafeOwner's Roster board —
+ * the Café's printable poster code, plus the pending requests (badge source)
+ * and the rostered baristas. Approve moves an account from `pending` to
+ * `rostered`; remove drops it back to none.
+ */
+export const rosterBoardResponseSchema = z.object({
+  posterCode: z.string(),
+  pending: z.array(rosterPendingEntrySchema),
+  rostered: z.array(rosterMemberEntrySchema),
+});
+export type RosterBoardResponse = z.infer<typeof rosterBoardResponseSchema>;
+
+/**
  * Body for `POST /api/cafes/:id/campaigns` (#24): the short push message a
  * Pro CafeOwner sends to their Café's recently-active, consenting Customers.
  * Trimmed and capped — push notifications truncate long text anyway.

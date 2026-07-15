@@ -13,6 +13,7 @@ import { registerQrTokenRoutes } from "./routes/qr-token";
 import { registerCampaignRoutes } from "./routes/campaigns";
 import { registerPushRoutes } from "./routes/push";
 import { registerRedemptionRoutes } from "./routes/redemptions";
+import { registerRosterRoutes } from "./routes/roster";
 import { registerShiftRoutes } from "./routes/shifts";
 
 /**
@@ -64,6 +65,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   registerPurchaseRoutes(app, deps);
   registerRedemptionRoutes(app, deps);
   registerShiftRoutes(app, deps);
+  registerRosterRoutes(app, deps);
   registerCampaignRoutes(app, deps);
   registerPushRoutes(app, deps);
   return app;

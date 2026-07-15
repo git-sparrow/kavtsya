@@ -57,3 +57,20 @@ export async function pushConsentFor(
   `;
   return row?.push_consent ?? false;
 }
+
+/**
+ * An account's active device tokens — the OPERATIONAL push target (#97,
+ * ADR 0013). Deliberately NOT filtered by `push_consent`: a Roster join request
+ * is a running-the-café notification the owner needs regardless of whether they
+ * opted into customer marketing (#24). Marketing consent gates campaigns, never
+ * this.
+ */
+export async function activePushTokensFor(
+  db: Database,
+  userId: string,
+): Promise<string[]> {
+  const rows = await db<{ token: string }[]>`
+    select "token" from push_tokens where "user_id" = ${userId} and "active"
+  `;
+  return rows.map((row) => row.token);
+}

@@ -109,8 +109,14 @@ export default function Settings() {
           />
         )}
 
-        {/* Transitional (#96): a barista joins a «Зміна» from here until the
-            café-poster path (#97/#98) becomes the way in. */}
+        {/* A barista joins a café's Barista Roster by scanning its wall poster
+            (#97, ADR 0013). The transitional invite-join (#80) stays reachable
+            until #98 retires it. */}
+        <Button
+          title="Приєднатися до кав'ярні"
+          variant="secondary"
+          onPress={() => router.push("/shift/request")}
+        />
         <Button
           title="Долучитися до зміни"
           variant="secondary"
