@@ -1,8 +1,8 @@
 import type { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import {
+  posterScanResultSchema,
   rosterBoardResponseSchema,
-  rosterRequestResultSchema,
 } from "@kavtsya/shared";
 import type { Auth } from "../src/auth";
 import { fixedClock } from "../src/clock";
@@ -13,12 +13,13 @@ import { makeApp, registerCafe, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 /**
- * Barista Roster + printed poster (#97, ADR 0013): a Café's persistent
- * trusted-barista list plus a non-secret wall join-code. A non-rostered poster
- * scan raises a deduped, rate-limited pending request that grants nothing and
- * pushes the owner an OPERATIONAL notification (not gated by the #24 marketing
- * consent); the owner approves or removes from the Roster board. Driven through
- * the HTTP seam like the shift suite; the rate-limit runs on the injected clock.
+ * Barista Roster + poster-started Shifts (#97/#98/#99, ADR 0013). One poster
+ * scan (`POST /api/poster-scans`) does one of three things by roster state: a
+ * non-rostered account raises a deduped, rate-limited pending request (and the
+ * owner gets an OPERATIONAL push, not gated by #24 consent); a rostered account
+ * (or the owner) starts a Shift; a rostered account already on shift elsewhere
+ * is asked to switch. Removing a barista instantly ends their shift. Driven
+ * through the HTTP seam; the rate-limit and expiries run on the injected clock.
  */
 
 let db: Database;
@@ -36,7 +37,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  // cascade also clears the roster, push_tokens, and purchases (they reference cafes/user).
+  // cascade also clears the roster, grants, push_tokens, and purchases.
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
   await db`truncate fortunes`;
   clearPlatformConfigCache();
@@ -79,14 +80,18 @@ function scanPoster(
   app: ReturnType<typeof makeApp>,
   posterCode: string,
   cookie?: string,
+  confirmSwitch?: boolean,
 ) {
-  return app.request("/api/roster-requests", {
+  return app.request("/api/poster-scans", {
     method: "POST",
     headers: {
       "content-type": "application/json",
       ...(cookie ? { cookie } : {}),
     },
-    body: JSON.stringify({ posterCode }),
+    body: JSON.stringify({
+      posterCode,
+      ...(confirmSwitch ? { confirmSwitch } : {}),
+    }),
   });
 }
 
@@ -154,7 +159,22 @@ async function rosterFixture(app: ReturnType<typeof makeApp>) {
   return { owner, cafeId, posterCode };
 }
 
-// --- the poster scan raises a request ----------------------------------------------
+/** Put a barista on the roster: scan → owner approves. Returns their cookie + id. */
+async function rosterBarista(
+  app: ReturnType<typeof makeApp>,
+  cafeId: string,
+  posterCode: string,
+  owner: string,
+  email = "barista@example.com",
+) {
+  const barista = await signUp(app, email);
+  const baristaId = await userIdOf(app, barista);
+  await scanPoster(app, posterCode, barista);
+  expect((await approve(app, cafeId, baristaId, owner)).status).toBe(204);
+  return { barista, baristaId };
+}
+
+// --- a non-rostered scan raises a request ------------------------------------------
 
 test("a non-rostered poster scan raises a pending request and pushes the owner", async () => {
   const { provider, sent } = recordingProvider();
@@ -172,12 +192,11 @@ test("a non-rostered poster scan raises a pending request and pushes the owner",
   const res = await scanPoster(app, posterCode, barista);
 
   expect(res.status).toBe(200);
-  const result = rosterRequestResultSchema.parse(await res.json());
+  const result = posterScanResultSchema.parse(await res.json());
   expect(result).toEqual({ status: "pending", cafeName: "Кавця «Ростер»" });
-  // The owner is notified on their device even though marketing consent is off —
-  // this is an OPERATIONAL push, deliberately not gated by #24's toggle.
+  // The owner is notified even though marketing consent is off — an OPERATIONAL
+  // push, deliberately not gated by #24's toggle.
   expect(sent.map((m) => m.token)).toEqual(["ExponentPushToken[owner]"]);
-  // The request shows on the board as pending.
   const board = rosterBoardResponseSchema.parse(
     await (await readBoard(app, cafeId, owner)).json(),
   );
@@ -185,6 +204,21 @@ test("a non-rostered poster scan raises a pending request and pushes the owner",
     await userIdOf(app, barista),
   ]);
   expect(board.rostered).toEqual([]);
+});
+
+test("a non-rostered scan starts no Shift — the barista is not on duty", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
+  const { posterCode } = await rosterFixture(app);
+  const barista = await signUp(app, "barista@example.com");
+
+  const res = await scanPoster(app, posterCode, barista);
+  expect(posterScanResultSchema.parse(await res.json()).status).toBe("pending");
+
+  // No grant means `/api/me/shift` is null — the app stays in Customer Mode.
+  const shift = await app.request("/api/me/shift", {
+    headers: { cookie: barista },
+  });
+  expect((await shift.json()) as unknown).toEqual({ shift: null });
 });
 
 test("a repeat scan is deduped: still pending, but the owner is not pushed twice", async () => {
@@ -203,12 +237,10 @@ test("a repeat scan is deduped: still pending, but the owner is not pushed twice
   const second = await scanPoster(app, posterCode, barista);
 
   expect(second.status).toBe(200);
-  expect(rosterRequestResultSchema.parse(await second.json()).status).toBe(
+  expect(posterScanResultSchema.parse(await second.json()).status).toBe(
     "pending",
   );
-  // One push total — the duplicate scan folded into the existing request.
   expect(sent).toHaveLength(1);
-  // And exactly one pending row (deduped by unique (cafe, user)).
   const board = rosterBoardResponseSchema.parse(
     await (await readBoard(app, cafeId, owner)).json(),
   );
@@ -239,8 +271,6 @@ test("the rate-limit lifts after the cooldown: a later re-scan notifies the owne
   const res = await scanPoster(later, posterCode, barista);
 
   expect(res.status).toBe(200);
-  // The owner may have missed the first ping; a fresh one is allowed once the
-  // cooldown elapses.
   expect(sent).toHaveLength(2);
 });
 
@@ -286,56 +316,7 @@ test("a sloppily typed poster code still resolves (normalization, shared with #2
   const res = await scanPoster(app, typed, barista);
 
   expect(res.status).toBe(200);
-  expect(rosterRequestResultSchema.parse(await res.json()).status).toBe(
-    "pending",
-  );
-});
-
-test("an already-rostered barista's scan just says rostered — no new request, no push", async () => {
-  const { provider, sent } = recordingProvider();
-  const app = makeApp({
-    db,
-    auth,
-    clock: fixedClock(SCAN_AT),
-    pushProvider: provider,
-  });
-  const { owner, cafeId, posterCode } = await rosterFixture(app);
-  const barista = await signUp(app, "barista@example.com");
-  const baristaId = await userIdOf(app, barista);
-  await scanPoster(app, posterCode, barista);
-  expect((await approve(app, cafeId, baristaId, owner)).status).toBe(204);
-  sent.length = 0;
-
-  const res = await scanPoster(app, posterCode, barista);
-
-  expect(res.status).toBe(200);
-  expect(rosterRequestResultSchema.parse(await res.json()).status).toBe(
-    "rostered",
-  );
-  expect(sent).toEqual([]);
-});
-
-test("the owner scanning their own poster is already rostered by construction — no request", async () => {
-  const { provider, sent } = recordingProvider();
-  const app = makeApp({
-    db,
-    auth,
-    clock: fixedClock(SCAN_AT),
-    pushProvider: provider,
-  });
-  const { owner, cafeId, posterCode } = await rosterFixture(app);
-
-  const res = await scanPoster(app, posterCode, owner);
-
-  expect(res.status).toBe(200);
-  expect(rosterRequestResultSchema.parse(await res.json()).status).toBe(
-    "rostered",
-  );
-  expect(sent).toEqual([]);
-  const board = rosterBoardResponseSchema.parse(
-    await (await readBoard(app, cafeId, owner)).json(),
-  );
-  expect(board.pending).toEqual([]);
+  expect(posterScanResultSchema.parse(await res.json()).status).toBe("pending");
 });
 
 test("raising a request requires authentication — it must attach to an account", async () => {
@@ -347,17 +328,172 @@ test("raising a request requires authentication — it must attach to an account
   expect(res.status).toBe(401);
 });
 
-// --- the Roster board: approve + remove --------------------------------------------
+// --- a rostered scan starts a Shift (#98) ------------------------------------------
 
-test("the demoable loop: scan → owner approves → barista shows rostered", async () => {
+test("a rostered barista scanning the poster starts a Shift → Scanner Mode", async () => {
+  const { provider, sent } = recordingProvider();
+  const app = makeApp({
+    db,
+    auth,
+    clock: fixedClock(SCAN_AT),
+    pushProvider: provider,
+  });
+  const { owner, cafeId, posterCode } = await rosterFixture(app);
+  const { barista } = await rosterBarista(app, cafeId, posterCode, owner);
+  sent.length = 0;
+
+  const res = await scanPoster(app, posterCode, barista);
+
+  expect(res.status).toBe(201);
+  const result = posterScanResultSchema.parse(await res.json());
+  expect(result).toEqual({
+    status: "shift_started",
+    shift: {
+      cafeId,
+      cafeName: "Кавця «Ростер»",
+      // The rolling ~16h cap (#99): 12:00Z + 16h.
+      expiresAt: "2026-07-11T04:00:00.000Z",
+    },
+  });
+  // Starting a shift is not a request — the owner is not pushed.
+  expect(sent).toEqual([]);
+  // The owner's board now lists them on shift.
+  const shifts = (await (
+    await app.request(`/api/cafes/${cafeId}/shifts`, {
+      headers: { cookie: owner },
+    })
+  ).json()) as { baristaName: string }[];
+  expect(shifts).toHaveLength(1);
+});
+
+test("re-scanning the same poster mid-shift is idempotent — one grant, not two", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
   const { owner, cafeId, posterCode } = await rosterFixture(app);
-  const barista = await signUp(app, "barista@example.com");
-  const baristaId = await userIdOf(app, barista);
-  await scanPoster(app, posterCode, barista);
+  const { barista } = await rosterBarista(app, cafeId, posterCode, owner);
 
-  const approveRes = await approve(app, cafeId, baristaId, owner);
-  expect(approveRes.status).toBe(204);
+  const first = posterScanResultSchema.parse(
+    await (await scanPoster(app, posterCode, barista)).json(),
+  );
+  const second = posterScanResultSchema.parse(
+    await (await scanPoster(app, posterCode, barista)).json(),
+  );
+
+  expect(first).toEqual(second);
+  const shifts = (await (
+    await app.request(`/api/cafes/${cafeId}/shifts`, {
+      headers: { cookie: owner },
+    })
+  ).json()) as unknown[];
+  expect(shifts).toHaveLength(1);
+});
+
+test("the owner scanning their own poster starts a Shift — authorized by construction", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
+  const { owner, cafeId, posterCode } = await rosterFixture(app);
+
+  const res = await scanPoster(app, posterCode, owner);
+
+  expect(res.status).toBe(201);
+  const result = posterScanResultSchema.parse(await res.json());
+  expect(result.status).toBe("shift_started");
+  // No phantom roster row for the owner — they are on the board via the grant only.
+  const board = rosterBoardResponseSchema.parse(
+    await (await readBoard(app, cafeId, owner)).json(),
+  );
+  expect(board.pending).toEqual([]);
+  expect(board.rostered).toEqual([]);
+});
+
+test("a pending (not yet approved) barista's scan does NOT start a Shift — still pending", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
+  const { posterCode } = await rosterFixture(app);
+  const barista = await signUp(app, "barista@example.com");
+  await scanPoster(app, posterCode, barista); // raises the request; owner has NOT approved
+
+  const res = await scanPoster(app, posterCode, barista);
+
+  expect(res.status).toBe(200);
+  expect(posterScanResultSchema.parse(await res.json()).status).toBe("pending");
+});
+
+// --- one active Shift per account: the switch (#99) --------------------------------
+
+test("scanning a second Café's poster while on shift asks for an explicit switch", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
+  const { owner, cafeId, posterCode } = await rosterFixture(app);
+  const { barista, baristaId } = await rosterBarista(
+    app,
+    cafeId,
+    posterCode,
+    owner,
+  );
+  // A second Café that also rosters the same person.
+  const owner2 = await signUp(app, "owner2@example.com");
+  const cafe2 = await registerCafe(app, "Друга кавця", owner2);
+  const poster2 = await posterCodeOf(app, cafe2, owner2);
+  await scanPoster(app, poster2, barista);
+  await approve(app, cafe2, baristaId, owner2);
+  // On shift at Café 1.
+  expect((await scanPoster(app, posterCode, barista)).status).toBe(201);
+
+  // Scanning Café 2's poster now conflicts.
+  const res = await scanPoster(app, poster2, barista);
+
+  expect(res.status).toBe(200);
+  const result = posterScanResultSchema.parse(await res.json());
+  expect(result).toEqual({
+    status: "switch_required",
+    cafeName: "Друга кавця",
+    currentCafeName: "Кавця «Ростер»",
+  });
+  // The switch has NOT happened yet — still on Café 1.
+  const mine = (await (
+    await app.request("/api/me/shift", { headers: { cookie: barista } })
+  ).json()) as { shift: { cafeId: string } };
+  expect(mine.shift.cafeId).toBe(cafeId);
+});
+
+test("confirmSwitch ends the old shift and starts the new one", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
+  const { owner, cafeId, posterCode } = await rosterFixture(app);
+  const { barista, baristaId } = await rosterBarista(
+    app,
+    cafeId,
+    posterCode,
+    owner,
+  );
+  const owner2 = await signUp(app, "owner2@example.com");
+  const cafe2 = await registerCafe(app, "Друга кавця", owner2);
+  const poster2 = await posterCodeOf(app, cafe2, owner2);
+  await scanPoster(app, poster2, barista);
+  await approve(app, cafe2, baristaId, owner2);
+  expect((await scanPoster(app, posterCode, barista)).status).toBe(201);
+
+  const res = await scanPoster(app, poster2, barista, true);
+
+  expect(res.status).toBe(201);
+  const result = posterScanResultSchema.parse(await res.json());
+  expect(result.status).toBe("shift_started");
+  // Now on Café 2 — exactly one active shift.
+  const mine = (await (
+    await app.request("/api/me/shift", { headers: { cookie: barista } })
+  ).json()) as { shift: { cafeId: string } };
+  expect(mine.shift.cafeId).toBe(cafe2);
+  // Café 1's board no longer lists them — the old shift ended.
+  const board1 = (await (
+    await app.request(`/api/cafes/${cafeId}/shifts`, {
+      headers: { cookie: owner },
+    })
+  ).json()) as unknown[];
+  expect(board1).toEqual([]);
+});
+
+// --- the Roster board: approve + remove --------------------------------------------
+
+test("the demoable loop: scan → owner approves → the account is rostered", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
+  const { owner, cafeId, posterCode } = await rosterFixture(app);
+  const { baristaId } = await rosterBarista(app, cafeId, posterCode, owner);
 
   const board = rosterBoardResponseSchema.parse(
     await (await readBoard(app, cafeId, owner)).json(),
@@ -367,13 +503,10 @@ test("the demoable loop: scan → owner approves → barista shows rostered", as
   expect(board.rostered[0]?.name).toBe("Test");
 });
 
-test("removing a barista drops them back to none", async () => {
+test("removing a rostered barista drops them back to none", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
   const { owner, cafeId, posterCode } = await rosterFixture(app);
-  const barista = await signUp(app, "barista@example.com");
-  const baristaId = await userIdOf(app, barista);
-  await scanPoster(app, posterCode, barista);
-  await approve(app, cafeId, baristaId, owner);
+  const { baristaId } = await rosterBarista(app, cafeId, posterCode, owner);
 
   const removeRes = await remove(app, cafeId, baristaId, owner);
   expect(removeRes.status).toBe(204);
@@ -398,6 +531,59 @@ test("removing a pending request declines it — nothing left on the board", asy
     await (await readBoard(app, cafeId, owner)).json(),
   );
   expect(board.pending).toEqual([]);
+});
+
+// --- removal instantly terminates an active Shift (#99) ----------------------------
+
+test("removing a barista mid-shift ends it at once: the next scan is out and the app drops off shift", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
+  const { owner, cafeId, posterCode } = await rosterFixture(app);
+  const { barista, baristaId } = await rosterBarista(
+    app,
+    cafeId,
+    posterCode,
+    owner,
+  );
+  expect((await scanPoster(app, posterCode, barista)).status).toBe(201);
+  const customer = await signUp(app, "customer@example.com");
+  const qr = (await (
+    await app.request("/api/qr-token", { headers: { cookie: customer } })
+  ).json()) as { token: string };
+
+  // The owner removes them from the roster.
+  expect((await remove(app, cafeId, baristaId, owner)).status).toBe(204);
+
+  // The very next scan is rejected — the grant is gone, no client polling.
+  const scan = await app.request("/api/purchases", {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie: barista },
+    body: JSON.stringify({ cafeId, qrToken: qr.token }),
+  });
+  expect(scan.status).toBe(404);
+  // And the app re-derives out of Scanner Mode: no active shift left.
+  const mine = (await (
+    await app.request("/api/me/shift", { headers: { cookie: barista } })
+  ).json()) as { shift: unknown };
+  expect(mine.shift).toBeNull();
+});
+
+test("a removed barista's next poster scan raises a fresh request — it does not start a Shift (no denylist)", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
+  const { owner, cafeId, posterCode } = await rosterFixture(app);
+  const { barista, baristaId } = await rosterBarista(
+    app,
+    cafeId,
+    posterCode,
+    owner,
+  );
+  expect((await remove(app, cafeId, baristaId, owner)).status).toBe(204);
+
+  // No longer rostered: the scan raises a request (the same not-authorized path
+  // a removal racing a scan falls into — never a phantom shift).
+  const res = await scanPoster(app, posterCode, barista);
+
+  expect(res.status).toBe(200);
+  expect(posterScanResultSchema.parse(await res.json()).status).toBe("pending");
 });
 
 test("approving an account that never requested is not found — no phantom rostering", async () => {

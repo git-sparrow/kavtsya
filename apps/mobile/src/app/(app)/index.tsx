@@ -1,6 +1,7 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback } from "react";
-import { ActivityIndicator } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
@@ -12,7 +13,67 @@ import { useMode } from "@/features/mode/mode-context";
 import { OwnerMode } from "@/features/mode/owner-mode";
 import { ScannerMode } from "@/features/mode/scanner-mode";
 import { authClient } from "@/lib/auth-client";
-import { useTheme } from "@/theme";
+import { fontFamily, useTheme } from "@/theme";
+
+/**
+ * A brief top banner when a shift just ended (#99): the app has already
+ * re-derived to the barista's default Mode; this only tells them why the kiosk
+ * is gone (owner ended it, removed them, or the cap lapsed). Absolutely
+ * positioned so it never disturbs the Mode's own layout; dismissible.
+ */
+function ShiftEndedBanner({
+  cafeName,
+  onDismiss,
+}: {
+  cafeName: string;
+  onDismiss: () => void;
+}) {
+  const t = useTheme();
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      style={{
+        position: "absolute",
+        top: insets.top + t.space[2],
+        left: t.space[4],
+        right: t.space[4],
+        zIndex: 20,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: t.space[3],
+        backgroundColor: t.c.surface,
+        borderWidth: 1,
+        borderColor: t.c["border-strong"],
+        borderRadius: t.radius.md,
+        paddingVertical: t.space[3],
+        paddingHorizontal: t.space[4],
+      }}
+    >
+      <Text
+        style={{
+          flex: 1,
+          color: t.c.foreground,
+          fontFamily: fontFamily.body.regular,
+          fontSize: t.font.size.sm,
+        }}
+      >
+        Зміну в «{cafeName}» завершено.
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Сховати"
+        hitSlop={12}
+        onPress={onDismiss}
+      >
+        <Text
+          style={{ fontSize: t.font.size.xl, color: t.c["text-secondary"] }}
+        >
+          ✕
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
 
 /**
  * The Mode dispatcher (#96, ADR 0015). The app opens here and renders exactly
@@ -25,7 +86,8 @@ import { useTheme } from "@/theme";
 export default function Home() {
   const t = useTheme();
   const { me, error, reload } = useMe();
-  const { mode, loading, reloadShift } = useMode();
+  const { mode, loading, reloadShift, endedNotice, dismissEndedNotice } =
+    useMode();
 
   useFocusEffect(
     useCallback(() => {
@@ -62,7 +124,26 @@ export default function Home() {
     );
   }
 
-  if (mode === "scanner") return <ScannerMode />;
-  if (mode === "owner") return <OwnerMode />;
-  return <CustomerMode />;
+  const surface =
+    mode === "scanner" ? (
+      <ScannerMode />
+    ) : mode === "owner" ? (
+      <OwnerMode />
+    ) : (
+      <CustomerMode />
+    );
+
+  return (
+    <>
+      {surface}
+      {/* The notice belongs to the default Mode the barista dropped back to —
+          never over the kiosk (a fresh shift means nothing to announce). */}
+      {endedNotice && mode !== "scanner" && (
+        <ShiftEndedBanner
+          cafeName={endedNotice}
+          onDismiss={dismissEndedNotice}
+        />
+      )}
+    </>
+  );
 }

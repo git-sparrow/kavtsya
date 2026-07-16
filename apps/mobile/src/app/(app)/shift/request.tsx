@@ -1,4 +1,4 @@
-import type { RosterRequestResult } from "@kavtsya/shared";
+import type { PosterScanResult } from "@kavtsya/shared";
 import { isWellFormedMemberCode, normalizeMemberCode } from "@kavtsya/shared";
 import {
   CameraView as CameraViewBase,
@@ -15,7 +15,8 @@ import { Card } from "@/components/card";
 import { Screen } from "@/components/screen";
 import { ErrorText, Muted, OwnerBadge, Title } from "@/components/text";
 import { TextField } from "@/components/text-field";
-import { requestRoster } from "@/lib/api";
+import { useMode } from "@/features/mode/mode-context";
+import { scanPoster } from "@/lib/api";
 import { theme } from "@/theme";
 
 // Same React 19 strict-JSX workaround as scan-workstation.tsx.
@@ -25,29 +26,58 @@ const CameraView = CameraViewBase as unknown as ComponentType<CameraViewProps>;
 const VIEWFINDER_SIZE = 260;
 
 /**
- * The barista requests a Café's Barista Roster (#97, ADR 0013): scan the wall
- * poster the café prints, or type its code — with their OWN account. Unlike the
- * transitional invite join (#80), this grants nothing on its own: it raises a
- * request the owner approves. Starting a Shift from a rostered scan is #98.
+ * The barista scans a Café's wall poster (#98/#99, ADR 0013): with their OWN
+ * account, one scan does one of three things. A rostered barista starts a Shift
+ * and lands in the near-kiosk Scanner Mode. A stranger raises a request the
+ * owner approves — a reassuring terminal state. A barista already on shift
+ * elsewhere is asked to switch, then re-scans to confirm. Security rests on the
+ * roster, not the poster: the code only ever identifies the Café.
  */
-export default function RequestRoster() {
+export default function ScanPosterScreen() {
+  const { reloadShift } = useMode();
   const [permission, requestPermission] = useCameraPermissions();
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [typedCode, setTypedCode] = useState("");
-  const [result, setResult] = useState<RosterRequestResult | null>(null);
+  const [pending, setPending] = useState<{ cafeName: string } | null>(null);
+  // A pending switch: the code scanned + the Café we'd leave, awaiting confirm.
+  const [switchTo, setSwitchTo] = useState<{
+    posterCode: string;
+    cafeName: string;
+    currentCafeName: string;
+  } | null>(null);
   // The camera emits the same barcode many times a second — gate it.
   const inFlight = useRef(false);
 
-  async function submit(posterCode: string) {
+  async function handleResult(result: PosterScanResult, posterCode: string) {
+    if (result.status === "shift_started") {
+      // The new grant makes the dispatcher land on Scanner Mode.
+      await reloadShift();
+      router.replace("/");
+      return;
+    }
+    if (result.status === "switch_required") {
+      setSwitchTo({
+        posterCode,
+        cafeName: result.cafeName,
+        currentCafeName: result.currentCafeName,
+      });
+      return;
+    }
+    // pending
+    setPending({ cafeName: result.cafeName });
+  }
+
+  async function submit(posterCode: string, confirmSwitch?: boolean) {
     if (inFlight.current) return;
     inFlight.current = true;
     setSending(true);
     try {
-      setResult(await requestRoster(posterCode));
+      const result = await scanPoster(posterCode, confirmSwitch);
       setError(null);
+      await handleResult(result, posterCode);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не вдалося надіслати запит");
+      setError(e instanceof Error ? e.message : "Не вдалося обробити скан");
     } finally {
       inFlight.current = false;
       setSending(false);
@@ -66,18 +96,45 @@ export default function RequestRoster() {
 
   // A landed request is a terminal, reassuring state — the owner takes it from
   // here, so there is nothing more for the barista to do but wait.
-  if (result) {
+  if (pending) {
     return (
       <Screen>
         <Card>
           <OwnerBadge>Запит надіслано</OwnerBadge>
-          <Title>{result.cafeName}</Title>
+          <Title>{pending.cafeName}</Title>
           <Muted>
-            {result.status === "rostered"
-              ? "Ви вже у ростері цієї кав'ярні. Скануйте постер на початку зміни, щоб стати за касу."
-              : "Кавовар отримав ваш запит. Щойно вас підтвердять, ви зможете відкривати зміну, сканувавши постер."}
+            Кавовар отримав ваш запит. Щойно вас підтвердять, скануйте постер ще
+            раз на початку зміни — і ви станете за касу.
           </Muted>
           <Button title="Готово" onPress={() => router.back()} />
+        </Card>
+      </Screen>
+    );
+  }
+
+  // A shift already runs at another Café: confirm the switch before stealing the
+  // barista off their current post (#99).
+  if (switchTo) {
+    return (
+      <Screen>
+        <Card>
+          <OwnerBadge>Уже на зміні</OwnerBadge>
+          <Muted>
+            Ви зараз на зміні в «{switchTo.currentCafeName}». Завершити її та
+            почати зміну в «{switchTo.cafeName}»?
+          </Muted>
+          <Button
+            title={`Перейти в «${switchTo.cafeName}»`}
+            busy={sending}
+            onPress={() => void submit(switchTo.posterCode, true)}
+          />
+          <Button
+            title="Скасувати"
+            variant="secondary"
+            disabled={sending}
+            onPress={() => setSwitchTo(null)}
+          />
+          {error && <ErrorText>{error}</ErrorText>}
         </Card>
       </Screen>
     );
@@ -125,8 +182,8 @@ export default function RequestRoster() {
         ) : (
           <>
             <Muted>
-              Наведіть камеру на постер кав&apos;ярні — ваш запит отримає
-              кавовар і підтвердить вас у ростері.
+              Наведіть камеру на постер кав&apos;ярні. Якщо ви вже в ростері —
+              почнеться зміна; якщо ні — кавовар отримає ваш запит.
             </Muted>
             <TextField
               value={typedCode}
@@ -138,7 +195,7 @@ export default function RequestRoster() {
             />
             {typedCode.length > 0 && (
               <Button
-                title="Надіслати запит"
+                title="Продовжити за кодом"
                 variant="secondary"
                 onPress={submitTypedCode}
               />

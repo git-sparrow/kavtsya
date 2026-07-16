@@ -109,18 +109,13 @@ export default function Settings() {
           />
         )}
 
-        {/* A barista joins a café's Barista Roster by scanning its wall poster
-            (#97, ADR 0013). The transitional invite-join (#80) stays reachable
-            until #98 retires it. */}
+        {/* A barista scans a café's wall poster (#98, ADR 0013): rostered, it
+            starts their Shift; otherwise it raises a request the owner approves.
+            The one entry — the retired invite-join is gone. */}
         <Button
           title="Приєднатися до кав'ярні"
           variant="secondary"
           onPress={() => router.push("/shift/request")}
-        />
-        <Button
-          title="Долучитися до зміни"
-          variant="secondary"
-          onPress={() => router.push("/shift/join")}
         />
 
         {/* Account. Sign-out lives here (ADR 0015): every role reaches it the

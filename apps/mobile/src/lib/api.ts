@@ -1,6 +1,4 @@
 import {
-  type AcceptShiftInviteResult,
-  acceptShiftInviteResultSchema,
   type Cafe,
   type CafeBalancesResponse,
   cafeBalancesResponseSchema,
@@ -11,7 +9,6 @@ import {
   isCampaignRejection,
   isRedemptionRejection,
   isScanRejection,
-  isShiftInviteRejection,
   type LoyaltyProgram,
   loyaltyProgramSchema,
   memberCodeResponseSchema,
@@ -19,6 +16,8 @@ import {
   meResponseSchema,
   type MyShiftResponse,
   myShiftResponseSchema,
+  type PosterScanResult,
+  posterScanResultSchema,
   type PurchaseResult,
   purchaseResultSchema,
   type QrTokenResponse,
@@ -30,12 +29,7 @@ import {
   rewardDefaultsSchema,
   type RosterBoardResponse,
   rosterBoardResponseSchema,
-  type RosterRequestResult,
-  rosterRequestResultSchema,
   type ScanRejection,
-  type ShiftInviteRejection,
-  type ShiftInviteResponse,
-  shiftInviteResponseSchema,
   type ShiftsResponse,
   shiftsResponseSchema,
 } from "@kavtsya/shared";
@@ -196,64 +190,14 @@ export async function confirmRedemption(
   return redemptionResultSchema.parse(data);
 }
 
-/**
- * The CafeOwner opens a «Зміна» (#80, ADR 0013): mints the single-use invite
- * the barista will scan (QR) or type (short code). «Запросити ще» is simply
- * calling this again. Omitting `durationMinutes` runs the shift to the end of
- * the café's business day.
- */
-export async function openShiftInvite(
-  cafeId: string,
-  durationMinutes?: number,
-): Promise<ShiftInviteResponse> {
-  const { data, error } = await apiFetch(`/api/cafes/${cafeId}/shift-invites`, {
-    method: "POST",
-    body: durationMinutes ? { durationMinutes } : {},
-  });
-  if (error) throw new Error(error.message ?? "Не вдалося відкрити зміну");
-  return shiftInviteResponseSchema.parse(data);
-}
-
-/**
- * What the join screen tells the barista for each rejection the API
- * distinguishes (#80) — same compile-checked pattern as the scan copy above.
- */
-const SHIFT_INVITE_REJECTIONS: Record<ShiftInviteRejection, string> = {
-  invalid_invite: "Це не запрошення Кавці — перевірте QR або код",
-  expired_invite: "Запрошення протермінувалося — попросіть кавовара нове",
-  invite_used: "Це запрошення вже використано — попросіть кавовара нове",
-};
-
-/**
- * The barista accepts the invite with their own account (#80): the scanned
- * token or the typed code turns into the shift — scanner mode's scope and
- * expiry come back in the result.
- */
-export async function acceptShiftInvite(
-  invite: { inviteToken: string } | { inviteCode: string },
-): Promise<AcceptShiftInviteResult> {
-  const { data, error } = await apiFetch("/api/shift-invites/accept", {
-    method: "POST",
-    body: invite,
-  });
-  if (error) {
-    const code = (error as { error?: string }).error;
-    if (code && isShiftInviteRejection(code)) {
-      throw new Error(SHIFT_INVITE_REJECTIONS[code]);
-    }
-    throw new Error(error.message ?? "Не вдалося долучитися до зміни");
-  }
-  return acceptShiftInviteResultSchema.parse(data);
-}
-
-/** The owner's shift board (#80): who is behind the counter right now. */
+/** The owner's shift board (#98): who is behind the counter right now. */
 export async function fetchShifts(cafeId: string): Promise<ShiftsResponse> {
   const { data, error } = await apiFetch(`/api/cafes/${cafeId}/shifts`);
   if (error) throw new Error(error.message ?? "Не вдалося завантажити зміни");
   return shiftsResponseSchema.parse(data);
 }
 
-/** Revocation is a tap (#80): the shift ends now instead of at closing time. */
+/** Revocation is a tap (#99): the shift ends now instead of at its ~16h cap. */
 export async function revokeShift(
   cafeId: string,
   grantId: string,
@@ -274,7 +218,7 @@ export async function endMyShift(): Promise<void> {
   if (error) throw new Error(error.message ?? "Не вдалося завершити зміну");
 }
 
-/** The barista's side (#80): the active shift this account holds, or null. */
+/** The barista's side (#98): the active shift this account holds, or null. */
 export async function fetchMyShift(): Promise<MyShiftResponse["shift"]> {
   const { data, error } = await apiFetch("/api/me/shift");
   if (error) throw new Error(error.message ?? "Не вдалося перевірити зміну");
@@ -346,28 +290,30 @@ export async function registerPushToken(
 }
 
 /**
- * The barista requests a Café's Barista Roster (#97, ADR 0013) by presenting
- * the scanned (or typed) wall poster code. Grants nothing — it raises a pending
- * request the owner approves. `rostered` comes back when this account is already
- * trusted at the Café. A poster code nobody printed is surfaced as its own
- * message; the shared taxonomy has no rejection type since the only failure is
- * `unknown_poster`.
+ * The barista scans a Café's wall poster (#98/#99, ADR 0013) by presenting the
+ * scanned (or typed) non-secret code. One call, three outcomes (the parsed
+ * union): a rostered account gets `shift_started` (now in Scanner Mode); a
+ * stranger gets `pending` (a request the owner approves); a barista already on
+ * shift elsewhere gets `switch_required`, re-sent with `confirmSwitch: true` to
+ * move. A poster code nobody printed is the only failure — surfaced as its own
+ * message.
  */
-export async function requestRoster(
+export async function scanPoster(
   posterCode: string,
-): Promise<RosterRequestResult> {
-  const { data, error } = await apiFetch("/api/roster-requests", {
+  confirmSwitch?: boolean,
+): Promise<PosterScanResult> {
+  const { data, error } = await apiFetch("/api/poster-scans", {
     method: "POST",
-    body: { posterCode },
+    body: { posterCode, ...(confirmSwitch ? { confirmSwitch } : {}) },
   });
   if (error) {
     const code = (error as { error?: string }).error;
     if (code === "unknown_poster") {
       throw new Error("Такого коду немає — перевірте код на постері кав'ярні");
     }
-    throw new Error(error.message ?? "Не вдалося надіслати запит");
+    throw new Error(error.message ?? "Не вдалося обробити скан");
   }
-  return rosterRequestResultSchema.parse(data);
+  return posterScanResultSchema.parse(data);
 }
 
 /** The owner's Roster board (#97): poster code, pending requests, rostered baristas. */
