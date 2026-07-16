@@ -23,7 +23,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@swmansion/argent": "0.15.0",
+    "@swmansion/argent": "0.16.0",
     "eslint": "^9.39.4",
     "eslint-config-expo": "^56.0.4",
     "eslint-config-prettier": "^10.1.8",
