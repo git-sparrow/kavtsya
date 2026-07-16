@@ -54,7 +54,8 @@ export type ScanPosterOutcome =
       ownerUserId: string;
       /** Whether THIS scan should push: false when deduped inside the cooldown. */
       notify: boolean;
-    };
+    }
+  | { status: "owner_cafe"; cafeName: string };
 
 export interface ScanPosterInput {
   /** The scanned (or typed) poster code — normalized before lookup, like the member code (#21). */
@@ -70,10 +71,13 @@ export interface ScanPosterInput {
 }
 
 /**
- * The poster scan (#98/#99). A rostered account (or the owner, rostered by
- * construction) starts a Shift and lands in Scanner Mode; a stranger raises a
- * pending request. The one-active-shift rule (#99) makes a scan meeting an
- * active shift at another Café return `switch_required` until confirmed.
+ * The poster scan (#98/#99). A rostered barista starts a Shift and lands in
+ * Scanner Mode; a stranger raises a pending request. The owner scanning their
+ * OWN poster gets `owner_cafe` and starts nothing — the poster is the staff's
+ * affordance, and the owner already scans Customers from CafeOwner Mode; a
+ * self-scan is a test/curiosity tap, not a request to be locked into the
+ * near-kiosk. The one-active-shift rule (#99) makes a scan meeting an active
+ * shift at another Café return `switch_required` until confirmed.
  */
 export async function scanPoster(
   db: Database,
@@ -88,14 +92,18 @@ export async function scanPoster(
   `;
   if (!cafe) return { status: "unknown_poster" };
 
-  // Authorized to scan = the owner (privileged at their own Café by
-  // construction) or a rostered barista. This out-of-transaction read only
-  // ROUTES the scan (shift path vs pending request) and gates the switch
-  // prompt; the authoritative check runs inside `startShift`'s transaction.
-  const isOwner = cafe.owner_user_id === userId;
-  const authorized = isOwner || (await isRostered(db, cafe.id, userId));
+  // The owner is fully privileged at their own Café by construction; scanning
+  // their own poster starts nothing (ADR 0015: the poster is the staff's
+  // affordance, in the staff's language). They scan Customers from CafeOwner
+  // Mode — no grant, no self-entry on their own shift board.
+  if (cafe.owner_user_id === userId) {
+    return { status: "owner_cafe", cafeName: cafe.name };
+  }
 
-  if (authorized) {
+  // Only a rostered barista starts a Shift. This out-of-transaction read ROUTES
+  // the scan (shift path vs pending request) and gates the switch prompt; the
+  // authoritative check runs inside `startShift`'s transaction.
+  if (await isRostered(db, cafe.id, userId)) {
     const now = clock.now();
     // One active shift per account (#99): a shift already running at ANOTHER
     // Café must be switched explicitly. A shift at THIS Café is fine —
@@ -109,10 +117,10 @@ export async function scanPoster(
         currentCafeName: current.cafeName,
       };
     }
-    // Re-verify authorization inside the grant transaction so a removal racing
-    // this scan can't leave a removed barista with a live grant.
+    // Re-verify roster membership inside the grant transaction so a removal
+    // racing this scan can't leave a removed barista with a live grant.
     const expiresAt = await startShift(db, cafe.id, userId, now, (tx) =>
-      isOwner ? Promise.resolve(true) : isRostered(tx, cafe.id, userId),
+      isRostered(tx, cafe.id, userId),
     );
     // Removed mid-scan (lost the race): no longer trust — fall through to a
     // fresh request, exactly as a re-scan after removal would (no denylist).

@@ -387,16 +387,27 @@ test("re-scanning the same poster mid-shift is idempotent — one grant, not two
   expect(shifts).toHaveLength(1);
 });
 
-test("the owner scanning their own poster starts a Shift — authorized by construction", async () => {
+test("the owner scanning their own poster starts nothing — owner_cafe, not a Shift", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
   const { owner, cafeId, posterCode } = await rosterFixture(app);
 
   const res = await scanPoster(app, posterCode, owner);
 
-  expect(res.status).toBe(201);
+  expect(res.status).toBe(200);
   const result = posterScanResultSchema.parse(await res.json());
-  expect(result.status).toBe("shift_started");
-  // No phantom roster row for the owner — they are on the board via the grant only.
+  expect(result).toEqual({ status: "owner_cafe", cafeName: "Кавця «Ростер»" });
+  // No grant: the owner is not on their own shift board, and holds no shift.
+  const shifts = (await (
+    await app.request(`/api/cafes/${cafeId}/shifts`, {
+      headers: { cookie: owner },
+    })
+  ).json()) as unknown[];
+  expect(shifts).toEqual([]);
+  const mine = (await (
+    await app.request("/api/me/shift", { headers: { cookie: owner } })
+  ).json()) as { shift: unknown };
+  expect(mine.shift).toBeNull();
+  // No phantom roster row either.
   const board = rosterBoardResponseSchema.parse(
     await (await readBoard(app, cafeId, owner)).json(),
   );

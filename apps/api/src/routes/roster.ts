@@ -82,6 +82,14 @@ export function registerRosterRoutes(
       return c.json(body, 200);
     }
 
+    if (outcome.status === "owner_cafe") {
+      const body: PosterScanResult = {
+        status: "owner_cafe",
+        cafeName: outcome.cafeName,
+      };
+      return c.json(body, 200);
+    }
+
     // Pending: notify the owner on their devices — an OPERATIONAL push, sent
     // regardless of their #24 marketing consent. Best-effort: a transport
     // hiccup must not fail the barista's request, which has already landed.

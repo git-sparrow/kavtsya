@@ -39,7 +39,12 @@ export default function ScanPosterScreen() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [typedCode, setTypedCode] = useState("");
-  const [pending, setPending] = useState<{ cafeName: string } | null>(null);
+  // A terminal, reassuring state — a landed request, or "this is your café".
+  const [terminal, setTerminal] = useState<{
+    badge: string;
+    cafeName: string;
+    message: string;
+  } | null>(null);
   // A pending switch: the code scanned + the Café we'd leave, awaiting confirm.
   const [switchTo, setSwitchTo] = useState<{
     posterCode: string;
@@ -64,8 +69,24 @@ export default function ScanPosterScreen() {
       });
       return;
     }
+    if (result.status === "owner_cafe") {
+      // The owner scanned their own poster — nothing to start; point them back
+      // to CafeOwner Mode's own scan.
+      setTerminal({
+        badge: "Це ваша кав'ярня",
+        cafeName: result.cafeName,
+        message:
+          "Клієнтів скануйте зі свого екрана — «Сканувати QR клієнта». Постер — для бариста.",
+      });
+      return;
+    }
     // pending
-    setPending({ cafeName: result.cafeName });
+    setTerminal({
+      badge: "Запит надіслано",
+      cafeName: result.cafeName,
+      message:
+        "Кавовар отримав ваш запит. Щойно вас підтвердять, скануйте постер ще раз на початку зміни — і ви станете за касу.",
+    });
   }
 
   async function submit(posterCode: string, confirmSwitch?: boolean) {
@@ -94,18 +115,15 @@ export default function ScanPosterScreen() {
     void submit(normalized);
   }
 
-  // A landed request is a terminal, reassuring state — the owner takes it from
-  // here, so there is nothing more for the barista to do but wait.
-  if (pending) {
+  // A terminal, reassuring state — a landed request (the owner takes it from
+  // here) or the owner's own-poster acknowledgement. Nothing more to do here.
+  if (terminal) {
     return (
       <Screen>
         <Card>
-          <OwnerBadge>Запит надіслано</OwnerBadge>
-          <Title>{pending.cafeName}</Title>
-          <Muted>
-            Кавовар отримав ваш запит. Щойно вас підтвердять, скануйте постер ще
-            раз на початку зміни — і ви станете за касу.
-          </Muted>
+          <OwnerBadge>{terminal.badge}</OwnerBadge>
+          <Title>{terminal.cafeName}</Title>
+          <Muted>{terminal.message}</Muted>
           <Button title="Готово" onPress={() => router.back()} />
         </Card>
       </Screen>

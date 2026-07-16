@@ -415,11 +415,13 @@ export type PosterScanBody = z.infer<typeof posterScanBodySchema>;
 /**
  * Contract for `POST /api/poster-scans` (#98, #99). Security rests on the
  * roster, not the poster (ADR 0013): a non-rostered scan only ever raises a
- * `pending` request that grants nothing. A rostered account (or the owner)
- * starts a shift — `shift_started` carries the live shift — unless one already
- * runs at another Café, in which case `switch_required` names both Cafés and
- * awaits `confirmSwitch`. A discriminated union so the app's handling is
- * compile-checked exhaustive over the outcomes.
+ * `pending` request that grants nothing. A rostered barista starts a shift —
+ * `shift_started` carries the live shift — unless one already runs at another
+ * Café, in which case `switch_required` names both Cafés and awaits
+ * `confirmSwitch`. The owner scanning their OWN poster gets `owner_cafe`: the
+ * poster is the staff's affordance, and the owner already scans Customers from
+ * CafeOwner Mode — so a self-scan starts nothing, it just says "this is yours".
+ * A discriminated union so the app's handling is compile-checked exhaustive.
  */
 export const posterScanResultSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("pending"), cafeName: z.string() }),
@@ -429,6 +431,7 @@ export const posterScanResultSchema = z.discriminatedUnion("status", [
     cafeName: z.string(),
     currentCafeName: z.string(),
   }),
+  z.object({ status: z.literal("owner_cafe"), cafeName: z.string() }),
 ]);
 export type PosterScanResult = z.infer<typeof posterScanResultSchema>;
 
