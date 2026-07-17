@@ -1,0 +1,74 @@
+# Dependabot configuration — see docs/agents/dependency-updates.md for the full
+# version-authority policy and the rationale behind every choice here.
+#
+# Cadence is ~biweekly (the 1st and 15th) via a cron schedule; updates arrive as
+# few PRs as possible (one grouped minor/patch PR; each major on its own); and
+# the Expo-governed native surface is never touched — that surface is realigned
+# deliberately on the Expo track, keyed to Expo SDK releases.
+version: 2
+
+updates:
+  # ── JavaScript / TypeScript: the pnpm workspace ─────────────────────────────
+  # One npm entry covers every manifest, including the repo root which carries
+  # the pnpm catalog (pnpm-workspace.yaml). Dependabot's pnpm catalog support is
+  # GA, so catalog'd deps (typescript, vitest, zod, better-auth, @better-auth/expo)
+  # are kept fresh here too.
+  - package-ecosystem: "npm"
+    directories:
+      - "/" # repo root — pnpm catalog + root-only tooling (eslint, prettier, husky, …)
+      - "/apps/api"
+      - "/apps/mobile"
+      - "/packages/shared"
+    schedule:
+      interval: "cron"
+      cron: "0 6 1,15 * *" # 06:00 on the 1st and 15th of each month
+      timezone: "Europe/Kyiv"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    # The Expo SDK is the sole authority for the mobile native surface. Dependabot
+    # must never bump these out of band — an independent version breaks the native
+    # build. They are realigned via `expo install` on the deliberate Expo track.
+    # NB: @better-auth/expo (scope @better-auth) and @expo-google-fonts/* (scope
+    # @expo-google-fonts) are NOT Expo-governed and stay updatable — neither
+    # pattern below matches them.
+    ignore:
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "react"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "@types/react"
+    groups:
+      # All minor + patch bumps batch into a single PR. Majors are deliberately
+      # left ungrouped so each higher-risk bump opens its own PR for individual
+      # review. Grouping on update-types (not dependency-type) sidesteps
+      # dependabot-core#14824, which misclassifies every pnpm catalog entry as a
+      # production dependency and would make a prod/dev split unreliable.
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ── GitHub Actions: keep CI tooling from silently rotting ───────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "cron"
+      cron: "0 6 1,15 * *"
+      timezone: "Europe/Kyiv"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

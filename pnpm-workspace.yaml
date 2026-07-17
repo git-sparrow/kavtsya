@@ -1,6 +1,20 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# Cross-workspace shared dependencies — the single source of truth for any
+# library declared in two or more workspace packages. Referencing package.json
+# files use the `catalog:` protocol so these versions cannot drift apart.
+# See docs/agents/dependency-updates.md for the version-authority policy.
+# NB: Expo-governed packages (react, react-native, expo-*, react-native-*,
+# @types/react) are intentionally NOT catalog'd — they are mirrored from the
+# Expo SDK via `expo install` and managed on the deliberate Expo track.
+catalog:
+  typescript: ~6.0.3
+  vitest: ^2.1.9
+  zod: ^3.23.8
+  better-auth: ^1.6.19
+  "@better-auth/expo": ^1.6.19
 allowBuilds:
   # @swmansion/argent and its native deps (node-pty, tree-sitter*, webtransport)
   "@fails-components/webtransport-transport-http3-quiche": true

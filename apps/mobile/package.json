@@ -12,20 +12,21 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@better-auth/expo": "^1.6.19",
+    "@better-auth/expo": "catalog:",
     "@expo-google-fonts/cormorant-garamond": "^0.4.1",
     "@expo-google-fonts/manrope": "^0.4.2",
+    "@expo/metro-runtime": "~56.0.17",
     "@kavtsya/shared": "workspace:*",
-    "better-auth": "^1.6.19",
-    "expo": "~56.0.12",
+    "better-auth": "catalog:",
+    "expo": "~56.0.16",
     "expo-camera": "~56.0.8",
-    "expo-constants": "~56.0.18",
+    "expo-constants": "~56.0.21",
     "expo-font": "~56.0.7",
-    "expo-linking": "~56.0.14",
-    "expo-notifications": "~56.0.20",
-    "expo-router": "~56.2.11",
+    "expo-linking": "~56.0.15",
+    "expo-notifications": "~56.0.21",
+    "expo-router": "~56.2.15",
     "expo-secure-store": "~56.0.4",
-    "expo-splash-screen": "~56.0.10",
+    "expo-splash-screen": "~56.0.13",
     "expo-status-bar": "~56.0.4",
     "expo-system-ui": "~56.0.5",
     "react": "19.2.3",
@@ -41,7 +42,7 @@
   "devDependencies": {
     "@types/react": "~19.2.2",
     "expo-mcp": "^0.2.4",
-    "typescript": "~6.0.3",
-    "vitest": "^2.1.9"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
