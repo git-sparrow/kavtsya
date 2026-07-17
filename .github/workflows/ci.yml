@@ -44,6 +44,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Validates that the mobile dependency set is coherent with the installed
+      # Expo SDK, so native-dependency drift or incompatibility is caught before
+      # merge. See docs/agents/dependency-updates.md (the Expo track).
+      - name: Expo Doctor (mobile native dependency health)
+        run: npx expo-doctor
+        working-directory: apps/mobile
+
       - name: Typecheck
         run: pnpm typecheck
 

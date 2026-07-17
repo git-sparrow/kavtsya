@@ -18,20 +18,20 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@better-auth/expo": "^1.6.19",
+    "@better-auth/expo": "catalog:",
     "@hono/node-server": "^1.13.7",
     "@kavtsya/shared": "workspace:*",
-    "better-auth": "^1.6.19",
+    "better-auth": "catalog:",
     "hono": "^4.6.13",
     "pg": "^8.22.0",
     "postgres": "^3.4.5",
-    "zod": "^3.23.8"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/pg": "^8.20.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3",
-    "vitest": "^2.1.8"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

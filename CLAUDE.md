@@ -61,6 +61,10 @@ Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, 
 
 Single-context layout — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+### Dependency updates
+
+Layered version-authority model (lockfile / Expo SDK / pnpm catalog / owning app), the pnpm catalog, Dependabot config, and the deliberate Expo upgrade track. **Never hand-bump or automate the Expo-governed native surface.** See `docs/agents/dependency-updates.md`.
+
 ### Simulator control (Argent)
 
 The `argent-*` skills + MCP server (Software Mansion's Argent, local devDependency) let Claude drive the app in the iOS simulator — tap, type, screenshot, record flows, diff screens. See `docs/argent-howto.md`, incl. the Mari design-review loop.
