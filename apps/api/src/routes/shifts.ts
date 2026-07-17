@@ -1,23 +1,11 @@
 import type { Hono } from "hono";
 import { z } from "zod";
-import type {
-  AcceptShiftInviteResult,
-  MyShiftResponse,
-  ShiftInviteResponse,
-  ShiftsResponse,
-} from "@kavtsya/shared";
-import {
-  acceptShiftInviteBodySchema,
-  openShiftInviteBodySchema,
-  shiftInviteRejectionStatuses,
-} from "@kavtsya/shared";
+import type { MyShiftResponse, ShiftsResponse } from "@kavtsya/shared";
 import type { AppDeps, AppEnv } from "../app";
 import {
-  acceptShiftInvite,
   activeShiftFor,
   endMyShift,
   listActiveShifts,
-  openShiftInvite,
   revokeShiftGrant,
 } from "../shifts";
 
@@ -25,88 +13,17 @@ import {
 const cafeIdSchema = z.string().uuid();
 
 /**
- * «Зміна» over the wire (#80, ADR 0013): the CafeOwner opens a shift and gets
- * the invite to show; «Запросити ще» is simply opening another. Owner-side
- * routes require ownership of the Café, enforced by the ownership-scoped
- * queries in `../shifts` — same semantics as the loyalty config routes.
+ * «Зміна» over the wire (#98/#99, ADR 0013). A Shift is *started* by scanning a
+ * Café's wall poster — that route lives with the roster (`POST /api/poster-scans`).
+ * These are the lifecycle's other ends: the owner's board (who is on shift, end
+ * one early), and the barista's own «Завершити зміну» + "am I on shift?". Owner
+ * routes require ownership, enforced by the ownership-scoped queries in
+ * `../shifts` — same semantics as the loyalty config routes.
  */
 export function registerShiftRoutes(
   app: Hono<AppEnv>,
-  { db, clock, qrTokenSecret }: AppDeps,
+  { db, clock }: AppDeps,
 ): void {
-  app.post("/api/cafes/:id/shift-invites", async (c) => {
-    const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
-
-    const cafeId = cafeIdSchema.safeParse(c.req.param("id"));
-    if (!cafeId.success) return c.json({ error: "not_found" }, 404);
-
-    // The body is optional (default shift = the rest of the business day) —
-    // absent reads as {}; present-but-unparseable is the client's bug.
-    const raw = await c.req.text();
-    let body: unknown = {};
-    if (raw) {
-      try {
-        body = JSON.parse(raw);
-      } catch {
-        return c.json({ error: "invalid_shift_invite" }, 400);
-      }
-    }
-    const parsed = openShiftInviteBodySchema.safeParse(body);
-    if (!parsed.success) return c.json({ error: "invalid_shift_invite" }, 400);
-
-    const outcome = await openShiftInvite(db, clock, {
-      cafeId: cafeId.data,
-      ownerUserId: user.id,
-      durationMinutes: parsed.data.durationMinutes,
-      secret: qrTokenSecret,
-    });
-    if (!outcome.ok) return c.json({ error: "not_found" }, 404);
-
-    const responseBody: ShiftInviteResponse = {
-      inviteToken: outcome.inviteToken,
-      inviteCode: outcome.inviteCode,
-      inviteExpiresAt: outcome.inviteExpiresAt.toISOString(),
-      grantExpiresAt: outcome.grantExpiresAt.toISOString(),
-    };
-    return c.json(responseBody, 201);
-  });
-
-  // The barista's side of the handshake: their own authenticated account
-  // presents the invite (scanned token or typed code) and gains the shift.
-  app.post("/api/shift-invites/accept", async (c) => {
-    const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
-
-    const parsed = acceptShiftInviteBodySchema.safeParse(
-      await c.req.json().catch(() => null),
-    );
-    if (!parsed.success) return c.json({ error: "invalid_shift_invite" }, 400);
-
-    const outcome = await acceptShiftInvite(db, clock, {
-      userId: user.id,
-      invite:
-        "inviteToken" in parsed.data
-          ? { source: "token", token: parsed.data.inviteToken }
-          : { source: "code", code: parsed.data.inviteCode },
-      secret: qrTokenSecret,
-    });
-    // The domain reasons ARE the wire taxonomy here — no renaming to map.
-    if (!outcome.ok) {
-      return c.json(
-        { error: outcome.reason },
-        shiftInviteRejectionStatuses[outcome.reason],
-      );
-    }
-
-    const responseBody: AcceptShiftInviteResult = {
-      cafeId: outcome.cafeId,
-      cafeName: outcome.cafeName,
-      expiresAt: outcome.expiresAt.toISOString(),
-    };
-    return c.json(responseBody, 201);
-  });
-
   // The owner's shift board: who is behind the counter right now.
   app.get("/api/cafes/:id/shifts", async (c) => {
     const user = c.get("user");
@@ -131,7 +48,7 @@ export function registerShiftRoutes(
     return c.json(responseBody);
   });
 
-  // Revocation is a tap: the grant dies now instead of at closing time.
+  // The owner ends one shift early: the grant dies now instead of at its cap.
   app.delete("/api/cafes/:id/shifts/:grantId", async (c) => {
     const user = c.get("user");
     if (!user) return c.json({ error: "unauthorized" }, 401);

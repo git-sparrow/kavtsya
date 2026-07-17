@@ -4,7 +4,9 @@ import {
   type ReactNode,
   use,
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -26,6 +28,15 @@ type ModeContextValue = {
   clearExcursion: () => void;
   /** Re-check "am I on shift?" after joining, ending, or being revoked. */
   reloadShift: () => Promise<void>;
+  /**
+   * The Café name of a shift that just ended (#99), for the brief notice the
+   * dispatcher shows as the app drops back to its default Mode — set whenever an
+   * active shift becomes null (owner end, removal, or the auto-expire cap seen on
+   * foreground). Null when there is nothing to announce.
+   */
+  endedNotice: string | null;
+  /** Dismiss the ended-shift notice. */
+  dismissEndedNotice: () => void;
 };
 
 const ModeContext = createContext<ModeContextValue | null>(null);
@@ -51,6 +62,20 @@ export function ModeProvider({ children }: { children: ReactNode }) {
 
   const clearExcursion = useCallback(() => setOverride(null), []);
 
+  // A shift going from present to null — ended by the barista, the owner, or the
+  // auto-expire cap — leaves a brief notice as the app re-derives to its default
+  // Mode (#99). Only a real active→null transition triggers it; the initial
+  // undefined→null "checked, off duty" load does not.
+  const [endedNotice, setEndedNotice] = useState<string | null>(null);
+  const prevShift = useRef<MyShiftResponse["shift"] | undefined>(undefined);
+  useEffect(() => {
+    if (prevShift.current && shift === null) {
+      setEndedNotice(prevShift.current.cafeName);
+    }
+    if (shift !== undefined) prevShift.current = shift;
+  }, [shift]);
+  const dismissEndedNotice = useCallback(() => setEndedNotice(null), []);
+
   const value = useMemo<ModeContextValue>(
     () => ({
       mode,
@@ -59,8 +84,18 @@ export function ModeProvider({ children }: { children: ReactNode }) {
       switchTo: setOverride,
       clearExcursion,
       reloadShift,
+      endedNotice,
+      dismissEndedNotice,
     }),
-    [mode, loading, shift, clearExcursion, reloadShift],
+    [
+      mode,
+      loading,
+      shift,
+      clearExcursion,
+      reloadShift,
+      endedNotice,
+      dismissEndedNotice,
+    ],
   );
 
   return <ModeContext value={value}>{children}</ModeContext>;

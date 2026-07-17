@@ -1,20 +1,19 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 /**
- * Shared HMAC plumbing for the app's signed-token families: the Customer's
- * rotating QR (ADR 0006) and the shift invite (#80, ADR 0013). Domain
- * separation is cryptographic, not stylistic (the #80 security amendment):
- * each family signs with a key DERIVED from the one shared secret and a fixed
- * per-family context string, so a signature minted in one family can never
- * verify in the other — even for an identically-shaped payload. A schema-level
- * `purpose` claim would not survive a validator that strips unknown keys; the
- * key derivation cannot be stripped.
+ * Shared HMAC plumbing for the app's signed-token families. Today the only
+ * family is the Customer's rotating QR (ADR 0006); the shift-invite family was
+ * retired with the invite handshake (#98). The design stays per-family by
+ * construction (the #80 security amendment): a token signs with a key DERIVED
+ * from the one shared secret and a fixed per-family context string, so a new
+ * family added here can never verify a signature minted in another — even for
+ * an identically-shaped payload. A schema-level `purpose` claim would not
+ * survive a validator that strips unknown keys; the key derivation cannot be.
  *
- * Expiry is deliberately NOT here — each family owns its clock rules (the QR
- * has a grace window, the invite does not).
+ * Expiry is deliberately NOT here — each family owns its clock rules.
  */
 
-export type TokenPurpose = "qr" | "shift-invite";
+export type TokenPurpose = "qr";
 
 /** The per-family MAC key: HMAC(secret, context). Deterministic — no storage. */
 export function deriveTokenKey(secret: string, purpose: TokenPurpose): Buffer {

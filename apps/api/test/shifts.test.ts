@@ -1,26 +1,24 @@
 import type { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import {
-  acceptShiftInviteResultSchema,
   myShiftResponseSchema,
   purchaseResultSchema,
-  shiftInviteResponseSchema,
+  rosterBoardResponseSchema,
   shiftsResponseSchema,
 } from "@kavtsya/shared";
 import type { Auth } from "../src/auth";
 import { fixedClock } from "../src/clock";
 import type { Database } from "../src/db";
 import { clearPlatformConfigCache } from "../src/platform-config";
-import { deriveTokenKey, encodeSignedToken } from "../src/signed-token";
 import { makeApp, registerCafe, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 /**
- * «Зміна» — staff scanner grants (#80, ADR 0013): the CafeOwner opens a shift
- * (an invite QR + short code), the barista's own account accepts it and gains
- * scan + Redemption confirm at that Café until the grant expires or is revoked.
- * Driven through the HTTP seam like the purchase/redemption suites; expiry runs
- * on the injected clock.
+ * «Зміна» — poster-started shifts (#98/#99, ADR 0013). A rostered barista scans
+ * the Café's wall poster and gains scan + Redemption confirm at that Café until
+ * they end it, the owner ends it, or the rolling ~16h cap expires. No invite
+ * handshake exists anymore. Driven through the HTTP seam; expiry runs on the
+ * injected clock.
  */
 
 let db: Database;
@@ -38,359 +36,52 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  // cascade also clears purchases, grants, and invites (they reference cafes).
+  // cascade also clears purchases and grants (they reference cafes/user).
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
   await db`truncate fortunes`;
   clearPlatformConfigCache();
 });
 
-/** Mid-afternoon in Kyiv summer time (15:00 EEST) — expiries are asserted against it. */
+/** Mid-afternoon in Kyiv summer time — expiries are asserted against it. */
 const OPEN_AT = new Date("2026-07-10T12:00:00Z");
 
-function openShiftInvite(
-  app: ReturnType<typeof makeApp>,
-  cafeId: string,
-  cookie: string | undefined,
-  body: unknown = {},
-) {
-  return app.request(`/api/cafes/${cafeId}/shift-invites`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...(cookie ? { cookie } : {}),
-    },
-    body: JSON.stringify(body),
-  });
-}
+/** The rolling ~16h cap from OPEN_AT: 12:00Z + 16h. */
+const SHIFT_EXPIRES_AT = "2026-07-11T04:00:00.000Z";
+/** One second past the cap — the auto-expire boundary. */
+const AFTER_EXPIRY = new Date("2026-07-11T04:00:01Z");
 
-// --- opening a shift -----------------------------------------------------------
-
-test("opening a shift mints an invite: QR token + short code, grant lasting to Kyiv midnight", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const owner = await signUp(app, "owner@example.com");
-  const cafeId = await registerCafe(app, "Кавця", owner);
-
-  const res = await openShiftInvite(app, cafeId, owner);
-
-  expect(res.status).toBe(201);
-  const invite = shiftInviteResponseSchema.parse(await res.json());
-  // The invite itself is short-lived: ten minutes to get it in front of the barista.
-  expect(invite.inviteExpiresAt).toBe("2026-07-10T12:10:00.000Z");
-  // The grant it will mint self-heals at the end of the café's business day:
-  // next Europe/Kyiv midnight (00:00 EEST on the 11th = 21:00 UTC on the 10th).
-  expect(invite.grantExpiresAt).toBe("2026-07-10T21:00:00.000Z");
-  // The signed token the QR renders and the typable fallback differ in kind.
-  expect(invite.inviteToken).toContain(".");
-  expect(invite.inviteCode).toMatch(/^[0-9A-HJKMNP-TV-Z]{8}$/);
-});
-
-test("an explicit shorter duration trims the grant — the trial-barista window", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const owner = await signUp(app, "owner@example.com");
-  const cafeId = await registerCafe(app, "Кавця", owner);
-
-  const res = await openShiftInvite(app, cafeId, owner, {
-    durationMinutes: 120,
-  });
-
-  expect(res.status).toBe(201);
-  const invite = shiftInviteResponseSchema.parse(await res.json());
-  expect(invite.grantExpiresAt).toBe("2026-07-10T14:00:00.000Z");
-});
-
-test("a duration reaching past closing time is clamped to Kyiv midnight — a shift never outlives the business day", async () => {
-  // 23:00 Kyiv + 8h would land mid-tomorrow; the ceiling holds it at 00:00.
-  const app = makeApp({
-    db,
-    auth,
-    clock: fixedClock(new Date("2026-07-10T20:00:00Z")),
-  });
-  const owner = await signUp(app, "owner@example.com");
-  const cafeId = await registerCafe(app, "Кавця", owner);
-
-  const res = await openShiftInvite(app, cafeId, owner, {
-    durationMinutes: 480,
-  });
-
-  const invite = shiftInviteResponseSchema.parse(await res.json());
-  expect(invite.grantExpiresAt).toBe("2026-07-10T21:00:00.000Z");
-});
-
-test("the business day ends at KYIV midnight in winter too (EET, +02:00)", async () => {
-  const app = makeApp({
-    db,
-    auth,
-    clock: fixedClock(new Date("2026-01-10T12:00:00Z")),
-  });
-  const owner = await signUp(app, "owner@example.com");
-  const cafeId = await registerCafe(app, "Кавця", owner);
-
-  const res = await openShiftInvite(app, cafeId, owner);
-
-  const invite = shiftInviteResponseSchema.parse(await res.json());
-  // 2026-01-11 00:00 EET = 2026-01-10 22:00 UTC.
-  expect(invite.grantExpiresAt).toBe("2026-01-10T22:00:00.000Z");
-});
-
-test("opening a shift at a Café the caller does not own is not found", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const alice = await signUp(app, "alice@example.com");
-  const bob = await signUp(app, "bob@example.com");
-  const aliceCafe = await registerCafe(app, "Кавця Аліси", alice);
-
-  const res = await openShiftInvite(app, aliceCafe, bob);
-
-  expect(res.status).toBe(404);
-  expect(await res.json()).toEqual({ error: "not_found" });
-});
-
-test("opening a shift requires authentication", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const owner = await signUp(app, "owner@example.com");
-  const cafeId = await registerCafe(app, "Кавця", owner);
-
-  const res = await openShiftInvite(app, cafeId, undefined);
-
-  expect(res.status).toBe(401);
-});
-
-// --- accepting an invite ---------------------------------------------------------
-
-function acceptInvite(
-  app: ReturnType<typeof makeApp>,
-  body: unknown,
-  cookie?: string,
-) {
-  return app.request("/api/shift-invites/accept", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...(cookie ? { cookie } : {}),
-    },
-    body: JSON.stringify(body),
-  });
-}
-
-/** Owner + café + a fresh invite — the fixture most accept tests start from. */
-async function shiftFixture(app: ReturnType<typeof makeApp>) {
-  const owner = await signUp(app, "owner@example.com");
-  const cafeId = await registerCafe(app, "Кавця «Зміна»", owner);
-  const inviteRes = await openShiftInvite(app, cafeId, owner);
-  expect(inviteRes.status).toBe(201);
-  const invite = shiftInviteResponseSchema.parse(await inviteRes.json());
-  return { owner, cafeId, invite };
-}
-
-test("the barista scans the invite QR and the shift starts: token accept mints the grant", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const { cafeId, invite } = await shiftFixture(app);
-  const barista = await signUp(app, "barista@example.com");
-
-  const res = await acceptInvite(
-    app,
-    { inviteToken: invite.inviteToken },
-    barista,
-  );
-
-  expect(res.status).toBe(201);
-  const shift = acceptShiftInviteResultSchema.parse(await res.json());
-  expect(shift).toEqual({
-    cafeId,
-    cafeName: "Кавця «Зміна»",
-    // The shift the barista sees ends exactly when the invite promised the owner.
-    expiresAt: invite.grantExpiresAt,
-  });
-});
-
-test("the camera-won't-cooperate fallback: typing the short code accepts the same invite", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const { cafeId, invite } = await shiftFixture(app);
-  const barista = await signUp(app, "barista@example.com");
-
-  // Typed sloppily — lowercase, hyphenated like the on-screen grouping (#21's
-  // normalization affordance is shared).
-  const typed =
-    `${invite.inviteCode.slice(0, 4)}-${invite.inviteCode.slice(4)}`.toLowerCase();
-  const res = await acceptInvite(app, { inviteCode: typed }, barista);
-
-  expect(res.status).toBe(201);
-  const shift = acceptShiftInviteResultSchema.parse(await res.json());
-  expect(shift.cafeId).toBe(cafeId);
-});
-
-test("accepting an invite requires authentication — the grant needs an account to attach to", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const { invite } = await shiftFixture(app);
-
-  const res = await acceptInvite(app, { inviteToken: invite.inviteToken });
-
-  expect(res.status).toBe(401);
-});
-
-// --- invite misuse ---------------------------------------------------------------
-
-test("one invite admits one barista: the second accept is rejected, whichever form it takes", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const { invite } = await shiftFixture(app);
-  const first = await signUp(app, "first.barista@example.com");
-  const second = await signUp(app, "second.barista@example.com");
-  expect(
-    (await acceptInvite(app, { inviteToken: invite.inviteToken }, first))
-      .status,
-  ).toBe(201);
-
-  // A photographed invite screen carries both renderings — neither admits.
-  const viaToken = await acceptInvite(
-    app,
-    { inviteToken: invite.inviteToken },
-    second,
-  );
-  const viaCode = await acceptInvite(
-    app,
-    { inviteCode: invite.inviteCode },
-    second,
-  );
-
-  expect(viaToken.status).toBe(409);
-  expect(await viaToken.json()).toEqual({ error: "invite_used" });
-  expect(viaCode.status).toBe(409);
-  expect(await viaCode.json()).toEqual({ error: "invite_used" });
-});
-
-test("an expired invite admits nobody — the owner mints a fresh one instead", async () => {
-  const mintApp = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const { invite } = await shiftFixture(mintApp);
-  // Eleven minutes later: past the invite's ten, well before the grant's midnight.
-  const lateApp = makeApp({
-    db,
-    auth,
-    clock: fixedClock(new Date(OPEN_AT.getTime() + 11 * 60_000)),
-  });
-  const barista = await signUp(lateApp, "barista@example.com");
-
-  const viaToken = await acceptInvite(
-    lateApp,
-    { inviteToken: invite.inviteToken },
-    barista,
-  );
-  const viaCode = await acceptInvite(
-    lateApp,
-    { inviteCode: invite.inviteCode },
-    barista,
-  );
-
-  expect(viaToken.status).toBe(401);
-  expect(await viaToken.json()).toEqual({ error: "expired_invite" });
-  expect(viaCode.status).toBe(401);
-  expect(await viaCode.json()).toEqual({ error: "expired_invite" });
-});
-
-test("a tampered invite token is rejected", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const { invite } = await shiftFixture(app);
-  const barista = await signUp(app, "barista@example.com");
-  const tampered =
-    invite.inviteToken.slice(0, -1) +
-    (invite.inviteToken.endsWith("A") ? "B" : "A");
-
-  const res = await acceptInvite(app, { inviteToken: tampered }, barista);
-
-  expect(res.status).toBe(401);
-  expect(await res.json()).toEqual({ error: "invalid_invite" });
-});
-
-test("a correctly-signed invite re-pointed at another Café is rejected", async () => {
-  const secret = "shift-suite-secret-at-least-32-chars-long";
-  const app = makeApp({
-    db,
-    auth,
-    clock: fixedClock(OPEN_AT),
-    qrTokenSecret: secret,
-  });
-  const owner = await signUp(app, "owner@example.com");
-  const cafeId = await registerCafe(app, "Кавця", owner);
-  const otherCafe = await registerCafe(app, "Інша кавця", owner);
-  const inviteRes = await openShiftInvite(app, cafeId, owner);
-  const invite = shiftInviteResponseSchema.parse(await inviteRes.json());
-  const barista = await signUp(app, "barista@example.com");
-
-  // Re-sign the real payload for the other Café — valid signature, real jti,
-  // wrong café: the row is the source of truth and disagrees.
-  const [body] = invite.inviteToken.split(".");
-  const payload = JSON.parse(
-    Buffer.from(body!, "base64url").toString(),
-  ) as Record<string, unknown>;
-  const forged = encodeSignedToken(
-    { ...payload, sub: otherCafe },
-    deriveTokenKey(secret, "shift-invite"),
-  );
-
-  const res = await acceptInvite(app, { inviteToken: forged }, barista);
-
-  expect(res.status).toBe(401);
-  expect(await res.json()).toEqual({ error: "invalid_invite" });
-});
-
-test("a short code nobody minted is rejected", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  await shiftFixture(app);
-  const barista = await signUp(app, "barista@example.com");
-
-  const res = await acceptInvite(app, { inviteCode: "ZZZZ9999" }, barista);
-
-  expect(res.status).toBe(401);
-  expect(await res.json()).toEqual({ error: "invalid_invite" });
-});
-
-// --- cross-family confusion (the #80 security amendment) --------------------------
-//
-// Two token families off ONE secret: the Customer QR and the shift invite.
-// Domain separation is cryptographic (derived per-family keys), so each
-// validator must reject the other family's token outright — these are the
-// regression tests the amendment demands.
-
-test("a valid Customer QR presented to the shift-accept endpoint is rejected", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  await shiftFixture(app);
-  const customer = await signUp(app, "customer@example.com");
-  const qrRes = await app.request("/api/qr-token", {
-    headers: { cookie: customer },
-  });
-  const { token } = (await qrRes.json()) as { token: string };
-
-  const res = await acceptInvite(app, { inviteToken: token }, customer);
-
-  expect(res.status).toBe(401);
-  expect(await res.json()).toEqual({ error: "invalid_invite" });
-});
-
-test("a valid shift-invite token presented to the scan endpoint is rejected as invalid_token", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const { owner, cafeId, invite } = await shiftFixture(app);
-
-  const res = await app.request("/api/purchases", {
-    method: "POST",
-    headers: { "content-type": "application/json", cookie: owner },
-    body: JSON.stringify({ cafeId, qrToken: invite.inviteToken }),
-  });
-
-  expect(res.status).toBe(401);
-  expect(await res.json()).toEqual({ error: "invalid_token" });
-});
-
-// --- the shift at the counter ------------------------------------------------------
-//
-// The grant holder gets exactly the owner's two counter powers — scan and
-// Redemption confirm — at exactly one Café, for exactly the shift's window.
-
-/** A user's id as the app sees it. */
 async function userId(
   app: ReturnType<typeof makeApp>,
   cookie: string,
 ): Promise<string> {
   const res = await app.request("/api/me", { headers: { cookie } });
-  const { id } = (await res.json()) as { id: string };
-  return id;
+  return ((await res.json()) as { id: string }).id;
+}
+
+async function posterCodeOf(
+  app: ReturnType<typeof makeApp>,
+  cafeId: string,
+  owner: string,
+): Promise<string> {
+  const res = await app.request(`/api/cafes/${cafeId}/roster`, {
+    headers: { cookie: owner },
+  });
+  return rosterBoardResponseSchema.parse(await res.json()).posterCode;
+}
+
+function scanPoster(
+  app: ReturnType<typeof makeApp>,
+  posterCode: string,
+  cookie?: string,
+) {
+  return app.request("/api/poster-scans", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(cookie ? { cookie } : {}),
+    },
+    body: JSON.stringify({ posterCode }),
+  });
 }
 
 async function qrTokenFor(
@@ -399,8 +90,7 @@ async function qrTokenFor(
 ): Promise<string> {
   const res = await app.request("/api/qr-token", { headers: { cookie } });
   expect(res.status).toBe(200);
-  const { token } = (await res.json()) as { token: string };
-  return token;
+  return ((await res.json()) as { token: string }).token;
 }
 
 function issuePurchase(
@@ -415,18 +105,75 @@ function issuePurchase(
   });
 }
 
-/** Fixture: a shift already accepted — the barista is behind the counter. */
-async function shiftOnDuty(app: ReturnType<typeof makeApp>) {
-  const { owner, cafeId, invite } = await shiftFixture(app);
-  const barista = await signUp(app, "barista@example.com");
-  const accepted = await acceptInvite(
-    app,
-    { inviteToken: invite.inviteToken },
-    barista,
-  );
-  expect(accepted.status).toBe(201);
-  return { owner, cafeId, barista };
+/**
+ * A barista on shift at a fresh Café: signed up, rostered (scan → owner
+ * approves), then poster-scanned onto a Shift. The one fixture the counter
+ * tests start from.
+ */
+async function shiftOnDuty(
+  app: ReturnType<typeof makeApp>,
+  baristaEmail = "barista@example.com",
+) {
+  const owner = await signUp(app, "owner@example.com");
+  const cafeId = await registerCafe(app, "Кавця «Зміна»", owner);
+  const posterCode = await posterCodeOf(app, cafeId, owner);
+  const barista = await signUp(app, baristaEmail);
+  const baristaId = await userId(app, barista);
+  await scanPoster(app, posterCode, barista);
+  expect(
+    (
+      await app.request(`/api/cafes/${cafeId}/roster/${baristaId}/approve`, {
+        method: "POST",
+        headers: { cookie: owner },
+      })
+    ).status,
+  ).toBe(204);
+  const started = await scanPoster(app, posterCode, barista);
+  expect(started.status).toBe(201);
+  return { owner, cafeId, posterCode, barista, baristaId };
 }
+
+/** Roster + approve a second barista at an existing Café. */
+async function rosterColleague(
+  app: ReturnType<typeof makeApp>,
+  cafeId: string,
+  posterCode: string,
+  owner: string,
+  email: string,
+) {
+  const colleague = await signUp(app, email);
+  const colleagueId = await userId(app, colleague);
+  await scanPoster(app, posterCode, colleague);
+  await app.request(`/api/cafes/${cafeId}/roster/${colleagueId}/approve`, {
+    method: "POST",
+    headers: { cookie: owner },
+  });
+  return colleague;
+}
+
+// --- the retired invite endpoints are gone (#98) -----------------------------------
+
+test("the owner-shown invite endpoints no longer exist", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
+  const owner = await signUp(app, "owner@example.com");
+  const cafeId = await registerCafe(app, "Кавця", owner);
+
+  const open = await app.request(`/api/cafes/${cafeId}/shift-invites`, {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie: owner },
+    body: "{}",
+  });
+  const accept = await app.request("/api/shift-invites/accept", {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie: owner },
+    body: JSON.stringify({ inviteToken: "anything" }),
+  });
+
+  expect(open.status).toBe(404);
+  expect(accept.status).toBe(404);
+});
+
+// --- the shift at the counter ------------------------------------------------------
 
 test("full lifecycle: the barista scans a Customer and the Purchase records who issued it", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
@@ -440,43 +187,20 @@ test("full lifecycle: the barista scans a Customer and the Purchase records who 
   );
 
   expect(res.status).toBe(201);
-  const result = purchaseResultSchema.parse(await res.json());
-  expect(result.balance).toBe(1);
-  // The audit trail (#62's hook) has no read endpoint yet — the ledger row
-  // itself is the deliverable, so this one assertion reads it directly.
+  expect(purchaseResultSchema.parse(await res.json()).balance).toBe(1);
   const [row] = await db<{ issued_by_user_id: string | null }[]>`
     select "issued_by_user_id" from purchases where "cafe_id" = ${cafeId}
   `;
   expect(row?.issued_by_user_id).toBe(await userId(app, barista));
 });
 
-test("the owner's own scan records them as the issuer too", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const owner = await signUp(app, "owner@example.com");
-  const cafeId = await registerCafe(app, "Кавця", owner);
-  const customer = await signUp(app, "customer@example.com");
-
-  const res = await issuePurchase(
-    app,
-    { cafeId, qrToken: await qrTokenFor(app, customer) },
-    owner,
-  );
-
-  expect(res.status).toBe(201);
-  const [row] = await db<{ issued_by_user_id: string | null }[]>`
-    select "issued_by_user_id" from purchases where "cafe_id" = ${cafeId}
-  `;
-  expect(row?.issued_by_user_id).toBe(await userId(app, owner));
-});
-
 test("the manual member-code path records the issuer as well (#21 coordination)", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
   const { cafeId, barista } = await shiftOnDuty(app);
   const customer = await signUp(app, "customer@example.com");
-  const codeRes = await app.request("/api/me/member-code", {
-    headers: { cookie: customer },
-  });
-  const { memberCode } = (await codeRes.json()) as { memberCode: string };
+  const { memberCode } = (await (
+    await app.request("/api/me/member-code", { headers: { cookie: customer } })
+  ).json()) as { memberCode: string };
 
   const res = await issuePurchase(app, { cafeId, memberCode }, barista);
 
@@ -504,25 +228,40 @@ test("the grant is café-scoped: the same barista is nobody at another Café", a
   expect(await res.json()).toEqual({ error: "not_found" });
 });
 
-test("the grant self-heals: past Kyiv midnight the barista who wasn't revoked is still out", async () => {
+test("the shift auto-expires: past the ~16h cap the barista who wasn't revoked is still out", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
   const { cafeId, barista } = await shiftOnDuty(app);
   const customer = await signUp(app, "customer@example.com");
-  // 21:00:01 UTC = one second past the grant's Kyiv-midnight expiry.
-  const nextDay = makeApp({
-    db,
-    auth,
-    clock: fixedClock(new Date("2026-07-10T21:00:01Z")),
-  });
+  const expired = makeApp({ db, auth, clock: fixedClock(AFTER_EXPIRY) });
 
   const res = await issuePurchase(
-    nextDay,
-    { cafeId, qrToken: await qrTokenFor(nextDay, customer) },
+    expired,
+    { cafeId, qrToken: await qrTokenFor(expired, customer) },
     barista,
   );
 
   expect(res.status).toBe(404);
   expect(await res.json()).toEqual({ error: "not_found" });
+});
+
+test("the auto-expire is a rolling cap, not Café hours: a shift crosses midnight untouched", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
+  const { cafeId, barista } = await shiftOnDuty(app);
+  const customer = await signUp(app, "customer@example.com");
+  // 03:00Z next day = 06:00 Kyiv — well past midnight, still inside the 16h cap.
+  const nextMorning = makeApp({
+    db,
+    auth,
+    clock: fixedClock(new Date("2026-07-11T03:00:00Z")),
+  });
+
+  const res = await issuePurchase(
+    nextMorning,
+    { cafeId, qrToken: await qrTokenFor(nextMorning, customer) },
+    barista,
+  );
+
+  expect(res.status).toBe(201);
 });
 
 // --- the self-farm guards (ADR 0003 + ADR 0013, additive) --------------------------
@@ -536,20 +275,6 @@ test("nobody scans their own code: the barista's own QR is self_scan", async () 
     { cafeId, qrToken: await qrTokenFor(app, barista) },
     barista,
   );
-
-  expect(res.status).toBe(403);
-  expect(await res.json()).toEqual({ error: "self_scan" });
-});
-
-test("nobody scans their own code: one's own member code is self_scan too", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const { cafeId, barista } = await shiftOnDuty(app);
-  const codeRes = await app.request("/api/me/member-code", {
-    headers: { cookie: barista },
-  });
-  const { memberCode } = (await codeRes.json()) as { memberCode: string };
-
-  const res = await issuePurchase(app, { cafeId, memberCode }, barista);
 
   expect(res.status).toBe(403);
   expect(await res.json()).toEqual({ error: "self_scan" });
@@ -571,22 +296,15 @@ test("the owner scanned BY their barista still earns nothing at their own Café 
 
 test("a barista scanned by a colleague earns normally — staffing costs no perks", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const { owner, cafeId, barista } = await shiftOnDuty(app);
-  // The colleague joins through «Запросити ще» — a fresh invite.
-  const secondInviteRes = await openShiftInvite(app, cafeId, owner);
-  const secondInvite = shiftInviteResponseSchema.parse(
-    await secondInviteRes.json(),
+  const { owner, cafeId, posterCode, barista } = await shiftOnDuty(app);
+  const colleague = await rosterColleague(
+    app,
+    cafeId,
+    posterCode,
+    owner,
+    "colleague@example.com",
   );
-  const colleague = await signUp(app, "colleague@example.com");
-  expect(
-    (
-      await acceptInvite(
-        app,
-        { inviteToken: secondInvite.inviteToken },
-        colleague,
-      )
-    ).status,
-  ).toBe(201);
+  expect((await scanPoster(app, posterCode, colleague)).status).toBe(201);
 
   const res = await issuePurchase(
     app,
@@ -603,7 +321,6 @@ test("a barista scanned by a colleague earns normally — staffing costs no perk
 test("the grant holder confirms a Redemption off the same single scan", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
   const { owner, cafeId, barista } = await shiftOnDuty(app);
-  // Reward + threshold 2 so two scans make the Customer eligible.
   await app.request(`/api/cafes/${cafeId}/program`, {
     method: "PUT",
     headers: { "content-type": "application/json", cookie: owner },
@@ -635,37 +352,6 @@ test("the grant holder confirms a Redemption off the same single scan", async ()
   });
 });
 
-test("an expired grant confirms nothing either", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const { owner, cafeId, barista } = await shiftOnDuty(app);
-  await app.request(`/api/cafes/${cafeId}/program`, {
-    method: "PUT",
-    headers: { "content-type": "application/json", cookie: owner },
-    body: JSON.stringify({ threshold: 1, reward: { type: "free_drink" } }),
-  });
-  const customer = await signUp(app, "customer@example.com");
-  const scan = await issuePurchase(
-    app,
-    { cafeId, qrToken: await qrTokenFor(app, customer) },
-    barista,
-  );
-  const { customerId } = purchaseResultSchema.parse(await scan.json());
-  const nextDay = makeApp({
-    db,
-    auth,
-    clock: fixedClock(new Date("2026-07-10T21:00:01Z")),
-  });
-
-  const res = await nextDay.request("/api/redemptions", {
-    method: "POST",
-    headers: { "content-type": "application/json", cookie: barista },
-    body: JSON.stringify({ cafeId, customerId, idempotencyKey: "late-1" }),
-  });
-
-  expect(res.status).toBe(404);
-  expect(await res.json()).toEqual({ error: "not_found" });
-});
-
 // --- scope: scan + confirm is ALL the shift grants ---------------------------------
 
 test("the grant holder cannot touch the loyalty config — owner endpoints stay owner-only", async () => {
@@ -692,15 +378,17 @@ test("the owner sees who is on shift; a revoked shift ends immediately", async (
   const { owner, cafeId, barista } = await shiftOnDuty(app);
   const customer = await signUp(app, "customer@example.com");
 
-  const listRes = await app.request(`/api/cafes/${cafeId}/shifts`, {
-    headers: { cookie: owner },
-  });
-  expect(listRes.status).toBe(200);
-  const shifts = shiftsResponseSchema.parse(await listRes.json());
+  const shifts = shiftsResponseSchema.parse(
+    await (
+      await app.request(`/api/cafes/${cafeId}/shifts`, {
+        headers: { cookie: owner },
+      })
+    ).json(),
+  );
   expect(shifts).toHaveLength(1);
   expect(shifts[0]).toMatchObject({
     baristaName: "Test",
-    expiresAt: "2026-07-10T21:00:00.000Z",
+    expiresAt: SHIFT_EXPIRES_AT,
   });
 
   const revokeRes = await app.request(
@@ -709,14 +397,12 @@ test("the owner sees who is on shift; a revoked shift ends immediately", async (
   );
   expect(revokeRes.status).toBe(204);
 
-  // Revocation is a tap, not a password change: the very next scan is out…
   const scan = await issuePurchase(
     app,
     { cafeId, qrToken: await qrTokenFor(app, customer) },
     barista,
   );
   expect(scan.status).toBe(404);
-  // …and the board is clear.
   const after = await app.request(`/api/cafes/${cafeId}/shifts`, {
     headers: { cookie: owner },
   });
@@ -726,13 +412,9 @@ test("the owner sees who is on shift; a revoked shift ends immediately", async (
 test("expired shifts drop off the board on their own", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
   const { owner, cafeId } = await shiftOnDuty(app);
-  const nextDay = makeApp({
-    db,
-    auth,
-    clock: fixedClock(new Date("2026-07-10T21:00:01Z")),
-  });
+  const expired = makeApp({ db, auth, clock: fixedClock(AFTER_EXPIRY) });
 
-  const res = await nextDay.request(`/api/cafes/${cafeId}/shifts`, {
+  const res = await expired.request(`/api/cafes/${cafeId}/shifts`, {
     headers: { cookie: owner },
   });
 
@@ -744,10 +426,13 @@ test("another café's owner can neither see nor revoke a shift that isn't theirs
   const { owner, cafeId } = await shiftOnDuty(app);
   const rival = await signUp(app, "rival@example.com");
   await registerCafe(app, "Кавця конкурента", rival);
-  const listRes = await app.request(`/api/cafes/${cafeId}/shifts`, {
-    headers: { cookie: owner },
-  });
-  const shifts = shiftsResponseSchema.parse(await listRes.json());
+  const shifts = shiftsResponseSchema.parse(
+    await (
+      await app.request(`/api/cafes/${cafeId}/shifts`, {
+        headers: { cookie: owner },
+      })
+    ).json(),
+  );
 
   const foreignList = await app.request(`/api/cafes/${cafeId}/shifts`, {
     headers: { cookie: rival },
@@ -759,7 +444,6 @@ test("another café's owner can neither see nor revoke a shift that isn't theirs
 
   expect(foreignList.status).toBe(404);
   expect(foreignRevoke.status).toBe(404);
-  // The shift survived the foreign revoke attempt.
   const after = await app.request(`/api/cafes/${cafeId}/shifts`, {
     headers: { cookie: owner },
   });
@@ -780,16 +464,12 @@ test("GET /api/me/shift carries the active shift the banner renders — and null
     shift: {
       cafeId,
       cafeName: "Кавця «Зміна»",
-      expiresAt: "2026-07-10T21:00:00.000Z",
+      expiresAt: SHIFT_EXPIRES_AT,
     },
   });
 
-  const nextDay = makeApp({
-    db,
-    auth,
-    clock: fixedClock(new Date("2026-07-10T21:00:01Z")),
-  });
-  const after = await nextDay.request("/api/me/shift", {
+  const expired = makeApp({ db, auth, clock: fixedClock(AFTER_EXPIRY) });
+  const after = await expired.request("/api/me/shift", {
     headers: { cookie: barista },
   });
   expect(myShiftResponseSchema.parse(await after.json())).toEqual({
@@ -798,11 +478,6 @@ test("GET /api/me/shift carries the active shift the banner renders — and null
 });
 
 // --- the barista ends their own shift (#96, ADR 0015) -------------------------------
-//
-// Under the derived-landing Modes an active grant pins the app to the near-kiosk
-// Scanner Mode; «Завершити зміну» must actually END the grant (not merely leave
-// the screen) or the barista is stranded. This is self-authorized: you may
-// always end your OWN shift, no ownership needed.
 
 function endMyShift(app: ReturnType<typeof makeApp>, cookie?: string) {
   return app.request("/api/me/shift", {
@@ -816,24 +491,20 @@ test("«Завершити зміну» ends the barista's own shift: the next s
   const { owner, cafeId, barista } = await shiftOnDuty(app);
   const customer = await signUp(app, "customer@example.com");
 
-  const res = await endMyShift(app, barista);
-  expect(res.status).toBe(204);
+  expect((await endMyShift(app, barista)).status).toBe(204);
 
-  // The barista's app re-derives to a non-scanner Mode: no active shift left.
   const mine = await app.request("/api/me/shift", {
     headers: { cookie: barista },
   });
   expect(myShiftResponseSchema.parse(await mine.json())).toEqual({
     shift: null,
   });
-  // The grant is gone, not just hidden — the very next scan is rejected.
   const scan = await issuePurchase(
     app,
     { cafeId, qrToken: await qrTokenFor(app, customer) },
     barista,
   );
   expect(scan.status).toBe(404);
-  // And the owner's board no longer lists them.
   const board = await app.request(`/api/cafes/${cafeId}/shifts`, {
     headers: { cookie: owner },
   });
@@ -845,31 +516,23 @@ test("ending a shift is idempotent — a second «Завершити зміну�
   const { barista } = await shiftOnDuty(app);
 
   expect((await endMyShift(app, barista)).status).toBe(204);
-  // A double-tap, or a barista who was never on shift, is a no-op — not an error.
   expect((await endMyShift(app, barista)).status).toBe(204);
 });
 
 test("ending my shift never touches a colleague's — each grant is its own", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const { owner, cafeId, barista } = await shiftOnDuty(app);
-  // A colleague joins the same Café through «Запросити ще».
-  const secondInvite = shiftInviteResponseSchema.parse(
-    await (await openShiftInvite(app, cafeId, owner)).json(),
+  const { owner, cafeId, posterCode, barista } = await shiftOnDuty(app);
+  const colleague = await rosterColleague(
+    app,
+    cafeId,
+    posterCode,
+    owner,
+    "colleague@example.com",
   );
-  const colleague = await signUp(app, "colleague@example.com");
-  expect(
-    (
-      await acceptInvite(
-        app,
-        { inviteToken: secondInvite.inviteToken },
-        colleague,
-      )
-    ).status,
-  ).toBe(201);
+  expect((await scanPoster(app, posterCode, colleague)).status).toBe(201);
 
   expect((await endMyShift(app, barista)).status).toBe(204);
 
-  // The colleague is still on shift.
   const theirs = await app.request("/api/me/shift", {
     headers: { cookie: colleague },
   });
@@ -885,16 +548,37 @@ test("ending a shift requires authentication", async () => {
   expect((await endMyShift(app)).status).toBe(401);
 });
 
-test("an invite short code typed into the member-code field identifies nobody", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  const { owner, cafeId, invite } = await shiftFixture(app);
+// --- cross-family confusion holds: a Customer QR is not a poster scan ---------------
 
-  const res = await app.request("/api/purchases", {
-    method: "POST",
-    headers: { "content-type": "application/json", cookie: owner },
-    body: JSON.stringify({ cafeId, memberCode: invite.inviteCode }),
-  });
+test("a valid shift-era token is not accepted as a poster code (poster codes are not tokens)", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
+  const { posterCode } = await shiftOnDuty(app);
+  void posterCode;
+  const customer = await signUp(app, "customer@example.com");
+  const token = await qrTokenFor(app, customer);
+
+  // A long signed token is not a poster code — it resolves to no Café.
+  const res = await scanPoster(app, token, customer);
 
   expect(res.status).toBe(404);
-  expect(await res.json()).toEqual({ error: "unknown_member_code" });
+  expect(await res.json()).toEqual({ error: "unknown_poster" });
+});
+
+test("a valid Customer QR presented to the scan endpoint still earns normally for the owner", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
+  const owner = await signUp(app, "owner@example.com");
+  const cafeId = await registerCafe(app, "Кавця", owner);
+  const customer = await signUp(app, "customer@example.com");
+
+  const res = await issuePurchase(
+    app,
+    { cafeId, qrToken: await qrTokenFor(app, customer) },
+    owner,
+  );
+
+  expect(res.status).toBe(201);
+  const [row] = await db<{ issued_by_user_id: string | null }[]>`
+    select "issued_by_user_id" from purchases where "cafe_id" = ${cafeId}
+  `;
+  expect(row?.issued_by_user_id).toBe(await userId(app, owner));
 });

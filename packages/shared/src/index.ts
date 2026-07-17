@@ -385,85 +385,60 @@ export const redemptionResultSchema = z.object({
 export type RedemptionResult = z.infer<typeof redemptionResultSchema>;
 
 /**
- * Body for `POST /api/cafes/:id/shift-invites` — the CafeOwner opens a shift
- * («Зміна», #80, ADR 0013). By default the grant runs to the end of the café's
- * business day (next Europe/Kyiv midnight); an explicit `durationMinutes` cuts
- * it shorter (a trial barista's two-hour window) and is clamped to that same
- * midnight — a shift never outlives the business day.
+ * A shift the barista's app carries (#98, ADR 0013): which Café the near-kiosk
+ * Scanner Mode is scoped to, and when the grant self-expires (a rolling ~16h
+ * cap, #99). One poster scan starts it and `GET /api/me/shift` reads it back, so
+ * the banner renders from a single type.
  */
-export const openShiftInviteBodySchema = z.object({
-  durationMinutes: z.number().int().min(5).max(1440).optional(),
-});
-export type OpenShiftInviteBody = z.infer<typeof openShiftInviteBodySchema>;
-
-/**
- * Contract for a minted shift invite (#80): the signed token the owner's
- * screen renders as a QR, and the short code fallback — same 8-char Crockford
- * format as the member code (#21), so the entry affordance is shared. The
- * invite is single-use and dies at `inviteExpiresAt` (~10 min); the grant an
- * accept mints lives until `grantExpiresAt`.
- */
-export const shiftInviteResponseSchema = z.object({
-  inviteToken: z.string().min(1),
-  inviteCode: z.string().regex(memberCodePattern),
-  inviteExpiresAt: z.string().datetime(),
-  grantExpiresAt: z.string().datetime(),
-});
-export type ShiftInviteResponse = z.infer<typeof shiftInviteResponseSchema>;
-
-/**
- * Body for `POST /api/shift-invites/accept` — the barista's side of the
- * handshake (#80): *either* the invite token their camera scanned *or* the
- * short code they typed, mirroring the scan/member-code split of
- * `issuePurchaseBodySchema`. Same invite, same grant either way.
- */
-export const acceptShiftInviteBodySchema = z.union([
-  z.object({ inviteToken: z.string().min(1) }),
-  z.object({ inviteCode: z.string().min(1) }),
-]);
-export type AcceptShiftInviteBody = z.infer<typeof acceptShiftInviteBodySchema>;
-
-/**
- * Contract for an accepted invite (#80): the shift the barista's app now
- * carries — which Café the scanner mode is scoped to, and when the grant
- * self-expires. The persistent shift banner renders from exactly this.
- */
-export const acceptShiftInviteResultSchema = z.object({
+export const shiftSchema = z.object({
   cafeId: z.string().uuid(),
   cafeName: z.string(),
   expiresAt: z.string().datetime(),
 });
-export type AcceptShiftInviteResult = z.infer<
-  typeof acceptShiftInviteResultSchema
->;
+export type Shift = z.infer<typeof shiftSchema>;
 
 /**
- * Every way `POST /api/shift-invites/accept` can turn down an authenticated,
- * well-formed accept — the same single-declaration taxonomy pattern as the
- * scan (#50), so the barista-side Ukrainian copy is compile-checked complete.
+ * Body for `POST /api/poster-scans` (#98, ADR 0013): the barista (or the owner)
+ * presents a Café's non-secret wall poster code — same 8-char Crockford base32
+ * shape + normalization as the member code (#21), normalized server-side, so a
+ * sloppily typed code still resolves. `confirmSwitch` is the second step of the
+ * one-active-shift switch (#99): a scan that meets an active shift at another
+ * Café comes back `switch_required`; re-sending it with `confirmSwitch: true`
+ * ends that shift and starts this one.
  */
-export const shiftInviteRejectionStatuses = {
-  /** Not an invite we minted: tampered, foreign, malformed — or an unknown typed code. */
-  invalid_invite: 401,
-  /** The invite's ten minutes are over — the owner mints a fresh one in one tap. */
-  expired_invite: 401,
-  /** One invite admits one barista (#80): this one already did. «Запросити ще». */
-  invite_used: 409,
-} as const;
+export const posterScanBodySchema = z.object({
+  posterCode: z.string().min(1),
+  confirmSwitch: z.boolean().optional(),
+});
+export type PosterScanBody = z.infer<typeof posterScanBodySchema>;
 
-export type ShiftInviteRejection = keyof typeof shiftInviteRejectionStatuses;
-
-/** Narrows an error code off the wire to the invite-rejection taxonomy. */
-export function isShiftInviteRejection(
-  code: string,
-): code is ShiftInviteRejection {
-  return Object.hasOwn(shiftInviteRejectionStatuses, code);
-}
+/**
+ * Contract for `POST /api/poster-scans` (#98, #99). Security rests on the
+ * roster, not the poster (ADR 0013): a non-rostered scan only ever raises a
+ * `pending` request that grants nothing. A rostered barista starts a shift —
+ * `shift_started` carries the live shift — unless one already runs at another
+ * Café, in which case `switch_required` names both Cafés and awaits
+ * `confirmSwitch`. The owner scanning their OWN poster gets `owner_cafe`: the
+ * poster is the staff's affordance, and the owner already scans Customers from
+ * CafeOwner Mode — so a self-scan starts nothing, it just says "this is yours".
+ * A discriminated union so the app's handling is compile-checked exhaustive.
+ */
+export const posterScanResultSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("pending"), cafeName: z.string() }),
+  z.object({ status: z.literal("shift_started"), shift: shiftSchema }),
+  z.object({
+    status: z.literal("switch_required"),
+    cafeName: z.string(),
+    currentCafeName: z.string(),
+  }),
+  z.object({ status: z.literal("owner_cafe"), cafeName: z.string() }),
+]);
+export type PosterScanResult = z.infer<typeof posterScanResultSchema>;
 
 /**
  * One entry of `GET /api/cafes/:id/shifts` — an active shift on the owner's
- * board (#80): who is behind the counter and when their grant self-expires.
- * `id` is what `DELETE /api/cafes/:id/shifts/:grantId` revokes.
+ * board: who is behind the counter and when their grant self-expires. `id` is
+ * what `DELETE /api/cafes/:id/shifts/:grantId` revokes.
  */
 export const shiftGrantSchema = z.object({
   id: z.string().uuid(),
@@ -476,40 +451,15 @@ export const shiftsResponseSchema = z.array(shiftGrantSchema);
 export type ShiftsResponse = z.infer<typeof shiftsResponseSchema>;
 
 /**
- * Contract for `GET /api/me/shift` — the barista side (#80): the active shift
- * this account holds (the scanner mode's scope + the banner's expiry), or null
- * when it lapsed or was revoked. Same shape the accept handed back, so the app
- * renders both from one type.
+ * Contract for `GET /api/me/shift` — the barista side: the active shift this
+ * account holds (Scanner Mode's scope + the banner's expiry), or null once it
+ * lapsed, was revoked, or the barista was removed from the roster (#99). Same
+ * shape a poster scan hands back, so the app renders both from one type.
  */
 export const myShiftResponseSchema = z.object({
-  shift: acceptShiftInviteResultSchema.nullable(),
+  shift: shiftSchema.nullable(),
 });
 export type MyShiftResponse = z.infer<typeof myShiftResponseSchema>;
-
-/**
- * Body for `POST /api/roster-requests` (#97, ADR 0013): the barista scans a
- * Café's wall poster and presents its non-secret join-code. Same 8-char
- * Crockford base32 shape + normalization as the member code (#21) — the shared
- * `memberCodeSchema` pattern isn't reused here because the field is named for
- * its role and a sloppy typed code is normalized server-side before lookup.
- */
-export const rosterRequestBodySchema = z.object({
-  posterCode: z.string().min(1),
-});
-export type RosterRequestBody = z.infer<typeof rosterRequestBodySchema>;
-
-/**
- * Contract for `POST /api/roster-requests` (#97): what the barista sees after a
- * poster scan. `pending` — a request is now in front of the owner (a fresh one,
- * or a duplicate quietly folded into the existing one); `rostered` — this
- * account is already trusted at the Café. Security lives in the roster, so the
- * scan never grants anything here; starting a Shift from it is #98.
- */
-export const rosterRequestResultSchema = z.object({
-  status: z.enum(["pending", "rostered"]),
-  cafeName: z.string(),
-});
-export type RosterRequestResult = z.infer<typeof rosterRequestResultSchema>;
 
 /** One pending join request on the owner's Roster board — awaiting approval. */
 export const rosterPendingEntrySchema = z.object({
