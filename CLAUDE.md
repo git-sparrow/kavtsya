@@ -36,8 +36,8 @@ The bar for every change. When these collide, resolve in priority order: **secur
 
 - **Simple** = fewest *concepts* the user must hold, not fewest screens. Prefer one obvious path over three configurable ones.
 - **Role-aware** = each Mode shows only what that role needs, in that role's language — no role sees another's clutter or terminology (ADR 0015).
-- **Beautiful** = consistent spacing/typography, and every interaction has *designed* loading, empty, error, and success states — not left to chance.
-- **Non-negotiable floor** (not trade-offs): authorization is enforced server-side and never trusts client-supplied role/ID/permission; the same action gives the same result everywhere (no contradicting special cases); no new architectural debt (no duplicated business logic, no state in two places, no bypassing layers).
+- **Considered** = nothing is left to chance: consistent spacing/typography; every interaction has *designed* loading, empty, error, and success states; and accessibility is treated as craft — state changes are announced, type scales, contrast and touch targets are generous.
+- **Non-negotiable floor** (not trade-offs): authorization is enforced server-side and never trusts client-supplied role/ID/permission; the same action gives the same result everywhere (no contradicting special cases); no new architectural debt (no duplicated business logic, no state in two places, no bypassing layers); every interactive element is reachable and labelled for assistive technology (a control a screen-reader user can't operate or name is a defect, not a polish item).
 - When UX collides with the floor, accept neither a weaker floor nor a silently worse UX — propose 2–3 designs that satisfy both, with trade-offs. Friction that protects the user is fine; friction that only saves the developer is not.
 
 ## Key files
