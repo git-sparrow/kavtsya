@@ -1,5 +1,6 @@
 import type { Hono } from "hono";
-import type { MeResponse } from "@kavtsya/shared";
+import type { MeResponse, OwnerCafe } from "@kavtsya/shared";
+import { countReturningCustomers } from "../analytics";
 import type { AppDeps, AppEnv } from "../app";
 import { listCafesByOwner, rolesFor } from "../cafes";
 import { pushConsentFor } from "../push-tokens";
@@ -8,7 +9,10 @@ import { pushConsentFor } from "../push-tokens";
  * App-owned routes that depend on an authenticated session. Better Auth's own
  * endpoints live under /api/auth/*; this is where our domain reads the session.
  */
-export function registerAuthRoutes(app: Hono<AppEnv>, { db }: AppDeps): void {
+export function registerAuthRoutes(
+  app: Hono<AppEnv>,
+  { db, clock }: AppDeps,
+): void {
   // The account foundation every later slice builds on: who am I? Returns 401
   // when no valid session cookie is present. `roles`/`cafes` let the mobile app
   // decide whether to offer CafeOwner Mode (ADR 0003).
@@ -16,13 +20,26 @@ export function registerAuthRoutes(app: Hono<AppEnv>, { db }: AppDeps): void {
     const user = c.get("user");
     if (!user) return c.json({ error: "unauthorized" }, 401);
 
+    // Each owned Café carries its one free teaser stat (#25, ADR 0011): how many
+    // Customers came back in the last 30 Kyiv days — the single permanent free
+    // number, riding on this existing read for Free and Pro owners alike.
     const cafes = await listCafesByOwner(db, user.id);
+    const ownerCafes: OwnerCafe[] = await Promise.all(
+      cafes.map(async (cafe) => ({
+        ...cafe,
+        returningCustomers30d: await countReturningCustomers(
+          db,
+          clock,
+          cafe.id,
+        ),
+      })),
+    );
     const body: MeResponse = {
       id: user.id,
       email: user.email,
       name: user.name,
-      roles: rolesFor(cafes),
-      cafes,
+      roles: rolesFor(ownerCafes),
+      cafes: ownerCafes,
       // Custom column, not a Better Auth field — read from our side (#24).
       pushConsent: await pushConsentFor(db, user.id),
     };

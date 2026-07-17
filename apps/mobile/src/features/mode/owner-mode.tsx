@@ -4,8 +4,9 @@ import { StyleSheet, View } from "react-native";
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { Screen } from "@/components/screen";
-import { OwnerBadge, Title } from "@/components/text";
+import { Muted, OwnerBadge, Title } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
+import { CLIENT_FORMS, pluralizeUk } from "@/lib/plural";
 import { useTheme } from "@/theme";
 
 /**
@@ -33,6 +34,13 @@ export function OwnerMode() {
             ]}
           >
             <Title>{cafe.name}</Title>
+            {/* The single free teaser stat (#25, ADR 0011) — the café-home number
+                every owner sees, Free and Pro alike. */}
+            <Muted>
+              {cafe.returningCustomers30d}{" "}
+              {pluralizeUk(cafe.returningCustomers30d, CLIENT_FORMS)}{" "}
+              повернулися за 30 днів
+            </Muted>
             <Button
               title="Сканувати QR клієнта"
               onPress={() =>
@@ -78,6 +86,16 @@ export function OwnerMode() {
               onPress={() =>
                 router.push({
                   pathname: "/owner/campaigns",
+                  params: { cafeId: cafe.id },
+                })
+              }
+            />
+            <Button
+              title="Аналітика"
+              variant="secondary"
+              onPress={() =>
+                router.push({
+                  pathname: "/owner/analytics",
                   params: { cafeId: cafe.id },
                 })
               }

@@ -1,5 +1,5 @@
 import type { Clock } from "./clock";
-import { kyivDayOf } from "./clock";
+import { kyivDayOf, kyivWindowStart } from "./clock";
 import type { Database } from "./db";
 import { planForOwnedCafe } from "./cafes";
 import { getCampaignConfig } from "./platform-config";
@@ -56,15 +56,10 @@ export async function sendCampaign(
   if (plan !== "pro") return { ok: false, reason: "pro_required" };
 
   const { dailyLimit } = await getCampaignConfig(db);
-  const kyivDay = kyivDayOf(clock.now());
-  // The window's oldest Kyiv day, computed calendar-wise from the Kyiv date
-  // (Date.UTC normalizes the underflow) — day 1 of the 90 is today itself.
-  const [y, m, d] = kyivDay.split("-").map(Number) as [number, number, number];
-  const oldestActiveDay = new Date(
-    Date.UTC(y, m - 1, d - (RECENCY_WINDOW_KYIV_DAYS - 1)),
-  )
-    .toISOString()
-    .slice(0, 10);
+  const now = clock.now();
+  const kyivDay = kyivDayOf(now);
+  // The window's oldest Kyiv day — day 1 of the 90 is today itself (#24).
+  const oldestActiveDay = kyivWindowStart(now, RECENCY_WINDOW_KYIV_DAYS);
 
   // Cap + row + audience in one transaction, serialized per Café by a lock on
   // the café row — two simultaneous taps can't both pass the count. The ledger

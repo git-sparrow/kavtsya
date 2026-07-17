@@ -87,8 +87,15 @@ test("registering a Café unlocks the cafe_owner role on the same account", asyn
   expect(me.roles).toContain("customer");
   expect(me.roles).toContain("cafe_owner");
   // Every Café is born Free (#24, ADR 0011) — the Plan rides on the same read.
+  // A brand-new Café has no returning Customers yet, so the free teaser (#25,
+  // ADR 0011) that also rides on this read starts at zero.
   expect(me.cafes).toEqual([
-    { id: cafe.id, name: "Кавця на Подолі", plan: "free" },
+    {
+      id: cafe.id,
+      name: "Кавця на Подолі",
+      plan: "free",
+      returningCustomers30d: 0,
+    },
   ]);
 });
 

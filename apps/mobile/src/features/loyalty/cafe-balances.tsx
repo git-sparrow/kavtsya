@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { Button } from "@/components/button";
 import { Surface } from "@/components/surface";
 import { ErrorText, Muted, Title } from "@/components/text";
+import { pluralizeUk } from "@/lib/plural";
 import { fontFamily, useTheme } from "@/theme";
 
 import { rewardLabel } from "./reward";
@@ -11,16 +12,8 @@ import { useBalances } from "./use-balances";
 /** Beyond this many, dots would overflow the row — the count carries it instead. */
 const MAX_DOTS = 12;
 
-/** Ukrainian count agreement for «зернятко» so "1 зернятко / 3 зернятка / 7 зернят" reads right. */
-function pluralizeBeans(n: number): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return "зернятко";
-  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) {
-    return "зернятка";
-  }
-  return "зернят";
-}
+/** «зернятко» in its three count forms: 1 зернятко / 3 зернятка / 7 зернят. */
+const BEAN_FORMS = { one: "зернятко", few: "зернятка", many: "зернят" };
 
 /** A row of beans filled to the Customer's balance — the progress at a glance. */
 function BeanProgress({
@@ -121,7 +114,7 @@ export function CafeBalances() {
             <Muted style={styles.detail}>
               {ready
                 ? `Винагорода готова!${b.reward ? ` · ${rewardLabel(b.reward)}` : ""}`
-                : `${b.balance} ${pluralizeBeans(b.balance)} · ще ${b.threshold - b.balance} до Винагороди`}
+                : `${b.balance} ${pluralizeUk(b.balance, BEAN_FORMS)} · ще ${b.threshold - b.balance} до Винагороди`}
             </Muted>
             <BeanProgress balance={b.balance} threshold={b.threshold} />
           </View>

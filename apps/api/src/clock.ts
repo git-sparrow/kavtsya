@@ -35,6 +35,25 @@ export function kyivDayOf(instant: Date): string {
 }
 
 /**
+ * The oldest Kyiv day of an N-Kyiv-day window ending on `instant`'s Kyiv day
+ * (today inclusive), as a Postgres date literal — day 1 of the window is that
+ * day itself, so `days = 1` returns today. Computed calendar-wise from the Kyiv
+ * date (`Date.UTC` normalizes the month/year underflow), which is exact for a
+ * day count regardless of DST. Shared by the campaign audience window (#24) and
+ * analytics periods (#25).
+ */
+export function kyivWindowStart(instant: Date, days: number): string {
+  const [y, m, d] = kyivDayOf(instant).split("-").map(Number) as [
+    number,
+    number,
+    number,
+  ];
+  return new Date(Date.UTC(y, m - 1, d - (days - 1)))
+    .toISOString()
+    .slice(0, 10);
+}
+
+/**
  * The instant the café's business day ends: the next Europe/Kyiv midnight
  * after `instant` — the shift grant's default expiry (#80, ADR 0013). Ukraine
  * switches DST at 03:00/04:00, never at midnight, so midnight always exists
