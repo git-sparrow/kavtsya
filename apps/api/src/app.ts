@@ -3,6 +3,7 @@ import type { Auth, AuthSession, AuthUser } from "./auth";
 import type { Clock } from "./clock";
 import type { Database } from "./db";
 import type { PushProvider } from "./push";
+import { registerAnalyticsRoutes } from "./routes/analytics";
 import { registerAuthRoutes } from "./routes/auth";
 import { registerCafeRoutes } from "./routes/cafes";
 import { registerHealthRoute } from "./routes/health";
@@ -67,6 +68,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   registerShiftRoutes(app, deps);
   registerRosterRoutes(app, deps);
   registerCampaignRoutes(app, deps);
+  registerAnalyticsRoutes(app, deps);
   registerPushRoutes(app, deps);
   return app;
 }

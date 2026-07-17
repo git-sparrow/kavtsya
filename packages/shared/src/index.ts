@@ -49,6 +49,20 @@ export const cafeSchema = z.object({
 export type Cafe = z.infer<typeof cafeSchema>;
 
 /**
+ * A Café as its owner sees it on the café home (`/api/me`): the Café plus the
+ * single free teaser stat (#25, ADR 0011) — how many Customers came back in the
+ * last 30 Kyiv days. It rides on the owner's existing café data for Free and Pro
+ * alike (one cheap aggregate, no separate endpoint, no gating), and equals the
+ * `repeatCustomers` an analytics read reports for the same 30-day window. The
+ * fence (ADR 0011): this is the ONE permanent free stat — any further free-tier
+ * number requires amending that ADR, not citing this precedent.
+ */
+export const ownerCafeSchema = cafeSchema.extend({
+  returningCustomers30d: z.number().int().nonnegative(),
+});
+export type OwnerCafe = z.infer<typeof ownerCafeSchema>;
+
+/**
  * The platform-default Reward types a Café can choose from (CONTEXT → Reward).
  * The set of types is fixed in code, but *which* of them a Café may pick is
  * gated by the platform-default set stored in `platform_config` (story 38), so
@@ -176,7 +190,7 @@ export const meResponseSchema = z.object({
   email: z.string(),
   name: z.string(),
   roles: z.array(roleSchema),
-  cafes: z.array(cafeSchema),
+  cafes: z.array(ownerCafeSchema),
   /** Café-news consent (#24): explicit opt-in, default false — the settings toggle reads this. */
   pushConsent: z.boolean(),
 });
@@ -530,6 +544,63 @@ export type CampaignRejection = keyof typeof campaignRejectionStatuses;
 /** Narrows an error code off the wire to the campaign-rejection taxonomy. */
 export function isCampaignRejection(code: string): code is CampaignRejection {
   return Object.hasOwn(campaignRejectionStatuses, code);
+}
+
+/**
+ * The period an analytics read covers (#25): the last 7 or 30 *Kyiv* days,
+ * today inclusive. Presets only — no custom ranges (ratified 2026-07-10);
+ * `30d` is the default the screen opens on. The query string carries it, so a
+ * missing/unknown value falls back to `30d` server-side.
+ */
+export const analyticsPeriodSchema = z.enum(["7d", "30d"]);
+export type AnalyticsPeriod = z.infer<typeof analyticsPeriodSchema>;
+
+/**
+ * The number of Kyiv hours in a day — the peak-hours histogram has exactly one
+ * bucket per hour (index = Kyiv hour of day, 0–23), so a chart can render it
+ * without knowing which hours had traffic.
+ */
+export const HOURS_IN_DAY = 24;
+
+/**
+ * Contract for `GET /api/cafes/:id/analytics` (#25, ADR 0011) — the Pro-gated
+ * summary a CafeOwner reads for one Café, derived live from the Purchase ledger
+ * (ADR 0010). `hourly[h]` is the number of Зернятка earned in Kyiv hour `h`
+ * over the period (DST-correct), so the buckets always sum to the period's total
+ * Purchases. `newCustomers`/`repeatCustomers` split the **Active Customers**
+ * (distinct Customers with ≥1 Purchase at this Café in the period): *new* first
+ * ever visited inside the period, *repeat* had a Purchase here before it, and
+ * `newCustomers + repeatCustomers === activeCustomers` always. Active Customer
+ * is analytics-only — it never gates billing or anything else (#25).
+ */
+export const analyticsSummarySchema = z.object({
+  period: analyticsPeriodSchema,
+  hourly: z.array(z.number().int().nonnegative()).length(HOURS_IN_DAY),
+  activeCustomers: z.number().int().nonnegative(),
+  newCustomers: z.number().int().nonnegative(),
+  repeatCustomers: z.number().int().nonnegative(),
+});
+export type AnalyticsSummary = z.infer<typeof analyticsSummarySchema>;
+
+/**
+ * Every way `GET /api/cafes/:id/analytics` can turn down an authenticated
+ * request — the same single-declaration taxonomy pattern as the scan (#50) and
+ * campaign gates, so the analytics screen's Ukrainian copy is compile-checked
+ * complete. Gating reuses #24's `pro_required` code and status: analytics adds
+ * no new gate mechanism (#25).
+ */
+export const analyticsRejectionStatuses = {
+  /** The Café doesn't exist or the caller doesn't own it (indistinguishable). */
+  not_found: 404,
+  /** The Café is on Free — analytics is the same upgrade pitch (ADR 0011). */
+  pro_required: 403,
+} as const;
+
+export type AnalyticsRejection = keyof typeof analyticsRejectionStatuses;
+
+/** Narrows an error code off the wire to the analytics-rejection taxonomy. */
+export function isAnalyticsRejection(code: string): code is AnalyticsRejection {
+  return Object.hasOwn(analyticsRejectionStatuses, code);
 }
 
 /**

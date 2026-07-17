@@ -67,12 +67,17 @@ Tips learned wiring this up (2026-07-10):
 - Expo Go's first-launch dev-menu sheet covers the app; Claude dismisses it by tapping outside the
   sheet (top of the screen), not "Continue".
 - Re-open the app deterministically with `open-url` → `exp://<lan-ip>:8081` (Metro prints it).
-- **Demo fixtures**: `pnpm db:seed-demo` (idempotent, local dev DB only) creates/restores the whole
-  demo world — run it after any `db:reset`, or before a session to pin the state:
-  - CafeOwner `demo.owner@kavtsya.test` / `demo-password-1`, owns «Кавярня «Демо»» (threshold 5,
-    reward = безкоштовний напій)
-  - Customer `demo.customer@kavtsya.test` / `demo-password-1`, member code **`KAVA-2026`** (#21),
-    balance seeded one Зернятко short of the threshold — a single scan demos earn → redeem → Ворожка.
+- **Demo fixtures**: `pnpm db:seed-demo` (idempotent, additive, local dev DB only) creates/restores
+  the defined demo world — run it after any `db:reset`, or before a session to pin the state.
+  `pnpm db:seed-demo-fresh` truncates the data tables first (clears accreted junk from past runs).
+  The full roster + its rationale live in `apps/api/scripts/seed-world.ts`; password for all is
+  `demo-password-1`. The two you reach most:
+  - CafeOwner `demo.owner@kavtsya.test` — **Free** café «Кавярня «Демо»» (threshold 5, reward =
+    безкоштовний напій); the Plan-gate pitch side.
+  - Customer `demo.customer@kavtsya.test`, member code **`KAVA-2026`** (#21), balance one Зернятко
+    short of the threshold — a single scan demos earn → redeem → Ворожка.
+  - Also seeded: `pro.owner@` (Pro café + analytics history), `barista@` (rostered Barista),
+    `new.owner@` / `new.customer@` (empty states) — see `seed-world.ts`.
 - **Recorded flows** (`.argent/flows/`, replay with `flow-execute`): `customer-qr-screen` and
   `owner-to-scan-screen` walk from a fresh `open-url` to the respective screen — start every
   verification/design session by replaying one instead of re-deriving navigation. Prerequisites:

@@ -21,19 +21,36 @@ verified — go drive the surface next.
 ## 2. Bring up the stack
 
 ```sh
-pnpm db:up          # local Postgres (docker compose)
-pnpm db:seed-demo   # idempotent demo world (safe to re-run; see below)
-pnpm dev:api        # API on :3000 — runs migrations first (predev)
-pnpm dev:mobile     # Metro on :8081 (only needed for mobile surfaces)
+pnpm db:up             # local Postgres (docker compose)
+pnpm db:seed-demo      # idempotent demo world (additive; safe to re-run mid-demo)
+# pnpm db:seed-demo-fresh   # wipe data tables then reseed — clears accreted junk
+pnpm dev:api           # API on :3000 — runs migrations first (predev)
+pnpm dev:mobile        # Metro on :8081 (only needed for mobile surfaces)
 ```
 
-Demo world (created/restored by `db:seed-demo`, run it after any `db:reset`):
+Demo world — one defined, idempotent roster (source of truth: `apps/api/scripts/seed-world.ts`).
+Every account's password is `demo-password-1`; the email encodes its single purpose.
+`db:seed-demo` is additive (safe mid-demo); `db:seed-demo-fresh` truncates first for a
+clean slate; run either after a `db:reset`.
 
-- CafeOwner `demo.owner@kavtsya.test` / `demo-password-1` — owns «Кавярня
-  «Демо»» (threshold 5, reward = безкоштовний напій)
-- Customer `demo.customer@kavtsya.test` / `demo-password-1`, member code
-  `KAVA-2026`, balance seeded one Зернятко short of the threshold — a single
-  scan demos earn → redeem → Ворожка.
+Core loop (kept pristine):
+
+- CafeOwner `demo.owner@kavtsya.test` — **Free** café «Кавярня «Демо»» (threshold 5,
+  reward = безкоштовний напій). The Plan-gate **pitch** side (analytics/campaigns → `pro_required`).
+- Customer `demo.customer@kavtsya.test`, member code `KAVA-2026`, balance one Зернятко
+  short of the threshold — a single scan demos earn → redeem → Ворожка.
+
+Roles & states:
+
+- CafeOwner `pro.owner@kavtsya.test` — **Pro** café «Кавярня «Про»» with seeded backdated
+  analytics history (busiest hour ~19:00). The **unlocked** side of every Plan gate.
+- Customer `barista@kavtsya.test`, code `BRST-2026` — a `rostered` Barista at «Кавярня «Про»»
+  (Зміна scanner grants #80 / roster #97).
+- CafeOwner `new.owner@kavtsya.test` — no café (register-café / empty owner state).
+- Customer `new.customer@kavtsya.test`, code `NEWC-2026` — no зернята (empty customer state).
+
+The Pro café's history is carried by login-less synthetic customers (`hist-*`) — ledger
+fk targets only, never signed into.
 
 ## 3. API surface (curl on :3000)
 

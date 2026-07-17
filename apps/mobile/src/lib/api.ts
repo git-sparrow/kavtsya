@@ -1,4 +1,8 @@
 import {
+  type AnalyticsPeriod,
+  type AnalyticsRejection,
+  type AnalyticsSummary,
+  analyticsSummarySchema,
   type Cafe,
   type CafeBalancesResponse,
   cafeBalancesResponseSchema,
@@ -6,6 +10,7 @@ import {
   type CampaignRejection,
   type CampaignResult,
   campaignResultSchema,
+  isAnalyticsRejection,
   isCampaignRejection,
   isRedemptionRejection,
   isScanRejection,
@@ -265,6 +270,40 @@ export async function sendCampaign(
     throw new Error(error.message ?? "Не вдалося надіслати розсилку");
   }
   return campaignResultSchema.parse(data);
+}
+
+/**
+ * What the analytics screen tells the CafeOwner for each rejection the API
+ * distinguishes (#25) — same compile-checked pattern as the campaign copy. Both
+ * codes drive UI, not just an error line: `pro_required` renders the Pro pitch,
+ * `not_found` a plain café-missing message.
+ */
+const ANALYTICS_REJECTIONS: Record<AnalyticsRejection, string> = {
+  not_found: "Кав'ярню не знайдено",
+  pro_required: "Аналітика доступна на тарифі Pro",
+};
+
+/**
+ * The Pro CafeOwner's analytics for one Café (#25): peak hours + repeat-vs-new
+ * over the chosen 7d/30d window, derived live from the ledger. A Free café
+ * comes back `pro_required` — the screen renders that as the upgrade pitch,
+ * so the thrown message is only the fallback for an unexpected error.
+ */
+export async function fetchAnalytics(
+  cafeId: string,
+  period: AnalyticsPeriod,
+): Promise<AnalyticsSummary> {
+  const { data, error } = await apiFetch(
+    `/api/cafes/${cafeId}/analytics?period=${period}`,
+  );
+  if (error) {
+    const code = (error as { error?: string }).error;
+    if (code && isAnalyticsRejection(code)) {
+      throw new Error(ANALYTICS_REJECTIONS[code]);
+    }
+    throw new Error(error.message ?? "Не вдалося завантажити аналітику");
+  }
+  return analyticsSummarySchema.parse(data);
 }
 
 /** The Customer's explicit café-news opt-in (#24): flip it on the server. */
