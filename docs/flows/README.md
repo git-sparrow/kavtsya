@@ -112,6 +112,15 @@ opens on a normal mode home.
 
 These are ordinary Maestro flows — the same YAML runs as CI smoke tests or the
 seed of a broader E2E suite (Maestro is a full mobile UI-testing tool, not just a
-screenshotter). Maestro's MCP server (`claude mcp add maestro -- maestro mcp`,
-ships with the CLI, local — no Cloud needed) exposes `inspect_screen` +
-`run` to an agent, which streamlines authoring and extending these flows.
+screenshotter). Maestro's MCP server (ships with the CLI, local — no Cloud needed)
+exposes `inspect_screen` + `run` to an agent, streamlining authoring/extending
+these flows.
+
+It is **not** kept in the always-loaded MCP config (a configured server connects
+on every session, and this work is occasional). Toggle it on demand — restart
+Claude Code after either, since MCP tools load at session start:
+
+```sh
+apps/mobile/.maestro/mcp.sh enable    # register (absolute maestro path + JAVA_HOME) → restart
+apps/mobile/.maestro/mcp.sh disable   # unregister → restart
+```

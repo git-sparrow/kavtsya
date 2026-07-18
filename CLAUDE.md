@@ -71,7 +71,7 @@ The `argent-*` skills + MCP server (Software Mansion's Argent, local devDependen
 
 ### User flows & E2E (Maestro)
 
-`docs/flows/` — an auto-generated Mermaid route map (`pnpm --filter @kavtsya/mobile flows:map`) + a Maestro-driven per-role screenshot gallery (`apps/mobile/.maestro/`, `capture.sh`), captured on a **standalone dev build + `--no-dev` Metro** (not Expo Go; `ios/`+`android/` are git-ignored CNG output). **Maestro is a global CLI installed out-of-band (`curl -Ls https://get.maestro.mobile.dev | bash`; needs a JDK) — _not_ in the pnpm lockfile/catalog**, so a fresh checkout installs it separately. The YAML flows double as E2E/smoke tests; the `maestro mcp` server (`claude mcp add maestro -- maestro mcp`) can drive flow authoring/running from an agent. See `docs/flows/README.md`.
+`docs/flows/` — an auto-generated Mermaid route map (`pnpm --filter @kavtsya/mobile flows:map`) + a Maestro-driven per-role screenshot gallery (`apps/mobile/.maestro/`, `capture.sh`), captured on a **standalone dev build + `--no-dev` Metro** (not Expo Go; `ios/`+`android/` are git-ignored CNG output). **Maestro is a global CLI installed out-of-band (`curl -Ls https://get.maestro.mobile.dev | bash`; needs a JDK) — _not_ in the pnpm lockfile/catalog**, so a fresh checkout installs it separately. The YAML flows double as E2E/smoke tests; Maestro's MCP server can drive flow authoring/running from an agent — kept **on demand** (not loaded every session) via `apps/mobile/.maestro/mcp.sh enable|disable` (restart after). See `docs/flows/README.md`.
 
 ### LLM doc endpoints
 
