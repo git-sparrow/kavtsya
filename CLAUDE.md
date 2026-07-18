@@ -26,6 +26,7 @@ See the Tech stack table in `PROJECT_BRIEF.md` and `docs/adr/` for full rational
 
 ## Working agreement
 
+- **Deliver via PR, never commit to `main`.** Every feature/fix/doc change goes on a branch and merges through a GitHub PR — this holds for agents too, no direct commits to the default branch. A `.husky/pre-push` guard blocks direct pushes locally; GitHub-side branch protection switches on once the repo is public or on a paid plan. Full workflow (branch naming, the `pnpm verify` gate, commit style) is in `CONTRIBUTING.md`.
 - Use the domain glossary in `CONTEXT.md` consistently — **Зернятко** not "stamp/point", **CafeOwner** not "owner", **Purchase** not "transaction".
 - Keep it simple: no redundant functionality.
 - Matt Pocock's workflow skills (tdd, to-spec, to-tickets, triage, domain-modeling, …) are vendored into this repo and committed, not installed globally — the real files live in `.agents/skills/`, with `.claude/skills/` symlinks pointing at them and `skills-lock.json` pinning the `mattpocock/skills` sources/hashes. They're standalone and un-namespaced (`/tdd`) and travel with the repo, so no per-machine global install is needed. Update them with `npx skills@latest` against `skills-lock.json`. `.claude/settings.json` additionally pins project-relevant plugins (currently the Expo skills).
