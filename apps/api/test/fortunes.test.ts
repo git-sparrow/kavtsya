@@ -2,7 +2,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { AIProvider } from "../src/ai";
 import { fixedClock } from "../src/clock";
 import type { Database } from "../src/db";
-import { generateDailyFortunes, pickFortune } from "../src/fortunes";
+import {
+  generateDailyFortunes,
+  pickFortune,
+  todaysPool,
+} from "../src/fortunes";
 import { setupTestDb } from "./helpers/testDb";
 
 /**
@@ -97,5 +101,38 @@ describe("generateDailyFortunes", () => {
       generateDailyFortunes(db, { provider: failing, clock }),
     ).rejects.toThrow(/529/);
     expect(await pickFortune(db, clock)).toBeNull();
+  });
+});
+
+describe("todaysPool", () => {
+  it("reads zero for a day whose pool was never filled, keyed to that Kyiv day", async () => {
+    // The health signal that matters most (ADR 0009, #116): an empty pool must
+    // report 0, not error or go missing — and name the Kyiv day it counted.
+    expect(await todaysPool(db, fixedClock(KYIV_MIDDAY))).toEqual({
+      day: "2026-07-09",
+      count: 0,
+    });
+  });
+
+  it("counts today's (Kyiv) pool without seeing another day's batch", async () => {
+    // Yesterday's Kyiv batch must not inflate today's count.
+    await generateDailyFortunes(db, {
+      provider: fakeProvider(["Вчорашнє ворожіння.", "Ще одне."]).provider,
+      clock: fixedClock(new Date("2026-07-08T12:00:00Z")),
+    });
+    expect(await todaysPool(db, fixedClock(KYIV_MIDDAY))).toEqual({
+      day: "2026-07-09",
+      count: 0,
+    });
+
+    await generateDailyFortunes(db, {
+      provider: fakeProvider(["Кава на щастя.", "Дорога чекає.", "Звістка."])
+        .provider,
+      clock: fixedClock(KYIV_MIDDAY),
+    });
+    expect(await todaysPool(db, fixedClock(KYIV_MIDDAY))).toEqual({
+      day: "2026-07-09",
+      count: 3,
+    });
   });
 });

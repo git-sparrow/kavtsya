@@ -33,10 +33,7 @@ export async function generateDailyFortunes(
   { provider, clock, count = DAILY_BATCH_SIZE }: GenerateDailyFortunesOptions,
 ): Promise<void> {
   const poolDay = kyivDayOf(clock.now());
-  const [existing] = await db<{ count: string }[]>`
-    select count(*) from fortunes where "pool_day" = ${poolDay}::date
-  `;
-  if (Number(existing?.count ?? 0) > 0) return;
+  if ((await poolCountForDay(db, poolDay)) > 0) return;
 
   const fortunes = await provider.generateFortunes(count);
   await db`
@@ -44,6 +41,36 @@ export async function generateDailyFortunes(
     select ${poolDay}::date, t.text
     from unnest(${fortunes}::text[]) as t(text)
   `;
+}
+
+/** How many fortunes belong to one Kyiv pool day — the shared count query. */
+async function poolCountForDay(db: Database, poolDay: string): Promise<number> {
+  const [row] = await db<{ count: string }[]>`
+    select count(*) from fortunes where "pool_day" = ${poolDay}::date
+  `;
+  return Number(row?.count ?? 0);
+}
+
+/** Today's (Kyiv) pool: the day it belongs to and how many fortunes it holds. */
+export interface TodaysPool {
+  /** The Europe/Kyiv calendar day, as a `YYYY-MM-DD` Postgres date literal. */
+  day: string;
+  count: number;
+}
+
+/**
+ * Today's (Kyiv) pool status — `count` is 0 when the daily job hasn't run or
+ * failed. Surfaced on `/health` (#116) so an empty pool is visible the day it
+ * happens, instead of being masked by the silent fallback (ADR 0009). `day` and
+ * `count` are read from one Kyiv-day value, so they can never name different
+ * days.
+ */
+export async function todaysPool(
+  db: Database,
+  clock: Clock,
+): Promise<TodaysPool> {
+  const day = kyivDayOf(clock.now());
+  return { day, count: await poolCountForDay(db, day) };
 }
 
 /** A random fortune from today's (Kyiv) pool, or null when the pool is empty. */
