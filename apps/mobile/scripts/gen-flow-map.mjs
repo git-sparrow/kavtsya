@@ -65,7 +65,9 @@ export function walkTsx(dir, out = []) {
  */
 export function routeOf(relPath) {
   const noExt = relPath.replace(/\.tsx$/, "");
-  const segments = noExt.split(path.sep).filter(Boolean);
+  // Split on both separators: `path.relative` yields `\` on Windows, while
+  // router paths (and the unit test) are always `/`-separated.
+  const segments = noExt.split(/[\\/]/).filter(Boolean);
   if (segments[segments.length - 1] === "_layout") return null;
   const kept = segments.filter((s) => !/^\(.*\)$/.test(s)); // drop (groups)
   if (kept[kept.length - 1] === "index") kept.pop(); // index === parent
