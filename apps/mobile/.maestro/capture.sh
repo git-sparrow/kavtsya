@@ -17,6 +17,9 @@ set -euo pipefail
 # hasn't sourced the user's profile (CI, non-interactive runners).
 export PATH="$HOME/.maestro/bin:$PATH"
 
+# Opt out of Maestro's anonymous analytics for every capture run.
+export MAESTRO_CLI_NO_ANALYTICS=1
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../../.." && pwd)"
 
