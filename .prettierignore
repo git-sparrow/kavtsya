@@ -21,3 +21,6 @@ apps/mobile/src/theme/theme.generated.ts
 
 # Misc
 *.md
+
+# Machine-local harness state (gitignored; written by Claude Code)
+.claude/settings.local.json
