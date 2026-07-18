@@ -154,4 +154,9 @@ test("the detector catches an overdrawn membership", async () => {
   await expect(findNegativeBalances(db)).resolves.toEqual([
     { cafeId, customerId, balance: -3 },
   ]);
+
+  // Unlike sibling suites, this one cleans up: the forged overdraw would trip
+  // the cross-suite invariant in `global-invariant.ts` if it happened to be the
+  // last write before the run ends (file order isn't guaranteed).
+  await db`delete from redemptions where "idempotency_key" = 'forged-overdraw'`;
 });

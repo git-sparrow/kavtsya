@@ -254,7 +254,9 @@ export interface NegativeBalance {
  *
  * Two consumers share this one query: a cross-suite assertion in the test suite,
  * and `scripts/check-ledger-invariant.ts` runnable against a live database before
- * and during pilots. The balance formula stays in its one home — {@link deriveBalance}.
+ * and during pilots. The returned balance is computed by {@link deriveBalance} —
+ * the formula's one home; the `where` predicate below mirrors that same
+ * subtraction only because a SQL filter can't call the JS helper.
  */
 export async function findNegativeBalances(
   db: Database,
@@ -283,6 +285,8 @@ export async function findNegativeBalances(
       from redemptions group by "cafe_id", "customer_user_id"
     ) r on r."cafe_id" = m."cafe_id"
       and r."customer_user_id" = m."customer_user_id"
+    -- Mirrors deriveBalance (count(purchases) − sum(beans_spent)) in SQL: a
+    -- filter can't call the JS helper, but the returned balance still does.
     where coalesce(p."purchases", 0) - coalesce(r."beans_spent", 0) < 0
   `;
   return rows.map((row) => ({
