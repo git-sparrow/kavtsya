@@ -9,6 +9,18 @@ export const healthResponseSchema = z.object({
   status: z.literal("ok"),
   db: z.literal("ok"),
   time: z.string().datetime(),
+  /**
+   * Today's Ворожка pool (#116). The scan falls back silently when the pool is
+   * empty (ADR 0009), so a failed generation job is otherwise invisible; the
+   * count is always present — 0 when the pool is empty — and `day` names the
+   * Europe/Kyiv calendar day it belongs to, the same convention generation uses.
+   */
+  fortunePool: z.object({
+    // The Europe/Kyiv calendar day the count belongs to, as a `YYYY-MM-DD` date
+    // literal — the same convention generation keys the pool to.
+    day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    count: z.number().int().nonnegative(),
+  }),
 });
 
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
