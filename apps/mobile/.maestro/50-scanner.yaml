@@ -1,0 +1,21 @@
+# Scanner (Barista on an active Зміна) — the near-kiosk workstation.
+#
+# PREREQUISITE (state setup, not a pure UI flow): Scanner Mode only appears when
+# /api/me/shift is non-null. The seeded barista@kavtsya.test is *rostered* but
+# not on shift, so before this flow an owner must start a Зміна for them (via the
+# owner Shifts screen, or a direct API/seed call). capture.sh skips this flow
+# unless CAPTURE_SCANNER=1 is set, so the gallery run stays green by default.
+appId: ${APP_ID}
+tags:
+  - gallery
+  - scanner
+---
+- runFlow: subflows/reset-to-signed-out.yaml
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      EMAIL: "barista@kavtsya.test"
+      PASSWORD: ${DEMO_PASSWORD}
+# With an active shift the app pins straight into the kiosk.
+- assertVisible: "Завершити зміну"
+- takeScreenshot: ${SHOTS}/scanner/30-workstation

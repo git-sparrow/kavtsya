@@ -1,0 +1,16 @@
+# Reusable: from the signed-out auth screen, sign in as ${EMAIL}/${PASSWORD}.
+# The caller asserts its own role landing afterwards (Customer/Owner/Scanner),
+# since each Mode paints a different first screen (ADR 0015).
+#
+# Selectors are the on-screen Ukrainian placeholders/labels from sign-in.tsx.
+# Adding accessibilityIdentifier/testID to those fields would harden this against
+# copy changes — a good follow-up, not required today.
+appId: ${APP_ID}
+---
+- assertVisible: "Увійти"
+- tapOn: "Email"
+- inputText: ${EMAIL}
+- tapOn: "Пароль"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: "Увійти"

@@ -50,3 +50,6 @@ tmp/
 
 # ---- Personal /teach learning workspace (not product code) ----
 learning/
+
+# Generated flow screenshots (regenerate via apps/mobile/.maestro/capture.sh)
+docs/flows/shots/

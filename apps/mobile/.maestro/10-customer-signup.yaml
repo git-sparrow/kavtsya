@@ -1,0 +1,25 @@
+# Customer — first run: sign-up → member identity. The one flow that creates a
+# new account, so it uses a fresh ${SIGNUP_EMAIL} each run (capture.sh generates
+# a unique one) to stay re-runnable without a DB reset.
+appId: ${APP_ID}
+tags:
+  - gallery
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Увійти"
+- takeScreenshot: ${SHOTS}/customer/01-signin
+- tapOn: "Немає акаунта? Зареєструватися"
+- assertVisible: "Зареєструватися"
+- tapOn: "Ім'я"
+- inputText: "Олена"
+- tapOn: "Email"
+- inputText: ${SIGNUP_EMAIL}
+- tapOn: "Пароль"
+- inputText: ${DEMO_PASSWORD}
+- hideKeyboard
+- takeScreenshot: ${SHOTS}/customer/02-signup-filled
+- tapOn: "Зареєструватися"
+# Lands in Customer Mode — the member-code surface.
+- assertVisible: "Твій код учасника"
+- takeScreenshot: ${SHOTS}/customer/03-home

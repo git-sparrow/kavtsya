@@ -1,0 +1,9 @@
+# Reusable: wipe app data (incl. the SecureStore session) so the next flow
+# starts from the auth screen — the deterministic entry point every role lens
+# begins at. NOTE: clearState targets ${APP_ID}; on Expo Go it would clear Expo
+# Go itself, so ${APP_ID} must be the dev-client bundle id (see .maestro/README).
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Увійти"

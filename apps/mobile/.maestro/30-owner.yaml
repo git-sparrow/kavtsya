@@ -1,0 +1,23 @@
+# CafeOwner — core operator surface, as seeded demo.owner@kavtsya.test (Free
+# café «Кавярня «Демо»»). Anchored on the one verified label in owner-mode.tsx;
+# deeper sub-screens (analytics pitch, campaigns, roster, shifts, café program)
+# have their selectors filled during the first live capture pass — see the TODO.
+appId: ${APP_ID}
+tags:
+  - gallery
+---
+- runFlow: subflows/reset-to-signed-out.yaml
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      EMAIL: "demo.owner@kavtsya.test"
+      PASSWORD: ${DEMO_PASSWORD}
+- assertVisible: "Режим Кавовара"
+- takeScreenshot: ${SHOTS}/owner/20-home
+- tapOn: "Сканувати QR клієнта"
+- takeScreenshot: ${SHOTS}/owner/21-scan
+- back
+- assertVisible: "Режим Кавовара"
+# TODO(first live capture): add tapOn steps for the remaining owner-mode entries
+# (analytics → pro_required pitch, campaigns, shifts, roster, café program) once
+# their exact button labels are read off the running screen via Argent `describe`.

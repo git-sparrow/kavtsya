@@ -1,0 +1,6 @@
+# Maestro workspace config for the docs/flows screenshot gallery.
+#
+# Only the numbered role flows run as the suite; the reusable pieces in
+# subflows/ are pulled in via `runFlow` and must not run standalone.
+flows:
+  - "[0-9]*.yaml"

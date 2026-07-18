@@ -8,10 +8,12 @@
     "scheme": "kavtsya",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.kavtsya.app",
       "supportsTablet": true,
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.kavtsya.app",
       "adaptiveIcon": {
         "backgroundColor": "#fffaf3",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
