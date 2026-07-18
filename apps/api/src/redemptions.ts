@@ -2,9 +2,8 @@ import type { Reward } from "@kavtsya/shared";
 import { rewardSchema } from "@kavtsya/shared";
 import type { Database, Queryable } from "./db";
 import { isUniqueViolation } from "./db";
-import { programFromRow } from "./loyalty";
 import { balanceFor } from "./purchases";
-import { hasActiveScannerGrant } from "./shifts";
+import { authorizeCounter } from "./shifts";
 
 /**
  * Confirming a Redemption — the spend side of the ledger (#22, ADR 0010). One
@@ -105,30 +104,20 @@ export async function confirmRedemption(
     now,
   }: ConfirmRedemptionInput,
 ): Promise<ConfirmRedemptionOutcome> {
-  // Confirm is the shift's second counter power (ADR 0013): the owner OR an
-  // active grant holder. A Café that doesn't exist and one the caller may not
-  // operate stay indistinguishable — same semantics as issuing.
-  const [cafe] = await db<
-    { owner_user_id: string; zernyatko_threshold: number; reward: unknown }[]
-  >`
-    select "owner_user_id", "zernyatko_threshold", "reward"
-    from cafes
-    where "id" = ${cafeId}
-  `;
-  if (!cafe) return { ok: false, reason: "cafe_not_owned" };
-  if (
-    cafe.owner_user_id !== actorUserId &&
-    !(await hasActiveScannerGrant(db, cafeId, actorUserId, now))
-  ) {
-    return { ok: false, reason: "cafe_not_owned" };
-  }
+  // Confirm is the shift's second counter power (ADR 0013): the same
+  // counter-authorization rule as issuing, decided once in the Shift module
+  // (#111). Confirm leaves scanner ≠ scanned off — a confirm to one's own code
+  // is already caught by the own-café guard, which both paths share.
+  const auth = await authorizeCounter(db, {
+    cafeId,
+    actorUserId,
+    customerId,
+    now,
+    rejectSelfScan: false,
+  });
+  if (!auth.ok) return { ok: false, reason: auth.reason };
 
-  // Self-farming guard (ADR 0003): Redemption is also rejected at one's own Café.
-  if (customerId === cafe.owner_user_id) {
-    return { ok: false, reason: "own_cafe" };
-  }
-
-  const program = programFromRow(cafe);
+  const program = auth.program;
 
   return db.begin(async (tx): Promise<ConfirmRedemptionOutcome> => {
     // The lock target (ADR 0010). No membership row means no Purchase ever
