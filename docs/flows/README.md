@@ -82,15 +82,20 @@ not the default.
 
 ### Scanner lens
 
-Scanner Mode only exists during an active Зміна. Run with `CAPTURE_SCANNER=1` and
-`capture.sh` first grants one for `barista@kavtsya.test` at «Кавярня «Про»» via
-`pnpm --filter @kavtsya/api start-demo-shift` (idempotent — it writes the same
+Scanner Mode only exists during an active Зміна. Run with `CAPTURE_SCANNER=1`;
+`capture.sh` grants one for `barista@kavtsya.test` at «Кавярня «Про»» via
+`pnpm --filter @kavtsya/api demo-shift start` (idempotent — it writes the same
 `cafe_scanner_grants` row a real poster scan would). It runs last, because the
 kiosk has no Settings gear for the sign-out reset to use.
 
 ```sh
 CAPTURE_SCANNER=1 apps/mobile/.maestro/capture.sh
 ```
+
+To keep the suite re-runnable, `capture.sh` first runs `demo-shift end` — the
+kiosk has no sign-out, so a prior scanner run's active shift would otherwise
+strand the next run's opening reset. `demo-shift end` clears it so the reset
+opens on a normal mode home.
 
 ### Known follow-ups
 

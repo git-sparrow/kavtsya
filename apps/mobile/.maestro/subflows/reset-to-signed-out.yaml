@@ -17,7 +17,9 @@ appId: ${APP_ID}
     visible: "Кавця"
     timeout: 30000
 # If signed in, the Settings gear is present — sign out. On the auth screen the
-# gear is absent, so this block is skipped.
+# gear is absent, so this block is skipped. (Scanner Mode has no gear, but
+# capture.sh ends any lingering Зміна before the flows, so a reset never opens
+# into the kiosk.)
 - runFlow:
     when:
       visible: "Налаштування"
