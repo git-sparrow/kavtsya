@@ -99,5 +99,19 @@ opens on a normal mode home.
 
 ### Known follow-ups
 
-- **Selector hardening** — adding `testID`s to the sign-in fields would make the
-  flows robust against Ukrainian copy changes.
+- **Selector hardening** — the flows match on visible Ukrainian text today. Adding
+  React Native `testID` props to the key controls (sign-in fields, the mode
+  buttons) would let flows target stable ids instead — Maestro's recommended,
+  copy-change-proof approach (it maps `testID` to a unique `id`).
+- **iOS touch reliability** — React Native can swallow taps in deeply nested views
+  (per Maestro's RN notes); if a tap doesn't register, toggling `accessible` (off
+  on the outer container, on for the target) exposes it. Relevant to the
+  mode-transition tap flakiness seen while hardening the reset.
+
+## Beyond the gallery
+
+These are ordinary Maestro flows — the same YAML runs as CI smoke tests or the
+seed of a broader E2E suite (Maestro is a full mobile UI-testing tool, not just a
+screenshotter). Maestro's MCP server (`claude mcp add maestro -- maestro mcp`,
+ships with the CLI, local — no Cloud needed) exposes `inspect_screen` +
+`run` to an agent, which streamlines authoring and extending these flows.
