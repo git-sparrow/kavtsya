@@ -237,3 +237,57 @@ export async function listBalances(
     };
   });
 }
+
+/** A membership whose derived balance is below zero — the audited defect (#115). */
+export interface NegativeBalance {
+  cafeId: string;
+  customerId: string;
+  balance: number;
+}
+
+/**
+ * The ledger's core promise audited across every membership (#115, ADR 0010):
+ * no (Customer, Café) derived balance may be negative — i.e. no Redemption ever
+ * overdrew. It is enforced at write time under the `FOR UPDATE` lock; this reads
+ * the whole ledger after the fact so the promise becomes a monitored invariant.
+ * An empty result means the invariant holds.
+ *
+ * Two consumers share this one query: a cross-suite assertion in the test suite,
+ * and `scripts/check-ledger-invariant.ts` runnable against a live database before
+ * and during pilots. The balance formula stays in its one home — {@link deriveBalance}.
+ */
+export async function findNegativeBalances(
+  db: Database,
+): Promise<NegativeBalance[]> {
+  const rows = await db<
+    {
+      cafe_id: string;
+      customer_user_id: string;
+      purchases: number;
+      beans_spent: number;
+    }[]
+  >`
+    select
+      m."cafe_id",
+      m."customer_user_id",
+      coalesce(p."purchases", 0) as purchases,
+      coalesce(r."beans_spent", 0) as beans_spent
+    from cafe_memberships m
+    left join (
+      select "cafe_id", "customer_user_id", count(*)::int as purchases
+      from purchases group by "cafe_id", "customer_user_id"
+    ) p on p."cafe_id" = m."cafe_id"
+      and p."customer_user_id" = m."customer_user_id"
+    left join (
+      select "cafe_id", "customer_user_id", sum("beans_spent")::int as beans_spent
+      from redemptions group by "cafe_id", "customer_user_id"
+    ) r on r."cafe_id" = m."cafe_id"
+      and r."customer_user_id" = m."customer_user_id"
+    where coalesce(p."purchases", 0) - coalesce(r."beans_spent", 0) < 0
+  `;
+  return rows.map((row) => ({
+    cafeId: row.cafe_id,
+    customerId: row.customer_user_id,
+    balance: deriveBalance(row.purchases, row.beans_spent),
+  }));
+}
