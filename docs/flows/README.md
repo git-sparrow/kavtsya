@@ -80,10 +80,19 @@ build Release instead: `npx expo run:ios --configuration Release`. The JS is bak
 into the binary, so it needs a rebuild for every UI change — heavier, and why it's
 not the default.
 
+### Scanner lens
+
+Scanner Mode only exists during an active Зміна. Run with `CAPTURE_SCANNER=1` and
+`capture.sh` first grants one for `barista@kavtsya.test` at «Кавярня «Про»» via
+`pnpm --filter @kavtsya/api start-demo-shift` (idempotent — it writes the same
+`cafe_scanner_grants` row a real poster scan would). It runs last, because the
+kiosk has no Settings gear for the sign-out reset to use.
+
+```sh
+CAPTURE_SCANNER=1 apps/mobile/.maestro/capture.sh
+```
+
 ### Known follow-ups
 
-- **Scanner** — `50-scanner.yaml` needs an *active* Зміна for `barista@kavtsya.test`
-  first (an owner starts one via the Зміна screen, or a direct API/seed call); run
-  with `CAPTURE_SCANNER=1`.
 - **Selector hardening** — adding `testID`s to the sign-in fields would make the
   flows robust against Ukrainian copy changes.

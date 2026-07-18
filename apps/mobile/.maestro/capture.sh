@@ -36,9 +36,14 @@ run 10-customer-signup.yaml
 run 20-customer-core.yaml
 run 30-owner.yaml
 if [[ "${CAPTURE_SCANNER:-0}" == "1" ]]; then
+  # Scanner Mode only exists during an active Зміна — grant one for the barista
+  # (idempotent) before signing in as them. Run scanner LAST: it ends signed in
+  # to the kiosk, which the Settings-gear reset can't sign out of.
+  echo "▶ granting active Зміна for barista@kavtsya.test"
+  pnpm --filter @kavtsya/api start-demo-shift
   run 50-scanner.yaml
 else
-  echo "⏭  Skipping scanner flow (set CAPTURE_SCANNER=1 after starting a Зміна for barista@kavtsya.test)"
+  echo "⏭  Skipping scanner flow (set CAPTURE_SCANNER=1 to grant a Зміна + capture the kiosk)"
 fi
 
 echo "✓ Gallery captured → $SHOTS"
