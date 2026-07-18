@@ -11,12 +11,13 @@ commit; runtime verification drives the actual surface the diff touches.
 ## 1. Static gate (always, before commit/PR)
 
 ```sh
-pnpm typecheck && pnpm lint && pnpm test
+pnpm verify
 ```
 
-All three are root scripts (`typecheck`/`test` fan out with `pnpm -r`; `lint` is
-one repo-wide eslint). Same checks as `.github/workflows/ci.yml`. Green gate ≠
-verified — go drive the surface next.
+One root script (#118) = `typecheck && lint && format:check && test`
+(`typecheck`/`test` fan out with `pnpm -r`; `lint` is one repo-wide eslint) —
+the same gate as `.github/workflows/ci.yml`. Green gate ≠ verified — go drive
+the surface next.
 
 ## 2. Bring up the stack
 

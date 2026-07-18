@@ -4,7 +4,7 @@
 
 ## Status
 
-**Build phase** — scope and architecture are locked; the full core loop is live: earn (#20), Redemption (#22), and Ворожка (#23) are merged. See `PROJECT_BRIEF.md` for the full brief and decisions, `CONTEXT.md` for the domain glossary, and `docs/adr/` for architecture decisions. Next slices (specs frozen 2026-07-10, all `ready-for-agent`): member code (#21), Зміна scanner grants (#80), Pro gating/push (#24), account deletion (#81, pre-store), analytics (#25).
+**Build phase** — scope and architecture are locked. Current status — what's merged and what's next — has exactly **one home**: the Status line + Roadmap in [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md). Don't restate it here or anywhere else (#118); update it there when a slice lands. See `CONTEXT.md` for the domain glossary and `docs/adr/` for architecture decisions.
 
 ## What this is
 
