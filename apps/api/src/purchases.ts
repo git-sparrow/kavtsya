@@ -2,7 +2,7 @@ import type { CafeBalance, Reward } from "@kavtsya/shared";
 import type { Database, Queryable } from "./db";
 import { isUniqueViolation } from "./db";
 import { programFromRow } from "./loyalty";
-import { hasActiveScannerGrant } from "./shifts";
+import { authorizeCounter } from "./shifts";
 
 /**
  * Issuing a Зернятко — the append-only Purchase ledger (#20, ADR 0010). The
@@ -74,34 +74,17 @@ export async function issuePurchase(
   db: Database,
   { cafeId, issuedByUserId, customerId, entry, now }: IssuePurchaseInput,
 ): Promise<IssuePurchaseOutcome> {
-  // The counter is open to the owner OR an active grant holder (ADR 0013). A
-  // Café that doesn't exist and one the caller may not operate stay
-  // indistinguishable — same "not found" the owner-only check always gave.
-  const [cafe] = await db<
-    { owner_user_id: string; zernyatko_threshold: number; reward: unknown }[]
-  >`
-    select "owner_user_id", "zernyatko_threshold", "reward"
-    from cafes
-    where "id" = ${cafeId}
-  `;
-  if (!cafe) return { ok: false, reason: "cafe_not_owned" };
-  if (
-    cafe.owner_user_id !== issuedByUserId &&
-    !(await hasActiveScannerGrant(db, cafeId, issuedByUserId, now))
-  ) {
-    return { ok: false, reason: "cafe_not_owned" };
-  }
-
-  // The self-farm guards are additive (ADR 0013, clarified 2026-07-10).
-  // Scanner ≠ scanned: nobody may issue to their own code, whoever they are…
-  if (customerId === issuedByUserId) {
-    return { ok: false, reason: "self_scan" };
-  }
-  // …and the owner still earns nothing at their own Café, whoever scans them
-  // (ADR 0003) — a barista's scan doesn't reopen owner self-comping.
-  if (customerId === cafe.owner_user_id) {
-    return { ok: false, reason: "own_cafe" };
-  }
+  // Who may issue here — the ADR 0013 counter-authorization rule, decided once
+  // in the Shift module and shared with Redemption confirm (#111). Issuing
+  // enforces scanner ≠ scanned; the own-café guard rides along for both paths.
+  const auth = await authorizeCounter(db, {
+    cafeId,
+    actorUserId: issuedByUserId,
+    customerId,
+    now,
+    rejectSelfScan: true,
+  });
+  if (!auth.ok) return { ok: false, reason: auth.reason };
 
   // Both arms append the Purchase and ensure the (Customer, Café) membership
   // row — Redemption's FOR UPDATE lock target (#22, ADR 0010) — exists
@@ -172,7 +155,7 @@ export async function issuePurchase(
     throw err;
   }
 
-  const program = programFromRow(cafe);
+  const program = auth.program;
   const [customer] = await db<{ name: string }[]>`
     select "name" from "user" where "id" = ${customerId}
   `;

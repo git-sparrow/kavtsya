@@ -1,4 +1,6 @@
+import type { LoyaltyProgram } from "@kavtsya/shared";
 import type { Database, Queryable } from "./db";
+import { programFromRow } from "./loyalty";
 
 /**
  * «Зміна» — the shift lifecycle (#98/#99, ADR 0013). A Shift is a café-scoped,
@@ -23,6 +25,108 @@ import type { Database, Queryable } from "./db";
  * v1 has no reason to vary it per café.
  */
 export const SHIFT_MAX_DURATION_MS = 16 * 60 * 60 * 1000;
+
+/**
+ * The active-grant predicate (ADR 0013): a grant is live while it is not revoked
+ * and not yet expired against the injected clock. The Shift module owns the
+ * `cafe_scanner_grants` table, so this two-column test is written exactly once —
+ * every "is this grant active" query below (and the roster's instant-termination
+ * via `endActiveGrants`) composes this fragment instead of re-typing the columns,
+ * so the predicate and the table shape never leak outside this module (#111).
+ *
+ * `alias` qualifies the columns when the statement joins the grant table under an
+ * alias (e.g. `g`); omit it for single-table statements. The fragment is built
+ * with the caller's own executor, so it composes into a `db` query or a `tx`
+ * query interchangeably.
+ */
+function activeGrant(sql: Queryable, now: Date, alias?: string) {
+  const col = (name: string) =>
+    alias ? sql`${sql(alias)}.${sql(name)}` : sql`${sql(name)}`;
+  return sql`${col("revoked_at")} is null and ${col("expires_at")} > ${now}`;
+}
+
+/**
+ * Who may operate a Café's counter (ADR 0013), decided in exactly one place so
+ * the two ledger writes — issuing a Зернятко and confirming a Redemption — can't
+ * drift apart (#111). The counter is open to the Café's owner OR an account
+ * holding an active scanner grant there; a Café that doesn't exist and one the
+ * caller may not operate stay indistinguishable (the same "not found" the
+ * owner-only check always gave). On success it carries the Café's loyalty program
+ * through, so a caller that cleared the gate provably has one to work with.
+ */
+export type CounterRejection = "cafe_not_owned" | "self_scan" | "own_cafe";
+
+export type AuthorizeCounterOutcome<R extends CounterRejection> =
+  | { ok: true; program: LoyaltyProgram }
+  | { ok: false; reason: R };
+
+export interface AuthorizeCounterInput {
+  /** The Café the scan happens at. */
+  cafeId: string;
+  /** Who is operating the counter (`user.id`): the owner or an active grant holder. */
+  actorUserId: string;
+  /** The Customer the validated QR token or resolved member code identifies. */
+  customerId: string;
+  /** The scan's instant — the grant-expiry check runs on the injected clock. */
+  now: Date;
+  /**
+   * Whether to enforce scanner ≠ scanned (`self_scan`) — the one guard the two
+   * counter paths deliberately differ on (ADR 0013, clarified 2026-07-10).
+   * Issuing sets it (nobody mints a Зернятко to their own code); confirming
+   * leaves it off (a confirm to one's own code is already caught by `own_cafe`).
+   * Making it a required argument marks that divergence at every call site.
+   */
+  rejectSelfScan: boolean;
+}
+
+export function authorizeCounter(
+  db: Database,
+  input: AuthorizeCounterInput & { rejectSelfScan: true },
+): Promise<
+  AuthorizeCounterOutcome<"cafe_not_owned" | "self_scan" | "own_cafe">
+>;
+export function authorizeCounter(
+  db: Database,
+  input: AuthorizeCounterInput & { rejectSelfScan: false },
+): Promise<AuthorizeCounterOutcome<"cafe_not_owned" | "own_cafe">>;
+export async function authorizeCounter(
+  db: Database,
+  {
+    cafeId,
+    actorUserId,
+    customerId,
+    now,
+    rejectSelfScan,
+  }: AuthorizeCounterInput,
+): Promise<AuthorizeCounterOutcome<CounterRejection>> {
+  const [cafe] = await db<
+    { owner_user_id: string; zernyatko_threshold: number; reward: unknown }[]
+  >`
+    select "owner_user_id", "zernyatko_threshold", "reward"
+    from cafes
+    where "id" = ${cafeId}
+  `;
+  if (!cafe) return { ok: false, reason: "cafe_not_owned" };
+  if (
+    cafe.owner_user_id !== actorUserId &&
+    !(await hasActiveScannerGrant(db, cafeId, actorUserId, now))
+  ) {
+    return { ok: false, reason: "cafe_not_owned" };
+  }
+
+  // The self-farm guards are additive (ADR 0013, clarified 2026-07-10).
+  // Scanner ≠ scanned: only issuing forbids minting to one's own code…
+  if (rejectSelfScan && customerId === actorUserId) {
+    return { ok: false, reason: "self_scan" };
+  }
+  // …and the owner still earns nothing at their own Café, whoever scans them
+  // (ADR 0003) — enforced on both paths, additive to the self_scan guard.
+  if (customerId === cafe.owner_user_id) {
+    return { ok: false, reason: "own_cafe" };
+  }
+
+  return { ok: true, program: programFromRow(cafe) };
+}
 
 /**
  * Start (or reuse) a shift for `userId` at `cafeId`, enforcing one active shift
@@ -53,7 +157,7 @@ export async function startShift(
     const [existing] = await tx<{ expires_at: Date }[]>`
       select "expires_at" from cafe_scanner_grants
       where "cafe_id" = ${cafeId} and "user_id" = ${userId}
-        and "revoked_at" is null and "expires_at" > ${now}
+        and ${activeGrant(tx, now)}
       order by "created_at" desc
       limit 1
     `;
@@ -64,8 +168,7 @@ export async function startShift(
     // shift the barista is switching away from.
     await tx`
       update cafe_scanner_grants set "revoked_at" = ${now}
-      where "user_id" = ${userId}
-        and "revoked_at" is null and "expires_at" > ${now}
+      where "user_id" = ${userId} and ${activeGrant(tx, now)}
     `;
 
     const expiresAt = new Date(now.getTime() + SHIFT_MAX_DURATION_MS);
@@ -94,10 +197,34 @@ export async function hasActiveScannerGrant(
   const [row] = await db<{ found: number }[]>`
     select 1 as found from cafe_scanner_grants
     where "cafe_id" = ${cafeId} and "user_id" = ${userId}
-      and "revoked_at" is null and "expires_at" > ${now}
+      and ${activeGrant(db, now)}
     limit 1
   `;
   return row !== undefined;
+}
+
+/**
+ * End every active scanner grant `userId` holds at `cafeId`, revoking them
+ * against the injected clock — the Shift module's instant-termination primitive
+ * (#99, #111). It takes the caller's executor (`db` or a `tx`), so the roster's
+ * `removeBarista` runs the roster-row delete and this revoke in ONE transaction,
+ * keeping instant termination atomic without the grant predicate or table shape
+ * leaking into that module. Returns how many grants it ended (0 when none were
+ * live) — idempotent by construction.
+ */
+export async function endActiveGrants(
+  sql: Queryable,
+  cafeId: string,
+  userId: string,
+  now: Date,
+): Promise<number> {
+  const rows = await sql<{ id: string }[]>`
+    update cafe_scanner_grants set "revoked_at" = ${now}
+    where "cafe_id" = ${cafeId} and "user_id" = ${userId}
+      and ${activeGrant(sql, now)}
+    returning "id"
+  `;
+  return rows.length;
 }
 
 /**
@@ -121,8 +248,7 @@ export async function listActiveShifts(
   >`
     select g."id", u."name" as barista_name, g."expires_at"
     from cafe_scanner_grants g join "user" u on u."id" = g."user_id"
-    where g."cafe_id" = ${cafeId}
-      and g."revoked_at" is null and g."expires_at" > ${now}
+    where g."cafe_id" = ${cafeId} and ${activeGrant(db, now, "g")}
     order by g."created_at" desc
   `;
   return rows.map((row) => ({
@@ -171,8 +297,7 @@ export async function activeShiftFor(
   >`
     select g."cafe_id", c."name" as cafe_name, g."expires_at"
     from cafe_scanner_grants g join cafes c on c."id" = g."cafe_id"
-    where g."user_id" = ${userId}
-      and g."revoked_at" is null and g."expires_at" > ${now}
+    where g."user_id" = ${userId} and ${activeGrant(db, now, "g")}
     order by g."created_at" desc
     limit 1
   `;
@@ -200,8 +325,7 @@ export async function endMyShift(
 ): Promise<number> {
   const rows = await db<{ id: string }[]>`
     update cafe_scanner_grants set "revoked_at" = ${now}
-    where "user_id" = ${userId}
-      and "revoked_at" is null and "expires_at" > ${now}
+    where "user_id" = ${userId} and ${activeGrant(db, now)}
     returning "id"
   `;
   return rows.length;

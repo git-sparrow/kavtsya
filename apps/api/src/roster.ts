@@ -2,7 +2,7 @@ import { normalizeMemberCode } from "@kavtsya/shared";
 import type { Clock } from "./clock";
 import type { Database, Queryable } from "./db";
 import { isUniqueViolation } from "./db";
-import { activeShiftFor, startShift } from "./shifts";
+import { activeShiftFor, endActiveGrants, startShift } from "./shifts";
 
 /**
  * The Barista Roster (#97) + poster-started Shifts (#98/#99, ADR 0013). A Café's
@@ -324,13 +324,11 @@ export async function removeBarista(
     if (rows.length === 0) return false;
 
     // Instant termination: end any active shift this barista holds at the Café
-    // they were just removed from. The scan path re-checks the grant on every
-    // request, so revocation stops scans at once with no client polling.
-    await tx`
-      update cafe_scanner_grants set "revoked_at" = ${now}
-      where "cafe_id" = ${cafeId} and "user_id" = ${userId}
-        and "revoked_at" is null and "expires_at" > ${now}
-    `;
+    // they were just removed from — through the Shift module's own primitive, in
+    // this same transaction, so the grant predicate and table stay behind that
+    // module's seam (#111). The scan path re-checks the grant on every request,
+    // so revocation stops scans at once with no client polling.
+    await endActiveGrants(tx, cafeId, userId, now);
     return true;
   });
 }
