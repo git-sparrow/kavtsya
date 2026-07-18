@@ -12,6 +12,7 @@
     "prune-push-receipts": "tsx scripts/prune-push-receipts.ts",
     "seed-demo": "tsx scripts/seed-demo.ts",
     "seed-demo-fresh": "tsx scripts/seed-demo-fresh.ts",
+    "demo-shift": "tsx scripts/demo-shift.ts",
     "vorozhka-smoke": "tsx scripts/vorozhka-smoke.ts",
     "test": "vitest run",
     "test:watch": "vitest",

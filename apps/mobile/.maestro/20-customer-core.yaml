@@ -1,0 +1,18 @@
+# Customer — core usage, as the seeded demo.customer@kavtsya.test (member code
+# KAVA-2026, one Зернятко short of the reward — see seed-world.ts).
+appId: ${APP_ID}
+tags:
+  - gallery
+---
+- runFlow: subflows/reset-to-signed-out.yaml
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      EMAIL: "demo.customer@kavtsya.test"
+- extendedWaitUntil:
+    visible: "Налаштування"
+    timeout: 30000
+- runFlow: subflows/dismiss-save-password.yaml
+- takeScreenshot: ${SHOTS}/customer/10-home-qr
+- scroll
+- takeScreenshot: ${SHOTS}/customer/11-balances

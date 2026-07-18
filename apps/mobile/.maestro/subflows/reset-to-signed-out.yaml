@@ -1,0 +1,34 @@
+# Reusable reset to the auth screen — the deterministic entry point every role
+# lens begins at.
+#
+# NOTE: the session lives in expo-secure-store (the iOS Keychain), which survives
+# `clearState` (that only wipes the data container). So a launched app is normally
+# still signed in — we sign out *through the UI* (Settings → Вийти) rather than
+# relying on clearState. clearState is still used to reset navigation/app state so
+# we always relaunch at the mode home (which carries the Settings gear).
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+# Wait for paint: the "Кавця" wordmark shows on both the auth screen and every
+# mode home, so this settles regardless of which one we land on (dev-mode Metro
+# reload can take a few seconds).
+- extendedWaitUntil:
+    visible: "Кавця"
+    timeout: 30000
+# If signed in, the Settings gear is present — sign out. On the auth screen the
+# gear is absent, so this block is skipped. (Scanner Mode has no gear, but
+# capture.sh ends any lingering Зміна before the flows, so a reset never opens
+# into the kiosk.)
+- runFlow:
+    when:
+      visible: "Налаштування"
+    commands:
+      - tapOn: "Налаштування"
+      - extendedWaitUntil:
+          visible: "Вийти"
+          timeout: 10000
+      - tapOn: "Вийти"
+- extendedWaitUntil:
+    visible: "Увійти"
+    timeout: 30000

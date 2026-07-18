@@ -69,6 +69,10 @@ Layered version-authority model (lockfile / Expo SDK / pnpm catalog / owning app
 
 The `argent-*` skills + MCP server (Software Mansion's Argent, local devDependency) let Claude drive the app in the iOS simulator — tap, type, screenshot, record flows, diff screens. See `docs/argent-howto.md`, incl. the Mari design-review loop.
 
+### User flows & E2E (Maestro)
+
+`docs/flows/` — an auto-generated Mermaid route map (`pnpm --filter @kavtsya/mobile flows:map`) + a Maestro-driven per-role screenshot gallery (`apps/mobile/.maestro/`, `capture.sh`), captured on a **standalone dev build + `--no-dev` Metro** (not Expo Go; `ios/`+`android/` are git-ignored CNG output). **Maestro is a global CLI installed out-of-band (`curl -Ls https://get.maestro.mobile.dev | bash`; needs a JDK) — _not_ in the pnpm lockfile/catalog**, so a fresh checkout installs it separately. The YAML flows double as E2E/smoke tests; Maestro's MCP server can drive flow authoring/running from an agent — kept **on demand** (not loaded every session) via `apps/mobile/.maestro/mcp.sh enable|disable` (restart after). See `docs/flows/README.md`.
+
 ### LLM doc endpoints
 
 For current, version-specific facts about a stack tool, fetch its `llms.txt` rather than relying on training memory (prefer a vendored skill where one exists). Confirmed endpoints + the index-vs-condensed rule live in `docs/agents/llms-resources.md`.

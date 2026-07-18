@@ -1,0 +1,29 @@
+# Customer — first run: sign-up → member identity. The one flow that creates a
+# new account, so it uses a fresh ${SIGNUP_EMAIL} each run (capture.sh generates
+# a unique one) to stay re-runnable without a DB reset.
+appId: ${APP_ID}
+tags:
+  - gallery
+---
+- runFlow: subflows/reset-to-signed-out.yaml
+- takeScreenshot: ${SHOTS}/customer/01-signin
+- tapOn: "Немає акаунта? Зареєструватися"
+- assertVisible: "Зареєструватися"
+- tapOn: "Ім'я"
+- inputText: "Олена"
+- tapOn: "Email"
+- inputText: ${SIGNUP_EMAIL}
+- tapOn: "Пароль"
+- inputText: ${DEMO_PASSWORD}
+# Tap the wordmark to dismiss the keyboard (iOS sim ignores hideKeyboard here).
+- tapOn: "Кавця"
+- takeScreenshot: ${SHOTS}/customer/02-signup-filled
+- tapOn: "Зареєструватися"
+# Lands in Customer Mode. Anchor on the Settings gear — it appears exactly when a
+# mode home finishes loading and Maestro matches it reliably (heading StaticText
+# like "Вітаємо…" it does not). Screenshots still capture the full home.
+- extendedWaitUntil:
+    visible: "Налаштування"
+    timeout: 30000
+- runFlow: subflows/dismiss-save-password.yaml
+- takeScreenshot: ${SHOTS}/customer/03-home

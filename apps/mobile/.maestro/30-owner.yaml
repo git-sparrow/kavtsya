@@ -1,0 +1,44 @@
+# CafeOwner — core operator surface, as seeded demo.owner@kavtsya.test (Free
+# café «Кавярня «Демо»»). Anchored on the one verified label in owner-mode.tsx;
+# deeper sub-screens (analytics pitch, campaigns, roster, shifts, café program)
+# have their selectors filled during the first live capture pass — see the TODO.
+appId: ${APP_ID}
+tags:
+  - gallery
+---
+- runFlow: subflows/reset-to-signed-out.yaml
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      EMAIL: "demo.owner@kavtsya.test"
+- extendedWaitUntil:
+    visible: "Налаштування"
+    timeout: 20000
+- runFlow: subflows/dismiss-save-password.yaml
+- takeScreenshot: ${SHOTS}/owner/20-home
+# Each operator entry: open it, capture, swipe back to the café home.
+- tapOn: "Сканувати QR клієнта"
+- takeScreenshot: ${SHOTS}/owner/21-scan
+- tapOn: "Назад"
+- assertVisible: "Налаштування"
+- tapOn: "Налаштувати програму"
+- takeScreenshot: ${SHOTS}/owner/22-program
+- tapOn: "Назад"
+- assertVisible: "Налаштування"
+- tapOn: "Зміна"
+- takeScreenshot: ${SHOTS}/owner/23-shifts
+- tapOn: "Назад"
+- assertVisible: "Налаштування"
+- tapOn: "Ростер бариста"
+- takeScreenshot: ${SHOTS}/owner/24-roster
+- tapOn: "Назад"
+- assertVisible: "Налаштування"
+# Free café → these two hit the Pro gate (pro_required pitch — ADR 0011).
+- tapOn: "Розсилка"
+- takeScreenshot: ${SHOTS}/owner/25-campaigns-pro-pitch
+- tapOn: "Назад"
+- assertVisible: "Налаштування"
+- tapOn: "Аналітика"
+- takeScreenshot: ${SHOTS}/owner/26-analytics-pro-pitch
+- tapOn: "Назад"
+- assertVisible: "Налаштування"
