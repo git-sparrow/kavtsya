@@ -11,13 +11,34 @@ tags:
     file: subflows/sign-in.yaml
     env:
       EMAIL: "demo.owner@kavtsya.test"
-      PASSWORD: ${DEMO_PASSWORD}
-- assertVisible: "Режим Кавовара"
+- extendedWaitUntil:
+    visible: "Налаштування"
+    timeout: 20000
+- runFlow: subflows/dismiss-save-password.yaml
 - takeScreenshot: ${SHOTS}/owner/20-home
+# Each operator entry: open it, capture, swipe back to the café home.
 - tapOn: "Сканувати QR клієнта"
 - takeScreenshot: ${SHOTS}/owner/21-scan
-- back
-- assertVisible: "Режим Кавовара"
-# TODO(first live capture): add tapOn steps for the remaining owner-mode entries
-# (analytics → pro_required pitch, campaigns, shifts, roster, café program) once
-# their exact button labels are read off the running screen via Argent `describe`.
+- tapOn: "Назад"
+- assertVisible: "Налаштування"
+- tapOn: "Налаштувати програму"
+- takeScreenshot: ${SHOTS}/owner/22-program
+- tapOn: "Назад"
+- assertVisible: "Налаштування"
+- tapOn: "Зміна"
+- takeScreenshot: ${SHOTS}/owner/23-shifts
+- tapOn: "Назад"
+- assertVisible: "Налаштування"
+- tapOn: "Ростер бариста"
+- takeScreenshot: ${SHOTS}/owner/24-roster
+- tapOn: "Назад"
+- assertVisible: "Налаштування"
+# Free café → these two hit the Pro gate (pro_required pitch — ADR 0011).
+- tapOn: "Розсилка"
+- takeScreenshot: ${SHOTS}/owner/25-campaigns-pro-pitch
+- tapOn: "Назад"
+- assertVisible: "Налаштування"
+- tapOn: "Аналітика"
+- takeScreenshot: ${SHOTS}/owner/26-analytics-pro-pitch
+- tapOn: "Назад"
+- assertVisible: "Налаштування"

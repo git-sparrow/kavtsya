@@ -5,9 +5,7 @@ appId: ${APP_ID}
 tags:
   - gallery
 ---
-- launchApp:
-    clearState: true
-- assertVisible: "Увійти"
+- runFlow: subflows/reset-to-signed-out.yaml
 - takeScreenshot: ${SHOTS}/customer/01-signin
 - tapOn: "Немає акаунта? Зареєструватися"
 - assertVisible: "Зареєструватися"
@@ -17,9 +15,15 @@ tags:
 - inputText: ${SIGNUP_EMAIL}
 - tapOn: "Пароль"
 - inputText: ${DEMO_PASSWORD}
-- hideKeyboard
+# Tap the wordmark to dismiss the keyboard (iOS sim ignores hideKeyboard here).
+- tapOn: "Кавця"
 - takeScreenshot: ${SHOTS}/customer/02-signup-filled
 - tapOn: "Зареєструватися"
-# Lands in Customer Mode — the member-code surface.
-- assertVisible: "Твій код учасника"
+# Lands in Customer Mode. Anchor on the Settings gear — it appears exactly when a
+# mode home finishes loading and Maestro matches it reliably (heading StaticText
+# like "Вітаємо…" it does not). Screenshots still capture the full home.
+- extendedWaitUntil:
+    visible: "Налаштування"
+    timeout: 30000
+- runFlow: subflows/dismiss-save-password.yaml
 - takeScreenshot: ${SHOTS}/customer/03-home

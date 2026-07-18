@@ -1,4 +1,5 @@
-# Reusable: from the signed-out auth screen, sign in as ${EMAIL}/${PASSWORD}.
+# Reusable: from the signed-out auth screen, sign in as ${EMAIL} using the shared
+# ${DEMO_PASSWORD} (both provided by capture.sh via --env).
 # The caller asserts its own role landing afterwards (Customer/Owner/Scanner),
 # since each Mode paints a different first screen (ADR 0015).
 #
@@ -11,6 +12,9 @@ appId: ${APP_ID}
 - tapOn: "Email"
 - inputText: ${EMAIL}
 - tapOn: "Пароль"
-- inputText: ${PASSWORD}
-- hideKeyboard
+# Read DEMO_PASSWORD straight from the global env (capture.sh --env) rather than
+# a per-caller PASSWORD relay — the nested relay mis-typed the password.
+- inputText: ${DEMO_PASSWORD}
+# Tap the wordmark to dismiss the keyboard (iOS sim ignores hideKeyboard here).
+- tapOn: "Кавця"
 - tapOn: "Увійти"

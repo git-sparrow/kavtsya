@@ -9,8 +9,10 @@ tags:
     file: subflows/sign-in.yaml
     env:
       EMAIL: "demo.customer@kavtsya.test"
-      PASSWORD: ${DEMO_PASSWORD}
-- assertVisible: "Твій код учасника"
+- extendedWaitUntil:
+    visible: "Налаштування"
+    timeout: 30000
+- runFlow: subflows/dismiss-save-password.yaml
 - takeScreenshot: ${SHOTS}/customer/10-home-qr
 - scroll
 - takeScreenshot: ${SHOTS}/customer/11-balances

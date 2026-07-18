@@ -13,10 +13,14 @@
 #   - A dev build of the app installed on the booted simulator.
 set -euo pipefail
 
+# Maestro installs to ~/.maestro/bin; make it resolvable even from a shell that
+# hasn't sourced the user's profile (CI, non-interactive runners).
+export PATH="$HOME/.maestro/bin:$PATH"
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../../.." && pwd)"
 
-APP_ID="${APP_ID:-com.kavtsya.app}"                        # app.json → expo.ios.bundleIdentifier
+APP_ID="${APP_ID:-com.kavtsya.app}"                        # standalone dev build (app.json bundleIdentifier)
 DEMO_PASSWORD="${DEMO_PASSWORD:-demo-password-1}"          # seed-world.ts universal password
 SHOTS="${SHOTS:-$REPO/docs/flows/shots}"
 SIGNUP_EMAIL="${SIGNUP_EMAIL:-signup+$(date +%s)@kavtsya.test}"  # unique per run → re-runnable

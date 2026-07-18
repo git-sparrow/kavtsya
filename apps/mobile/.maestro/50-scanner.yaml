@@ -15,7 +15,9 @@ tags:
     file: subflows/sign-in.yaml
     env:
       EMAIL: "barista@kavtsya.test"
-      PASSWORD: ${DEMO_PASSWORD}
 # With an active shift the app pins straight into the kiosk.
-- assertVisible: "Завершити зміну"
+- extendedWaitUntil:
+    visible: "Завершити зміну"
+    timeout: 20000
+- runFlow: subflows/dismiss-save-password.yaml
 - takeScreenshot: ${SHOTS}/scanner/30-workstation
