@@ -1,4 +1,4 @@
-// Variant A theme build (design-system/INTEGRATION.md): resolve the DTCG
+// Variant A theme build (docs/design/INTEGRATION.md): resolve the DTCG
 // `{alias}` references down to primitives and convert `"16px" → 16` so React
 // Native consumers get plain numbers, then emit a committed `theme.generated.ts`.
 // Zero runtime dependencies. Pure transforms are exported for the unit test.

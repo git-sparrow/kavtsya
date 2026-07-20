@@ -31,7 +31,7 @@ export function Button({
         {
           borderRadius: t.radius.md,
           paddingVertical: t.space[3],
-          minHeight: 48, // ≥44pt touch target (INTEGRATION.md a11y)
+          minHeight: 48, // ≥44pt touch target (docs/design/INTEGRATION.md a11y)
           alignItems: "center",
           justifyContent: "center",
         },
