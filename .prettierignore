@@ -19,6 +19,9 @@ apps/mobile/src/theme/theme.generated.ts
 .agents/skills
 .claude/skills
 
+# Vendored design handoff — frozen snapshot from KavtsyaCreative, not ours to reformat
+docs/design/handoff
+
 # Misc
 *.md
 
