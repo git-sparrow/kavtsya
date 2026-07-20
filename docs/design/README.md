@@ -10,5 +10,6 @@ Vendored design materials for the app, so tickets, checkouts, and cloud agents r
   - `screens/` — 79 approved PNGs (light + dark), referenced by number in the sub-issues.
   - `customer-core-loop-canvas.html` — the source canvas the handoff was cut from.
 - **`redesign-reconciliation.md`** — maps each turn → existing code / issue → disposition. The map behind epic #131.
+- **`INTEGRATION.md`** — Mari's token-integration guide (Ukrainian): semantic-tokens-are-the-API principle, the "Variant A" theme build that `apps/mobile/scripts/build-theme.mjs` implements, Expo font setup, RN accessibility-in-code rules, and the design→code sync cycle. Referenced by comments in `build-theme.mjs` and `components/button.tsx`.
 
 **Authoring source of truth** stays `KavtsyaCreative/design-system/` (Mari's working directory, not a git repo). This folder is the frozen deliverable that ships with the code. If the handoff is revised there, re-vendor it in a fresh PR — don't hand-edit the snapshot.
