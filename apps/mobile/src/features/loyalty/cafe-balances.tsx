@@ -1,88 +1,39 @@
 import { isRedemptionReady } from "@kavtsya/shared";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
+import { BeanRow } from "@/components/bean-row";
+import { Berehynia } from "@/components/berehynia";
 import { Button } from "@/components/button";
-import { Surface } from "@/components/surface";
-import { ErrorText, Muted, Title } from "@/components/text";
+import { StatusStrip } from "@/components/status-strip";
+import { Heading } from "@/components/text";
 import { pluralizeUk } from "@/lib/plural";
 import { fontFamily, useTheme } from "@/theme";
 
 import { rewardLabel } from "./reward";
 import { useBalances } from "./use-balances";
 
-/** Beyond this many, dots would overflow the row — the count carries it instead. */
-const MAX_DOTS = 12;
-
 /** «зернятко» in its three count forms: 1 зернятко / 3 зернятка / 7 зернят. */
 const BEAN_FORMS = { one: "зернятко", few: "зернятка", many: "зернят" };
 
-/** A row of beans filled to the Customer's balance — the progress at a glance. */
-function BeanProgress({
-  balance,
-  threshold,
-}: {
-  balance: number;
-  threshold: number;
-}) {
-  const t = useTheme();
-  if (threshold > MAX_DOTS) return null;
-  return (
-    <View style={styles.dots}>
-      {Array.from({ length: threshold }, (_, i) => (
-        <View
-          key={i}
-          style={{
-            width: 12,
-            height: 12,
-            borderRadius: 6,
-            backgroundColor: i < balance ? t.c.primary : t.c["primary-surface"],
-            borderWidth: i < balance ? 0 : 1,
-            borderColor: t.c.border,
-          }}
-        />
-      ))}
-    </View>
-  );
-}
-
-/** The gold "Готово" pill on a Café whose Reward is ready to claim. */
-function ReadyChip() {
-  const t = useTheme();
-  return (
-    <View
-      style={{
-        backgroundColor: t.c.primary,
-        borderRadius: t.radius.full,
-        paddingHorizontal: 10,
-        paddingVertical: 3,
-      }}
-    >
-      <Text
-        style={{
-          color: t.c["primary-foreground"],
-          fontFamily: fontFamily.body.bold,
-          fontSize: t.font.size.xs,
-        }}
-      >
-        ✓ Готово
-      </Text>
-    </View>
-  );
-}
-
 /**
  * The Cafés where the Customer holds Зернятка (#20): balance against the Café's
- * threshold plus its Reward, most recently visited first — grouped in one card
- * with the progress shown as beans. Each Café is its own independent program
- * (ADR 0001), so there is deliberately no combined total.
+ * threshold plus its Reward, each its own card with the progress shown as beans.
+ * Each Café is an independent program (ADR 0001), so there is deliberately no
+ * combined total. Empty (1e/1o) is the Берегиня first-Зернятко invitation; a
+ * fetch error is a danger strip with retry (pattern 1d).
  */
 export function CafeBalances() {
+  const t = useTheme();
   const { balances, error, reload } = useBalances();
 
   if (error) {
     return (
-      <View style={styles.errorBox}>
-        <ErrorText>{error}</ErrorText>
+      <View style={{ alignSelf: "stretch", gap: t.space[3] }}>
+        <StatusStrip
+          intent="danger"
+          title="Не вдалося завантажити зернятка"
+          detail={error}
+        />
         <Button
           title="Спробувати знову"
           variant="secondary"
@@ -98,61 +49,95 @@ export function CafeBalances() {
 
   if (balances.length === 0) {
     return (
-      <Muted>Ще немає зернят — покажіть свій QR-код у кав&apos;ярні</Muted>
+      <View
+        style={{
+          alignItems: "center",
+          gap: t.space[3],
+          paddingVertical: t.space[4],
+        }}
+      >
+        <Berehynia size={40} />
+        <Heading size={20}>Перше зернятко чекає</Heading>
+        <Text
+          style={{
+            maxWidth: 240,
+            textAlign: "center",
+            fontSize: 13.5,
+            lineHeight: 20,
+            fontFamily: fontFamily.body.regular,
+            color: t.c["text-secondary"],
+          }}
+        >
+          Купи каву й покажи свій QR — кав&apos;ярня з&apos;явиться тут разом із
+          першим зернятком
+        </Text>
+      </View>
     );
   }
 
   return (
-    <Surface style={styles.card}>
+    <View style={{ alignSelf: "stretch", gap: t.space[3] }}>
       {balances.map((b) => {
         const ready = isRedemptionReady(b);
+        const remaining = b.threshold - b.balance;
         return (
-          <View key={b.cafeId} style={styles.row}>
-            <View style={styles.rowHeader}>
-              <Title style={styles.name}>{b.cafeName}</Title>
-              {ready && <ReadyChip />}
+          <View
+            key={b.cafeId}
+            style={{
+              backgroundColor: t.c.surface,
+              borderWidth: 1,
+              borderColor: t.c.border,
+              borderRadius: t.radius.md,
+              paddingVertical: 14,
+              paddingHorizontal: 16,
+              gap: 6,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                gap: 8,
+              }}
+            >
+              <Text
+                style={{
+                  flexShrink: 1,
+                  fontSize: 16,
+                  fontFamily: fontFamily.body.semibold,
+                  color: t.c.foreground,
+                }}
+              >
+                {b.cafeName}
+              </Text>
+              {b.reward ? (
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontFamily: fontFamily.body.semibold,
+                    color: t.c["text-secondary"],
+                  }}
+                >
+                  {rewardLabel(b.reward)}
+                </Text>
+              ) : null}
             </View>
-            <Muted style={styles.detail}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontFamily: fontFamily.body.regular,
+                color: t.c["text-muted"],
+              }}
+            >
               {ready
-                ? `Винагорода готова!${b.reward ? ` · ${rewardLabel(b.reward)}` : ""}`
-                : `${b.balance} ${pluralizeUk(b.balance, BEAN_FORMS)} · ще ${b.threshold - b.balance} до Винагороди`}
-            </Muted>
-            <BeanProgress balance={b.balance} threshold={b.threshold} />
+                ? "Винагорода готова!"
+                : `${b.balance} ${pluralizeUk(b.balance, BEAN_FORMS)} · ще ${remaining} до Винагороди`}
+            </Text>
+            <BeanRow balance={b.balance} threshold={b.threshold} />
           </View>
         );
       })}
-    </Surface>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    gap: 18,
-  },
-  errorBox: {
-    alignSelf: "stretch",
-    gap: 10,
-  },
-  row: {
-    gap: 6,
-  },
-  rowHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  name: {
-    flexShrink: 1,
-    textAlign: "left",
-  },
-  detail: {
-    textAlign: "left",
-  },
-  dots: {
-    flexDirection: "row",
-    gap: 6,
-    flexWrap: "wrap",
-    marginTop: 2,
-  },
-});
