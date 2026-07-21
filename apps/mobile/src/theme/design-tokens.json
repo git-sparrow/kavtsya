@@ -435,6 +435,11 @@
         "$value": "{color.primary.100}",
         "$type": "color"
       },
+      "qr-plate": {
+        "$value": "{color.base.white}",
+        "$type": "color",
+        "$description": "QR code plate — always white in both themes for scanner contrast; QR modules use neutral-950 (espresso)."
+      },
       "link": {
         "$value": "{color.primary.800}",
         "$type": "color"
@@ -514,6 +519,11 @@
       "disabled-foreground": {
         "$value": "{color.neutral.400}",
         "$type": "color"
+      },
+      "scrim": {
+        "$value": "#241b3a80",
+        "$type": "color",
+        "$description": "Dialog overlay — secondary-900 at 50%."
       }
     },
     "dark": {
@@ -568,6 +578,11 @@
       "primary-surface": {
         "$value": "{color.secondary.800}",
         "$type": "color"
+      },
+      "qr-plate": {
+        "$value": "{color.base.white}",
+        "$type": "color",
+        "$description": "QR code plate — always white in both themes for scanner contrast; QR modules use neutral-950 (espresso)."
       },
       "link": {
         "$value": "{color.primary.300}",
@@ -648,6 +663,11 @@
       "disabled-foreground": {
         "$value": "{color.neutral.500}",
         "$type": "color"
+      },
+      "scrim": {
+        "$value": "#0a071499",
+        "$type": "color",
+        "$description": "Dialog overlay on dark — deepened to 60% so the dialog separates from the indigo background."
       }
     }
   },
@@ -817,6 +837,17 @@
         "blur": "34px",
         "spread": "0px"
       }
+    },
+    "reward": {
+      "$type": "shadow",
+      "$value": {
+        "color": "#e8b44a40",
+        "offsetX": "0px",
+        "offsetY": "6px",
+        "blur": "22px",
+        "spread": "0px"
+      },
+      "$description": "Gold glow for reward-ready cards — primary-400 at 25% alpha. Pairs with a 1.5px semantic primary border."
     }
   },
   "motion": {

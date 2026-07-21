@@ -126,6 +126,7 @@ export const tokens = {
     "primary-active": "#946b00",
     "primary-foreground": "#3a2117",
     "primary-surface": "#fce8c5",
+    "qr-plate": "#ffffff",
     "link": "#593f00",
     "secondary": "#241b3a",
     "secondary-surface": "#ece7ff",
@@ -145,7 +146,8 @@ export const tokens = {
     "info-surface": "#e8f6ff",
     "focus": "#473b66",
     "disabled": "#d9c4a8",
-    "disabled-foreground": "#a68868"
+    "disabled-foreground": "#a68868",
+    "scrim": "#241b3a80"
   },
   "dark": {
     "background": "#241b3a",
@@ -161,6 +163,7 @@ export const tokens = {
     "primary-active": "#f3d296",
     "primary-foreground": "#3a2117",
     "primary-surface": "#473b66",
+    "qr-plate": "#ffffff",
     "link": "#e5b862",
     "secondary": "#c3b6ee",
     "secondary-surface": "#473b66",
@@ -180,7 +183,8 @@ export const tokens = {
     "info-surface": "#003d58",
     "focus": "#e8b44a",
     "disabled": "#5e5085",
-    "disabled-foreground": "#8f7256"
+    "disabled-foreground": "#8f7256",
+    "scrim": "#0a071499"
   },
   "font": {
     "family": {
@@ -251,6 +255,13 @@ export const tokens = {
       "offsetX": "0px",
       "offsetY": "14px",
       "blur": "34px",
+      "spread": "0px"
+    },
+    "reward": {
+      "color": "#e8b44a40",
+      "offsetX": "0px",
+      "offsetY": "6px",
+      "blur": "22px",
       "spread": "0px"
     }
   },
