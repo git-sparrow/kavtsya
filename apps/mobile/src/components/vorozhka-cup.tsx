@@ -1,20 +1,7 @@
-import { type ComponentType, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, View } from "react-native";
-import SvgBase, {
-  Circle as CircleBase,
-  Ellipse as EllipseBase,
-  Path as PathBase,
-  type CircleProps,
-  type EllipseProps,
-  type PathProps,
-  type SvgProps,
-} from "react-native-svg";
 
-// React 19 strict-JSX coercion for react-native-svg's class exports (see icon.tsx).
-const Svg = SvgBase as unknown as ComponentType<SvgProps>;
-const Path = PathBase as unknown as ComponentType<PathProps>;
-const Circle = CircleBase as unknown as ComponentType<CircleProps>;
-const Ellipse = EllipseBase as unknown as ComponentType<EllipseProps>;
+import { Circle, Ellipse, Path, Svg } from "@/components/svg";
 
 // The cup illustration's palette (canvas `#cup`): fixed brand hexes for a single
 // approved artwork — neutral-100/300/900 + primary-400 — not a themeable surface.

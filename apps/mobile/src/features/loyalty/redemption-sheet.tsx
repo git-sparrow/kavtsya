@@ -12,13 +12,11 @@ import { Heading } from "@/components/text";
 import { useMemberCode } from "@/features/loyalty/use-member-code";
 import { useQrToken } from "@/features/loyalty/use-qr-token";
 import { fetchBalances } from "@/lib/api";
-import { pluralizeUk } from "@/lib/plural";
+import { BEAN_FORMS, pluralizeUk } from "@/lib/plural";
 import { fontFamily, useTheme } from "@/theme";
 
+import { CafeCardHeader } from "./cafe-card-header";
 import { rewardLabel } from "./reward";
-
-/** «зернятко» in its three count forms. */
-const BEAN_FORMS = { one: "зернятко", few: "зернятка", many: "зернят" };
 
 /** How often the open sheet re-reads balances to notice the barista's confirm. */
 const POLL_MS = 2500;
@@ -123,7 +121,12 @@ export function RedemptionSheet({
             збережеться
           </Text>
           <View style={{ alignSelf: "stretch" }}>
-            <Button title="Пізніше" variant="secondary" onPress={onClose} />
+            <Button
+              title="Пізніше"
+              variant="secondary"
+              testID="redemption-later"
+              onPress={onClose}
+            />
           </View>
         </View>
       )}
@@ -161,36 +164,7 @@ function RedemptionSuccess({
           gap: 6,
         }}
       >
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "baseline",
-            gap: 8,
-          }}
-        >
-          <Text
-            style={{
-              flexShrink: 1,
-              fontSize: 16,
-              fontFamily: fontFamily.body.semibold,
-              color: t.c.foreground,
-            }}
-          >
-            {cafe.cafeName}
-          </Text>
-          {cafe.reward ? (
-            <Text
-              style={{
-                fontSize: 12,
-                fontFamily: fontFamily.body.semibold,
-                color: t.c["text-secondary"],
-              }}
-            >
-              {rewardLabel(cafe.reward)}
-            </Text>
-          ) : null}
-        </View>
+        <CafeCardHeader cafe={cafe} />
         <Text
           style={{
             fontSize: 13,
@@ -203,7 +177,7 @@ function RedemptionSuccess({
         </Text>
         <BeanRow balance={remaining} threshold={cafe.threshold} />
       </View>
-      <Button title="Готово" onPress={onClose} />
+      <Button title="Готово" testID="redemption-done" onPress={onClose} />
     </View>
   );
 }

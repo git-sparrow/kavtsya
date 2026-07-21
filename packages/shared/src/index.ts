@@ -392,6 +392,7 @@ export type PurchaseResult = z.infer<typeof purchaseResultSchema>;
 export const pendingFortuneSchema = z.object({
   id: z.string(),
   fortune: z.string().min(1),
+  cafeId: z.string(),
   cafeName: z.string(),
   balance: z.number().int().nonnegative(),
   threshold: z.number().int(),

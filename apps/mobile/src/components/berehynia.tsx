@@ -1,18 +1,5 @@
-import type { ComponentType } from "react";
-import SvgBase, {
-  Circle as CircleBase,
-  Path as PathBase,
-  type CircleProps,
-  type PathProps,
-  type SvgProps,
-} from "react-native-svg";
-
+import { Circle, Path, Svg } from "@/components/svg";
 import { useTheme } from "@/theme";
-
-// React 19 strict-JSX coercion for react-native-svg's class exports (see icon.tsx).
-const Svg = SvgBase as unknown as ComponentType<SvgProps>;
-const Path = PathBase as unknown as ComponentType<PathProps>;
-const Circle = CircleBase as unknown as ComponentType<CircleProps>;
 
 /**
  * The Берегиня ornament (canvas `#bere`): the brand's protective mark — nested

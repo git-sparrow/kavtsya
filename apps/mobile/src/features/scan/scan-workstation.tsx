@@ -156,8 +156,10 @@ export function ScanWorkstation({
             <Muted>
               Зернятка: {state.result.balance} з {state.result.threshold}
             </Muted>
-            {/* Ворожка (#23): the scan moment — show the Customer their fortune. */}
-            <Muted>☕ «{state.result.fortune}»</Muted>
+            {/* Ворожка (#23, redesign turn 1): the reveal moved onto the
+                Customer's device — no longer rendered here. The response still
+                carries `fortune` (payload untouched); the API records it for the
+                Customer to reveal. */}
             {canRedeem(state.result) && (
               <>
                 <Muted>

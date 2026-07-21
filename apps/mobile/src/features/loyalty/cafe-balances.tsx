@@ -9,15 +9,13 @@ import { Button } from "@/components/button";
 import { RewardBadge, StatusStrip } from "@/components/status-strip";
 import { Surface } from "@/components/surface";
 import { Heading } from "@/components/text";
-import { pluralizeUk } from "@/lib/plural";
+import { BEAN_FORMS, pluralizeUk } from "@/lib/plural";
 import { fontFamily, useTheme } from "@/theme";
 
+import { CafeCardHeader } from "./cafe-card-header";
 import { RedemptionSheet } from "./redemption-sheet";
 import { rewardLabel } from "./reward";
 import { useBalances } from "./use-balances";
-
-/** «зернятко» in its three count forms: 1 зернятко / 3 зернятка / 7 зернят. */
-const BEAN_FORMS = { one: "зернятко", few: "зернятка", many: "зернят" };
 
 /**
  * The Cafés where the Customer holds Зернятка (#20): balance against the Café's
@@ -121,7 +119,7 @@ function CafeRow({ cafe }: { cafe: CafeBalance }) {
         gap: 6,
       }}
     >
-      <CafeRowHeader cafe={cafe} />
+      <CafeCardHeader cafe={cafe} />
       <Text
         style={{
           fontSize: 13,
@@ -179,44 +177,7 @@ function RewardReadyCard({
         {pluralizeUk(cafe.threshold, BEAN_FORMS)} зібрано
       </Text>
       <BeanRow balance={cafe.balance} threshold={cafe.threshold} />
-      <Button title="Як отримати" onPress={onRedeem} />
+      <Button title="Як отримати" testID="cafe-redeem" onPress={onRedeem} />
     </Surface>
-  );
-}
-
-/** Café name + always-visible Reward name — shared by the row and success card. */
-function CafeRowHeader({ cafe }: { cafe: CafeBalance }) {
-  const t = useTheme();
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "baseline",
-        gap: 8,
-      }}
-    >
-      <Text
-        style={{
-          flexShrink: 1,
-          fontSize: 16,
-          fontFamily: fontFamily.body.semibold,
-          color: t.c.foreground,
-        }}
-      >
-        {cafe.cafeName}
-      </Text>
-      {cafe.reward ? (
-        <Text
-          style={{
-            fontSize: 12,
-            fontFamily: fontFamily.body.semibold,
-            color: t.c["text-secondary"],
-          }}
-        >
-          {rewardLabel(cafe.reward)}
-        </Text>
-      ) : null}
-    </View>
   );
 }

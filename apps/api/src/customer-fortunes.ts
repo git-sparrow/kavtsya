@@ -64,6 +64,7 @@ export async function pendingFortuneFor(
   return {
     id: row.id,
     fortune: row.fortune,
+    cafeId: row.cafe_id,
     cafeName: row.cafe_name,
     balance: await balanceFor(db, customerId, row.cafe_id),
     threshold: program.threshold,

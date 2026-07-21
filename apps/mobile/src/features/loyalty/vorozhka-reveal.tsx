@@ -1,36 +1,19 @@
-import type { PendingFortune } from "@kavtsya/shared";
+import type { CafeBalance, PendingFortune } from "@kavtsya/shared";
 import { isRedemptionReady } from "@kavtsya/shared";
-import type { ComponentType } from "react";
+import { useState } from "react";
 import { Modal, ScrollView, Text, View } from "react-native";
-import SvgBase, {
-  Circle as CircleBase,
-  Defs as DefsBase,
-  RadialGradient as RadialGradientBase,
-  Stop as StopBase,
-  type CircleProps,
-  type SvgProps,
-} from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BeanRow } from "@/components/bean-row";
 import { Berehynia } from "@/components/berehynia";
 import { Button } from "@/components/button";
+import { Circle, Defs, RadialGradient, Stop, Svg } from "@/components/svg";
 import { Heading } from "@/components/text";
 import { VorozhkaCup } from "@/components/vorozhka-cup";
 import { ThemeProvider, fontFamily, useTheme } from "@/theme";
 
+import { RedemptionSheet } from "./redemption-sheet";
 import { rewardLabel } from "./reward";
-
-// React 19 strict-JSX coercion for react-native-svg's class exports (see icon.tsx).
-const Svg = SvgBase as unknown as ComponentType<SvgProps>;
-const Circle = CircleBase as unknown as ComponentType<CircleProps>;
-const Defs = DefsBase as unknown as ComponentType<{
-  children: React.ReactNode;
-}>;
-const RadialGradient = RadialGradientBase as unknown as ComponentType<
-  Record<string, unknown>
->;
-const Stop = StopBase as unknown as ComponentType<Record<string, unknown>>;
 
 /**
  * The Ворожка reveal (1k/1l, #23, redesign turn 1). The ritual on the Customer's
@@ -72,6 +55,9 @@ function RevealBody({
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const ready = isRedemptionReady(fortune);
+  // 1l: «Отримати Винагороду» opens the redemption sheet right here (over the
+  // dark reveal, so it renders as the dark 1q sheet); closing it ends the reveal.
+  const [redeeming, setRedeeming] = useState<CafeBalance | null>(null);
 
   return (
     <View style={{ flex: 1, backgroundColor: t.c.background }}>
@@ -144,14 +130,39 @@ function RevealBody({
         <View style={{ alignSelf: "stretch", marginTop: 20 }}>
           {ready ? (
             <>
-              <Button title="Отримати Винагороду" onPress={onDismiss} />
+              <Button
+                title="Отримати Винагороду"
+                testID="vorozhka-redeem"
+                onPress={() =>
+                  setRedeeming({
+                    cafeId: fortune.cafeId,
+                    cafeName: fortune.cafeName,
+                    balance: fortune.balance,
+                    threshold: fortune.threshold,
+                    reward: fortune.reward,
+                  })
+                }
+              />
               <Button title="Пізніше" variant="quiet" onPress={onDismiss} />
             </>
           ) : (
-            <Button title="Дякую" onPress={onDismiss} />
+            <Button
+              title="Дякую"
+              testID="vorozhka-thanks"
+              onPress={onDismiss}
+            />
           )}
         </View>
       </ScrollView>
+
+      {/* Redemption from the reveal (1l → 1q): closing the sheet ends the reveal. */}
+      <RedemptionSheet
+        cafe={redeeming}
+        onClose={() => {
+          setRedeeming(null);
+          onDismiss();
+        }}
+      />
     </View>
   );
 }
@@ -216,7 +227,7 @@ function ProgressCard({
               color: t.c.link,
             }}
           >
-            ★ ВИНАГОРОДА ГОТОВА
+            <Text aria-hidden>★ </Text>ВИНАГОРОДА ГОТОВА
           </Text>
           <BeanRow balance={fortune.balance} threshold={fortune.threshold} />
           <Heading size={18}>

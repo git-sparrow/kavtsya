@@ -31,6 +31,7 @@ function HomeHeader({ name }: { name: string }) {
         Вітаємо, {name}!
       </Heading>
       <Pressable
+        testID="home-settings"
         accessibilityRole="button"
         accessibilityLabel="Налаштування"
         hitSlop={8}

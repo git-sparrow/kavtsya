@@ -1,20 +1,7 @@
-import type { ComponentType, ReactNode } from "react";
-import SvgBase, {
-  Circle as CircleBase,
-  Path as PathBase,
-  type CircleProps,
-  type PathProps,
-  type SvgProps,
-} from "react-native-svg";
+import type { ReactNode } from "react";
 
+import { Circle, Path, Svg } from "@/components/svg";
 import { useTheme } from "@/theme";
-
-// react-native-svg declares its exports as classes; React 19's stricter JSX
-// element typing rejects them (the same coercion customer-qr.tsx applies to
-// react-native-qrcode-svg and scan-workstation.tsx applies to expo-camera).
-const Svg = SvgBase as unknown as ComponentType<SvgProps>;
-const Path = PathBase as unknown as ComponentType<PathProps>;
-const Circle = CircleBase as unknown as ComponentType<CircleProps>;
 
 /**
  * The line-icon set, straight from the design canvas: a 24-grid, 1.6px stroke,

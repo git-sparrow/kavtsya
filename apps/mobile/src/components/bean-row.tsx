@@ -1,19 +1,7 @@
-import type { ComponentType } from "react";
 import { View } from "react-native";
-import SvgBase, {
-  Ellipse as EllipseBase,
-  Path as PathBase,
-  type EllipseProps,
-  type PathProps,
-  type SvgProps,
-} from "react-native-svg";
 
+import { Ellipse, Path, Svg } from "@/components/svg";
 import { useTheme } from "@/theme";
-
-// React 19 strict-JSX coercion for react-native-svg's class exports (see icon.tsx).
-const Svg = SvgBase as unknown as ComponentType<SvgProps>;
-const Path = PathBase as unknown as ComponentType<PathProps>;
-const Ellipse = EllipseBase as unknown as ComponentType<EllipseProps>;
 
 /** Beyond this many, dots overflow the row — the paired count text carries it. */
 const MAX_BEANS = 12;
