@@ -1,14 +1,18 @@
+import type { CafeBalance } from "@kavtsya/shared";
 import { isRedemptionReady } from "@kavtsya/shared";
+import { useState } from "react";
 import { Text, View } from "react-native";
 
 import { BeanRow } from "@/components/bean-row";
 import { Berehynia } from "@/components/berehynia";
 import { Button } from "@/components/button";
-import { StatusStrip } from "@/components/status-strip";
+import { RewardBadge, StatusStrip } from "@/components/status-strip";
+import { Surface } from "@/components/surface";
 import { Heading } from "@/components/text";
 import { pluralizeUk } from "@/lib/plural";
 import { fontFamily, useTheme } from "@/theme";
 
+import { RedemptionSheet } from "./redemption-sheet";
 import { rewardLabel } from "./reward";
 import { useBalances } from "./use-balances";
 
@@ -25,6 +29,8 @@ const BEAN_FORMS = { one: "зернятко", few: "зернятка", many: "з
 export function CafeBalances() {
   const t = useTheme();
   const { balances, error, reload } = useBalances();
+  // The Café whose Redemption sheet is open, if any (1g).
+  const [redeeming, setRedeeming] = useState<CafeBalance | null>(null);
 
   if (error) {
     return (
@@ -77,67 +83,140 @@ export function CafeBalances() {
 
   return (
     <View style={{ alignSelf: "stretch", gap: t.space[3] }}>
-      {balances.map((b) => {
-        const ready = isRedemptionReady(b);
-        const remaining = b.threshold - b.balance;
-        return (
-          <View
+      {balances.map((b) =>
+        isRedemptionReady(b) ? (
+          <RewardReadyCard
             key={b.cafeId}
-            style={{
-              backgroundColor: t.c.surface,
-              borderWidth: 1,
-              borderColor: t.c.border,
-              borderRadius: t.radius.md,
-              paddingVertical: 14,
-              paddingHorizontal: 16,
-              gap: 6,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                gap: 8,
-              }}
-            >
-              <Text
-                style={{
-                  flexShrink: 1,
-                  fontSize: 16,
-                  fontFamily: fontFamily.body.semibold,
-                  color: t.c.foreground,
-                }}
-              >
-                {b.cafeName}
-              </Text>
-              {b.reward ? (
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontFamily: fontFamily.body.semibold,
-                    color: t.c["text-secondary"],
-                  }}
-                >
-                  {rewardLabel(b.reward)}
-                </Text>
-              ) : null}
-            </View>
-            <Text
-              style={{
-                fontSize: 13,
-                fontFamily: fontFamily.body.regular,
-                color: t.c["text-muted"],
-              }}
-            >
-              {ready
-                ? "Винагорода готова!"
-                : `${b.balance} ${pluralizeUk(b.balance, BEAN_FORMS)} · ще ${remaining} до Винагороди`}
-            </Text>
-            <BeanRow balance={b.balance} threshold={b.threshold} />
-          </View>
-        );
-      })}
+            cafe={b}
+            onRedeem={() => setRedeeming(b)}
+          />
+        ) : (
+          <CafeRow key={b.cafeId} cafe={b} />
+        ),
+      )}
+      <RedemptionSheet
+        cafe={redeeming}
+        onClose={() => {
+          setRedeeming(null);
+          void reload();
+        }}
+      />
+    </View>
+  );
+}
+
+/** A Café still collecting toward its Reward (1a row). */
+function CafeRow({ cafe }: { cafe: CafeBalance }) {
+  const t = useTheme();
+  const remaining = cafe.threshold - cafe.balance;
+  return (
+    <View
+      style={{
+        backgroundColor: t.c.surface,
+        borderWidth: 1,
+        borderColor: t.c.border,
+        borderRadius: t.radius.md,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        gap: 6,
+      }}
+    >
+      <CafeRowHeader cafe={cafe} />
+      <Text
+        style={{
+          fontSize: 13,
+          fontFamily: fontFamily.body.regular,
+          color: t.c["text-muted"],
+        }}
+      >
+        {cafe.balance} {pluralizeUk(cafe.balance, BEAN_FORMS)} · ще {remaining}{" "}
+        до Винагороди
+      </Text>
+      <BeanRow balance={cafe.balance} threshold={cafe.threshold} />
+    </View>
+  );
+}
+
+/** The elevated reward-ready card (1f/1p): gold border + glow, badge, CTA. */
+function RewardReadyCard({
+  cafe,
+  onRedeem,
+}: {
+  cafe: CafeBalance;
+  onRedeem: () => void;
+}) {
+  const t = useTheme();
+  return (
+    <Surface emphasis="reward" style={{ paddingVertical: 16, gap: 10 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        <Text
+          style={{
+            flexShrink: 1,
+            fontSize: 16,
+            fontFamily: fontFamily.body.semibold,
+            color: t.c.foreground,
+          }}
+        >
+          {cafe.cafeName}
+        </Text>
+        <RewardBadge />
+      </View>
+      <Text
+        style={{
+          fontSize: 13,
+          fontFamily: fontFamily.body.regular,
+          color: t.c["text-secondary"],
+        }}
+      >
+        {rewardLabel(cafe.reward)} · {cafe.threshold}{" "}
+        {pluralizeUk(cafe.threshold, BEAN_FORMS)} зібрано
+      </Text>
+      <BeanRow balance={cafe.balance} threshold={cafe.threshold} />
+      <Button title="Як отримати" onPress={onRedeem} />
+    </Surface>
+  );
+}
+
+/** Café name + always-visible Reward name — shared by the row and success card. */
+function CafeRowHeader({ cafe }: { cafe: CafeBalance }) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "baseline",
+        gap: 8,
+      }}
+    >
+      <Text
+        style={{
+          flexShrink: 1,
+          fontSize: 16,
+          fontFamily: fontFamily.body.semibold,
+          color: t.c.foreground,
+        }}
+      >
+        {cafe.cafeName}
+      </Text>
+      {cafe.reward ? (
+        <Text
+          style={{
+            fontSize: 12,
+            fontFamily: fontFamily.body.semibold,
+            color: t.c["text-secondary"],
+          }}
+        >
+          {rewardLabel(cafe.reward)}
+        </Text>
+      ) : null}
     </View>
   );
 }
