@@ -381,6 +381,31 @@ export const purchaseResultSchema = z.object({
 export type PurchaseResult = z.infer<typeof purchaseResultSchema>;
 
 /**
+ * The Customer's pending Ворожка reveal (#23, redesign turn 1). The ritual lives
+ * on the Customer's device now: each scan records a fortune, and the app polls
+ * `GET /api/me/fortune/pending` for the most recent unrevealed one. It carries
+ * the scan's Зернятко context — Café name, current balance, threshold, Reward —
+ * so the reveal can draw the bean-row card and switch to its reward-ready
+ * variant (1l) via {@link isRedemptionReady}. `GET` returns this or `null`;
+ * `POST /api/me/fortune/:id/seen` marks it revealed.
+ */
+export const pendingFortuneSchema = z.object({
+  id: z.string(),
+  fortune: z.string().min(1),
+  cafeName: z.string(),
+  balance: z.number().int().nonnegative(),
+  threshold: z.number().int(),
+  reward: rewardSchema.nullable(),
+});
+export type PendingFortune = z.infer<typeof pendingFortuneSchema>;
+
+/** `GET /api/me/fortune/pending`: the reveal, or null when there is none. */
+export const pendingFortuneResponseSchema = pendingFortuneSchema.nullable();
+export type PendingFortuneResponse = z.infer<
+  typeof pendingFortuneResponseSchema
+>;
+
+/**
  * Every way `POST /api/redemptions` can turn down an authenticated, well-formed
  * confirm, with the HTTP status each code travels under — the same single-
  * declaration taxonomy pattern as the scan (#50), so the CafeOwner screen's
