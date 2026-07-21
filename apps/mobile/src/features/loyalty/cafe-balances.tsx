@@ -1,3 +1,4 @@
+import { isRedemptionReady } from "@kavtsya/shared";
 import { StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/button";
@@ -104,7 +105,7 @@ export function CafeBalances() {
   return (
     <Surface style={styles.card}>
       {balances.map((b) => {
-        const ready = b.balance >= b.threshold;
+        const ready = isRedemptionReady(b);
         return (
           <View key={b.cafeId} style={styles.row}>
             <View style={styles.rowHeader}>

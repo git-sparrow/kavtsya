@@ -122,6 +122,28 @@ export const loyaltyProgramSchema = z.object({
 export type LoyaltyProgram = z.infer<typeof loyaltyProgramSchema>;
 
 /**
+ * The redemption-readiness rule (CONTEXT → Redemption): a Customer can claim a
+ * Reward when the balance meets the Café's threshold and the Café has actually
+ * configured a Reward to claim. One predicate, called by the API's authoritative
+ * eligibility check and by every mobile display that shows a «готово» state — so
+ * the three sites can never drift (an off-by-one on any client would silently
+ * show the wrong readiness to a Customer or a barista). The server still
+ * re-checks under its `FOR UPDATE` lock on confirm; this is the shape of the
+ * rule, not the authorization.
+ */
+export function isRedemptionReady({
+  balance,
+  threshold,
+  reward,
+}: {
+  balance: number;
+  threshold: number;
+  reward: Reward | null;
+}): boolean {
+  return reward !== null && balance >= threshold;
+}
+
+/**
  * Body for `PUT /api/cafes/:id/program`. Same shape as the program itself —
  * the CafeOwner sets the threshold and (optionally) the Reward in one write.
  * The API additionally rejects a Reward whose type isn't in the current

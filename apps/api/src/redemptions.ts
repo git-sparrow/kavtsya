@@ -1,5 +1,5 @@
 import type { Reward } from "@kavtsya/shared";
-import { rewardSchema } from "@kavtsya/shared";
+import { isRedemptionReady, rewardSchema } from "@kavtsya/shared";
 import type { Database, Queryable } from "./db";
 import { isUniqueViolation } from "./db";
 import { balanceFor } from "./purchases";
@@ -73,7 +73,9 @@ export function redemptionEligibility({
       >;
     } {
   if (!reward) return { eligible: false, reason: "no_reward" };
-  if (balance < threshold) {
+  // `reward` is non-null here, so the shared rule reduces to the balance check —
+  // one predicate shared with the mobile clients, one API-specific reason.
+  if (!isRedemptionReady({ balance, threshold, reward })) {
     return { eligible: false, reason: "insufficient_balance" };
   }
   return { eligible: true, reward };

@@ -1,5 +1,9 @@
 import type { PurchaseResult, Reward } from "@kavtsya/shared";
-import { isWellFormedMemberCode, normalizeMemberCode } from "@kavtsya/shared";
+import {
+  isRedemptionReady,
+  isWellFormedMemberCode,
+  normalizeMemberCode,
+} from "@kavtsya/shared";
 import {
   CameraView as CameraViewBase,
   type CameraViewProps,
@@ -34,7 +38,7 @@ const VIEWFINDER_SIZE = 260;
 function canRedeem(
   result: PurchaseResult,
 ): result is PurchaseResult & { reward: Reward } {
-  return result.balance >= result.threshold && result.reward !== null;
+  return isRedemptionReady(result);
 }
 
 export interface ScanWorkstationProps {
