@@ -12,6 +12,7 @@ import { tokens } from "./theme.generated";
 export { tokens } from "./theme.generated";
 export { ThemeProvider, useTheme, type ThemeName } from "./theme";
 export { fontAssets, fontFamily } from "./fonts";
+export { toShadowStyle, type ShadowToken } from "./shadow";
 
 /** Static light theme for `StyleSheet.create`; `c` is the light semantic map. */
 export const theme = {
