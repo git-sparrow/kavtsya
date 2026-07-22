@@ -104,7 +104,7 @@ export function CustomerMode() {
         <ConsentCard />
 
         <CafeSectionLabel />
-        <CafeBalances />
+        <CafeBalances reloadSignal={fortune?.id ?? null} />
       </Screen>
       {fortune ? (
         <VorozhkaReveal fortune={fortune} onDismiss={dismiss} />

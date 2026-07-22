@@ -1,6 +1,6 @@
 import type { CafeBalance } from "@kavtsya/shared";
 import { isRedemptionReady } from "@kavtsya/shared";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 
 import { BeanRow } from "@/components/bean-row";
@@ -23,12 +23,27 @@ import { useBalances } from "./use-balances";
  * Each Café is an independent program (ADR 0001), so there is deliberately no
  * combined total. Empty (1e/1o) is the Берегиня first-Зернятко invitation; a
  * fetch error is a danger strip with retry (pattern 1d).
+ *
+ * `reloadSignal` carries the id of a freshly-arrived Ворожка reveal: a reveal
+ * means the CafeOwner just scanned, so a Зернятко landed and this list is stale.
+ * The on-focus refetch in `useBalances` can't catch it — the reveal is a Modal,
+ * not a route, so home never blurs — hence we refresh here when the signal
+ * changes, keeping the reward-ready card (1f) in step behind the reveal so it is
+ * already correct once the Customer dismisses it.
  */
-export function CafeBalances() {
+export function CafeBalances({
+  reloadSignal,
+}: {
+  reloadSignal?: string | null;
+}) {
   const t = useTheme();
   const { balances, error, reload } = useBalances();
   // The Café whose Redemption sheet is open, if any (1g).
   const [redeeming, setRedeeming] = useState<CafeBalance | null>(null);
+
+  useEffect(() => {
+    if (reloadSignal) void reload();
+  }, [reloadSignal, reload]);
 
   if (error) {
     return (
