@@ -6,6 +6,11 @@ import {
 } from "@kavtsya/shared";
 import type { AppDeps, AppEnv } from "../app";
 import { kyivDayOf } from "../clock";
+import {
+  markFortuneSeen,
+  pendingFortuneFor,
+  recordFortune,
+} from "../customer-fortunes";
 import { fortuneForScan } from "../fortunes";
 import { customerIdForMemberCode } from "../member-code";
 import { getManualEntryConfig, getQrTokenConfig } from "../platform-config";
@@ -115,15 +120,25 @@ export function registerPurchaseRoutes(
     });
     if (!outcome.ok) return reject(c, outcome.reason);
 
+    // A cheap pool read (ADR 0009) — the Зернятко above is already issued, and
+    // no model is ever called from the scan path.
+    const fortune = await fortuneForScan(db, clock);
+    // Record it for the Customer's own reveal (#23, turn 1): the ritual now
+    // happens on their device, not the barista's. Best-effort — a fortune-write
+    // hiccup must never fail a scan whose Зернятко already landed.
+    await recordFortune(db, {
+      customerId: outcome.customerId,
+      cafeId: parsed.data.cafeId,
+      fortune,
+    }).catch(() => {});
+
     const body: PurchaseResult = {
       customerId: outcome.customerId,
       customerName: outcome.customerName,
       balance: outcome.balance,
       threshold: outcome.threshold,
       reward: outcome.reward,
-      // A cheap pool read (ADR 0009) — the Зернятко above is already issued,
-      // and no model is ever called from the scan path.
-      fortune: await fortuneForScan(db, clock),
+      fortune,
     };
     return c.json(body, 201);
   });
@@ -134,5 +149,22 @@ export function registerPurchaseRoutes(
     if (!user) return c.json({ error: "unauthorized" }, 401);
 
     return c.json(await listBalances(db, user.id));
+  });
+
+  // The Customer's pending Ворожка reveal (#23, turn 1), and the «Дякую» that
+  // marks it seen.
+  app.get("/api/me/fortune/pending", async (c) => {
+    const user = c.get("user");
+    if (!user) return c.json({ error: "unauthorized" }, 401);
+
+    return c.json(await pendingFortuneFor(db, user.id));
+  });
+
+  app.post("/api/me/fortune/:id/seen", async (c) => {
+    const user = c.get("user");
+    if (!user) return c.json({ error: "unauthorized" }, 401);
+
+    await markFortuneSeen(db, user.id, c.req.param("id"));
+    return c.body(null, 204);
   });
 }

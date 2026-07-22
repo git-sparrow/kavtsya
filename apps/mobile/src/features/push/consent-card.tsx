@@ -1,14 +1,15 @@
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Text, View } from "react-native";
 
+import { Berehynia } from "@/components/berehynia";
 import { Button } from "@/components/button";
-import { Muted, Title } from "@/components/text";
+import { Surface } from "@/components/surface";
 import { useMe } from "@/features/account/me-context";
 import { useBalances } from "@/features/loyalty/use-balances";
 import { registerDeviceForPush } from "@/features/push/push-registration";
 import { updatePushConsent } from "@/lib/api";
-import { theme } from "@/theme";
+import { fontFamily, useTheme } from "@/theme";
 
 /**
  * Whether THIS account already answered the consent question on this device —
@@ -26,6 +27,7 @@ function decidedKeyFor(userId: string): string {
  * (either way); the settings toggle is where minds change later.
  */
 export function ConsentCard() {
+  const t = useTheme();
   const { me, reload } = useMe();
   const { balances } = useBalances();
   const userId = me?.id;
@@ -69,34 +71,41 @@ export function ConsentCard() {
   }
 
   return (
-    <View style={styles.card}>
-      <Title>Перше зернятко! 🌱</Title>
-      <Muted>
-        Хочете новини і подарунки від ваших кав&apos;ярень? Лише від тих, де ви
-        буваєте — і це завжди можна вимкнути в налаштуваннях.
-      </Muted>
+    <Surface emphasis="promise" style={{ gap: t.space[3] }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Berehynia size={18} />
+        <Text
+          style={{
+            fontSize: t.font.size.lg,
+            fontFamily: fontFamily.body.semibold,
+            color: t.c.foreground,
+          }}
+        >
+          Перше зернятко!
+        </Text>
+      </View>
+      <Text
+        style={{
+          fontSize: 13.5,
+          lineHeight: 20,
+          fontFamily: fontFamily.body.regular,
+          color: t.c["text-secondary"],
+        }}
+      >
+        Хочеш новини і подарунки від твоїх кав&apos;ярень? Лише від тих, де ти
+        буваєш — і це завжди можна вимкнути в налаштуваннях.
+      </Text>
       <Button
         title="Хочу новини й подарунки"
-        disabled={busy}
+        busy={busy}
         onPress={() => void answer(true)}
       />
       <Button
         title="Ні, дякую"
-        variant="secondary"
+        variant="quiet"
         disabled={busy}
         onPress={() => void answer(false)}
       />
-    </View>
+    </Surface>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    borderWidth: 1,
-    borderColor: theme.c.primary,
-    borderRadius: theme.radius.md,
-    paddingVertical: theme.space[3],
-    paddingHorizontal: theme.space[3],
-    gap: theme.space[2],
-  },
-});

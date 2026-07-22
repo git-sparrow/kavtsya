@@ -21,6 +21,8 @@ import {
   meResponseSchema,
   type MyShiftResponse,
   myShiftResponseSchema,
+  type PendingFortuneResponse,
+  pendingFortuneResponseSchema,
   type PosterScanResult,
   posterScanResultSchema,
   type PurchaseResult,
@@ -236,6 +238,25 @@ export async function fetchBalances(): Promise<CafeBalancesResponse> {
   if (error)
     throw new Error(error.message ?? "Не вдалося завантажити зернятка");
   return cafeBalancesResponseSchema.parse(data);
+}
+
+/**
+ * The Customer's pending Ворожка reveal (#23), or null when there is none. The
+ * home polls this while foregrounded so the reveal appears shortly after the
+ * CafeOwner scans.
+ */
+export async function fetchPendingFortune(): Promise<PendingFortuneResponse> {
+  const { data, error } = await apiFetch("/api/me/fortune/pending");
+  if (error) throw new Error(error.message ?? "Не вдалося завантажити ворожку");
+  return pendingFortuneResponseSchema.parse(data);
+}
+
+/** Mark a Ворожка reveal seen (the «Дякую» tap) so it isn't shown again. */
+export async function markFortuneSeen(id: string): Promise<void> {
+  const { error } = await apiFetch(`/api/me/fortune/${id}/seen`, {
+    method: "POST",
+  });
+  if (error) throw new Error(error.message ?? "Не вдалося оновити ворожку");
 }
 
 /**

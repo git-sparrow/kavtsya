@@ -18,19 +18,27 @@ import { fontFamily, useTheme } from "@/theme";
  * only on the Mode landings (Customer, CafeOwner), never on Scanner Mode (the
  * kiosk: leaving requires ending the shift) nor on sign-in. A single glyph for
  * now — a custom icon set can replace it later without touching call sites.
+ *
+ * `header` replaces the centred brand wordmark with a screen-supplied top row
+ * (the redesign drops the logo from the Mode landings — logo lives on sign-in +
+ * splash only) and top-aligns the content for a real scroll. When it is set,
+ * the legacy `settings` gear is suppressed: the header carries its own controls.
  */
 export function Screen({
   children,
   settings = false,
+  header,
 }: {
   children: ReactNode;
   settings?: boolean;
+  header?: ReactNode;
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const hasHeader = header !== undefined;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.c.background }}>
-      {settings && (
+      {settings && !hasHeader && (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Налаштування"
@@ -52,33 +60,41 @@ export function Screen({
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
-          alignItems: "center",
-          justifyContent: "center",
+          alignItems: hasHeader ? "stretch" : "center",
+          justifyContent: hasHeader ? "flex-start" : "center",
           gap: t.space[4],
           padding: t.space[6],
         }}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
       >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: t.space[3],
-          }}
-        >
-          <Text style={{ fontSize: t.font.size.xl, color: t.c.accent }}>✦</Text>
-          <Text
+        {hasHeader ? (
+          header
+        ) : (
+          <View
             style={{
-              fontSize: t.font.size.display,
-              fontFamily: fontFamily.display.bold,
-              color: t.c.foreground,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: t.space[3],
             }}
           >
-            Кавця
-          </Text>
-          <Text style={{ fontSize: t.font.size.xl, color: t.c.accent }}>✦</Text>
-        </View>
+            <Text style={{ fontSize: t.font.size.xl, color: t.c.accent }}>
+              ✦
+            </Text>
+            <Text
+              style={{
+                fontSize: t.font.size.display,
+                fontFamily: fontFamily.display.bold,
+                color: t.c.foreground,
+              }}
+            >
+              Кавця
+            </Text>
+            <Text style={{ fontSize: t.font.size.xl, color: t.c.accent }}>
+              ✦
+            </Text>
+          </View>
+        )}
         {children}
       </ScrollView>
     </SafeAreaView>

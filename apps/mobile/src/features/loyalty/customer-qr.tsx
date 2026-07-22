@@ -1,88 +1,82 @@
 import { formatMemberCode } from "@kavtsya/shared";
-import type { ComponentType } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import QRCodeBase, { type QRCodeProps } from "react-native-qrcode-svg";
+import { Text, View } from "react-native";
 
 import { Button } from "@/components/button";
-import { ErrorText, Muted } from "@/components/text";
-import { fontFamily, theme } from "@/theme";
+import { QRPlate } from "@/components/qr-plate";
+import { StatusStrip } from "@/components/status-strip";
+import { Surface } from "@/components/surface";
+import { fontFamily, useTheme } from "@/theme";
 
 import { useMemberCode } from "./use-member-code";
 import { useQrToken } from "./use-qr-token";
 
-// react-native-qrcode-svg ships its default export as an empty
-// `declare class … extends React.PureComponent` body, which React 19's stricter
-// JSX element typing rejects. The runtime component is correct — only the type
-// needs coercing to a plain component type.
-const QRCode = QRCodeBase as unknown as ComponentType<QRCodeProps>;
-
-/** Side of the rendered QR square, in dp. */
-const QR_SIZE = 220;
-
 /**
- * The Customer's rotating QR code (ADR 0006): the CafeOwner scans it to record a
- * Purchase. It refreshes itself before each token expires via `useQrToken`; the
- * Customer just holds the phone up. While the first token loads we reserve the
- * square so the layout doesn't jump, and a fetch failure offers a manual retry.
+ * The Customer's QR area on the home (ADR 0006): the CafeOwner scans it to record
+ * a Purchase. Normally a white QRPlate that rotates its own token (`useQrToken`)
+ * with the member-code fallback beneath. On a fetch failure the hierarchy
+ * inverts (1d/1n): the member code becomes the hero on a `primary-surface` card —
+ * dictating it earns the Зернятко just the same — and the failure drops to a
+ * quiet danger strip with a retry. The loading state (1c/1m) lives inside
+ * QRPlate (a reserved square), so the layout never jumps.
  */
 export function CustomerQr() {
+  const t = useTheme();
   const { token, error, reload } = useQrToken();
   const memberCode = useMemberCode();
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.frame}>
-        {token ? (
-          <QRCode value={token} size={QR_SIZE} color={theme.c.foreground} />
-        ) : (
-          <ActivityIndicator size="large" color={theme.c.foreground} />
-        )}
+  if (error) {
+    return (
+      <View style={{ alignSelf: "stretch", gap: t.space[3] }}>
+        {memberCode ? (
+          <Surface emphasis="promise" style={{ alignItems: "center", gap: 8 }}>
+            <Text
+              selectable
+              numberOfLines={1}
+              style={{
+                fontSize: t.font.size["2xl"],
+                fontVariant: ["tabular-nums"],
+                letterSpacing: 3,
+                fontFamily: fontFamily.body.semibold,
+                color: t.c.foreground,
+              }}
+            >
+              {formatMemberCode(memberCode)}
+            </Text>
+            <Text
+              style={{
+                fontSize: 13.5,
+                lineHeight: 20,
+                fontFamily: fontFamily.body.regular,
+                color: t.c["text-secondary"],
+                textAlign: "center",
+              }}
+            >
+              Продиктуй кавовару — зернятко зарахується так само
+            </Text>
+          </Surface>
+        ) : null}
+        <StatusStrip
+          intent="danger"
+          title="Немає з'єднання — QR тимчасово недоступний"
+        />
+        <Button title="Спробувати знову" variant="secondary" onPress={reload} />
       </View>
+    );
+  }
 
-      {error ? (
-        <>
-          <ErrorText>{error}</ErrorText>
-          <Button
-            title="Спробувати знову"
-            variant="secondary"
-            onPress={reload}
-          />
-        </>
-      ) : (
-        <Muted>Покажіть кавовару, щоб отримати зернятко</Muted>
-      )}
-
-      {/* The offline fallback (#21): always visible, cached on the device —
-          it also rescues a bad camera read, not only a dead connection. */}
-      {memberCode && (
-        <>
-          <Text selectable style={styles.memberCode}>
-            {formatMemberCode(memberCode)}
-          </Text>
-          <Muted>Не сканується? Продиктуйте кавовару цей код</Muted>
-        </>
-      )}
-    </View>
+  return (
+    <Surface style={{ alignItems: "center" }}>
+      <Text
+        accessibilityRole="header"
+        style={{
+          fontSize: 16,
+          fontFamily: fontFamily.body.semibold,
+          color: t.c.foreground,
+        }}
+      >
+        Твій код учасника
+      </Text>
+      <QRPlate token={token} memberCode={memberCode} />
+    </Surface>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: "center",
-    gap: theme.space[3],
-  },
-  frame: {
-    width: QR_SIZE,
-    height: QR_SIZE,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  memberCode: {
-    fontSize: 24,
-    fontVariant: ["tabular-nums"],
-    letterSpacing: 3,
-    fontFamily: fontFamily.body.semibold,
-    color: theme.c.foreground,
-    textAlign: "center",
-  },
-});

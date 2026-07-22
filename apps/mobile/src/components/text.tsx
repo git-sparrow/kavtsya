@@ -2,14 +2,22 @@ import { Text, type TextProps } from "react-native";
 
 import { fontFamily, useTheme } from "@/theme";
 
-/** A display-serif heading — the Cormorant greeting at the top of a Mode. */
-export function Heading({ style, ...rest }: TextProps) {
+/**
+ * A display-serif heading — the Cormorant greeting at the top of a Mode. The
+ * redesign reuses it at several sizes (screen title 24, waiting/success 26,
+ * dialog 23, serif promise 22); `size` overrides the default 2xl (28).
+ */
+export function Heading({
+  size,
+  style,
+  ...rest
+}: TextProps & { size?: number }) {
   const t = useTheme();
   return (
     <Text
       style={[
         {
-          fontSize: t.font.size["2xl"],
+          fontSize: size ?? t.font.size["2xl"],
           fontFamily: fontFamily.display.semibold,
           color: t.c.foreground,
         },

@@ -1,5 +1,9 @@
 import type { PurchaseResult, Reward } from "@kavtsya/shared";
-import { isWellFormedMemberCode, normalizeMemberCode } from "@kavtsya/shared";
+import {
+  isRedemptionReady,
+  isWellFormedMemberCode,
+  normalizeMemberCode,
+} from "@kavtsya/shared";
 import {
   CameraView as CameraViewBase,
   type CameraViewProps,
@@ -34,7 +38,7 @@ const VIEWFINDER_SIZE = 260;
 function canRedeem(
   result: PurchaseResult,
 ): result is PurchaseResult & { reward: Reward } {
-  return result.balance >= result.threshold && result.reward !== null;
+  return isRedemptionReady(result);
 }
 
 export interface ScanWorkstationProps {
@@ -152,8 +156,10 @@ export function ScanWorkstation({
             <Muted>
               Зернятка: {state.result.balance} з {state.result.threshold}
             </Muted>
-            {/* Ворожка (#23): the scan moment — show the Customer their fortune. */}
-            <Muted>☕ «{state.result.fortune}»</Muted>
+            {/* Ворожка (#23, redesign turn 1): the reveal moved onto the
+                Customer's device — no longer rendered here. The response still
+                carries `fortune` (payload untouched); the API records it for the
+                Customer to reveal. */}
             {canRedeem(state.result) && (
               <>
                 <Muted>

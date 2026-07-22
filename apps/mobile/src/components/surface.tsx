@@ -1,44 +1,64 @@
 import type { ReactNode } from "react";
 import { View, type ViewStyle } from "react-native";
 
-import { useTheme } from "@/theme";
+import { toShadowStyle, useTheme } from "@/theme";
+
+/** How a card asks for attention (shared-component catalog §2). */
+export type SurfaceEmphasis = "default" | "reward" | "promise";
 
 /**
- * A raised white content card — the design system's `surface` colour over the
- * warm background, with the `card` shadow token. The mockups frame the QR and
- * the Café list in one of these; screens compose them instead of styling ad-hoc
- * boxes.
+ * A content card — the design system's `surface` colour over the warm
+ * background. `emphasis` picks the border/shadow treatment the mockups call for:
+ * - `default` — hairline `border` + the `card` shadow token. The mockups show a
+ *   border on every card, and dark needs it (surfaces ≈ background there).
+ * - `reward` — 1.5px `primary` border + the `reward` gold glow (reward-ready
+ *   cards, offer cards): pairs the two per the token's own description.
+ * - `promise` — `primary-surface` fill, no shadow (Берегиня promise/safety
+ *   cards, the error-state code hero); a hairline `border` in dark only, where
+ *   `primary-surface` collapses onto `surface`.
+ *
+ * Shadows come from the tokens via `toShadowStyle` — never hand-copied.
  */
 export function Surface({
   children,
   style,
+  emphasis = "default",
 }: {
   children: ReactNode;
   style?: ViewStyle;
+  emphasis?: SurfaceEmphasis;
 }) {
   const t = useTheme();
-  return (
-    <View
-      style={[
-        {
-          alignSelf: "stretch",
-          backgroundColor: t.c.surface,
-          borderRadius: t.radius.lg,
-          padding: t.space[5],
-          gap: t.space[3],
-          // The `shadow.card` token (color #50371e26 = #50371e @ 0.15, offsetY
-          // 8, blur 22), expressed for React Native (iOS shadow* + Android
-          // elevation).
-          shadowColor: "#50371e",
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.15,
-          shadowRadius: 16,
-          elevation: 4,
-        },
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
+  const isDark = t.themeName === "dark";
+
+  const base: ViewStyle = {
+    alignSelf: "stretch",
+    backgroundColor: t.c.surface,
+    borderRadius: t.radius.lg,
+    padding: t.space[5],
+    gap: t.space[3],
+  };
+
+  let treatment: ViewStyle;
+  if (emphasis === "reward") {
+    treatment = {
+      borderWidth: 1.5,
+      borderColor: t.c.primary,
+      ...toShadowStyle(t.shadow.reward),
+    };
+  } else if (emphasis === "promise") {
+    treatment = {
+      backgroundColor: t.c["primary-surface"],
+      borderWidth: isDark ? 1 : 0,
+      borderColor: t.c.border,
+    };
+  } else {
+    treatment = {
+      borderWidth: 1,
+      borderColor: t.c.border,
+      ...toShadowStyle(t.shadow.card),
+    };
+  }
+
+  return <View style={[base, treatment, style]}>{children}</View>;
 }

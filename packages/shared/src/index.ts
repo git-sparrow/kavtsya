@@ -122,6 +122,28 @@ export const loyaltyProgramSchema = z.object({
 export type LoyaltyProgram = z.infer<typeof loyaltyProgramSchema>;
 
 /**
+ * The redemption-readiness rule (CONTEXT → Redemption): a Customer can claim a
+ * Reward when the balance meets the Café's threshold and the Café has actually
+ * configured a Reward to claim. One predicate, called by the API's authoritative
+ * eligibility check and by every mobile display that shows a «готово» state — so
+ * the three sites can never drift (an off-by-one on any client would silently
+ * show the wrong readiness to a Customer or a barista). The server still
+ * re-checks under its `FOR UPDATE` lock on confirm; this is the shape of the
+ * rule, not the authorization.
+ */
+export function isRedemptionReady({
+  balance,
+  threshold,
+  reward,
+}: {
+  balance: number;
+  threshold: number;
+  reward: Reward | null;
+}): boolean {
+  return reward !== null && balance >= threshold;
+}
+
+/**
  * Body for `PUT /api/cafes/:id/program`. Same shape as the program itself —
  * the CafeOwner sets the threshold and (optionally) the Reward in one write.
  * The API additionally rejects a Reward whose type isn't in the current
@@ -357,6 +379,32 @@ export const purchaseResultSchema = z.object({
   fortune: z.string().min(1),
 });
 export type PurchaseResult = z.infer<typeof purchaseResultSchema>;
+
+/**
+ * The Customer's pending Ворожка reveal (#23, redesign turn 1). The ritual lives
+ * on the Customer's device now: each scan records a fortune, and the app polls
+ * `GET /api/me/fortune/pending` for the most recent unrevealed one. It carries
+ * the scan's Зернятко context — Café name, current balance, threshold, Reward —
+ * so the reveal can draw the bean-row card and switch to its reward-ready
+ * variant (1l) via {@link isRedemptionReady}. `GET` returns this or `null`;
+ * `POST /api/me/fortune/:id/seen` marks it revealed.
+ */
+export const pendingFortuneSchema = z.object({
+  id: z.string(),
+  fortune: z.string().min(1),
+  cafeId: z.string(),
+  cafeName: z.string(),
+  balance: z.number().int().nonnegative(),
+  threshold: z.number().int(),
+  reward: rewardSchema.nullable(),
+});
+export type PendingFortune = z.infer<typeof pendingFortuneSchema>;
+
+/** `GET /api/me/fortune/pending`: the reveal, or null when there is none. */
+export const pendingFortuneResponseSchema = pendingFortuneSchema.nullable();
+export type PendingFortuneResponse = z.infer<
+  typeof pendingFortuneResponseSchema
+>;
 
 /**
  * Every way `POST /api/redemptions` can turn down an authenticated, well-formed

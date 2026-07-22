@@ -20,3 +20,6 @@ export function pluralizeUk(
 
 /** «клієнт» in its three count forms — the owner's returning/active figures. */
 export const CLIENT_FORMS = { one: "клієнт", few: "клієнти", many: "клієнтів" };
+
+/** «зернятко» in its three count forms — 1 зернятко / 3 зернятка / 7 зернят. */
+export const BEAN_FORMS = { one: "зернятко", few: "зернятка", many: "зернят" };
