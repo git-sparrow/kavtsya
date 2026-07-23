@@ -1,11 +1,16 @@
 import { useRef, useState } from "react";
 
-import type { PurchaseResult, RedemptionResult } from "@kavtsya/shared";
+import type {
+  PurchaseResult,
+  RedemptionResult,
+  ScanRejection,
+} from "@kavtsya/shared";
 
 import {
   confirmRedemption as confirmRedemptionRequest,
   issuePurchase,
   issuePurchaseByMemberCode,
+  ScanRejectionError,
 } from "@/lib/api";
 
 export type ScanState =
@@ -19,7 +24,9 @@ export type ScanState =
       redemption: RedemptionResult;
       confirmError?: string;
     }
-  | { phase: "rejected"; message: string };
+  // `code` is the #50 taxonomy reason when the API named one (keys the two-line
+  // recovery copy, 2f); null for a transport failure the barista can only retry.
+  | { phase: "rejected"; code: ScanRejection | null; message: string };
 
 /**
  * The scan screen's state machine (#20, #22): one recognised QR fires one
@@ -55,6 +62,7 @@ export function useScanPurchase(cafeId: string) {
     } catch (e) {
       setState({
         phase: "rejected",
+        code: e instanceof ScanRejectionError ? e.code : null,
         message:
           e instanceof Error ? e.message : "Не вдалося нарахувати зернятко",
       });

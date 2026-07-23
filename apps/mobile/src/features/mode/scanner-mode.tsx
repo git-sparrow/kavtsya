@@ -1,20 +1,64 @@
+import type { Shift } from "@kavtsya/shared";
 import { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Text, View } from "react-native";
 
+import { Berehynia } from "@/components/berehynia";
 import { Button } from "@/components/button";
-import { ErrorText, Muted, OwnerBadge } from "@/components/text";
+import { ErrorText, SectionLabel } from "@/components/text";
+import { useMe } from "@/features/account/me-context";
 import { ScanWorkstation } from "@/features/scan/scan-workstation";
 import { endMyShift } from "@/lib/api";
-import { theme, useTheme } from "@/theme";
+import { fontFamily, useTheme } from "@/theme";
 
 import { useMode } from "./mode-context";
 
-/** An instant as the wall-clock time the barista reasons in. */
-function timeOf(iso: string): string {
-  return new Date(iso).toLocaleTimeString("uk-UA", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+/**
+ * The Scanner Mode banner (2g/2l): «ЗМІНА · {Café}» over the barista's name.
+ * No expiry time (design decision — the cap is invisible upkeep, not a countdown
+ * the barista should watch). It rides inside the workstation's theme provider,
+ * so it themes with the rest of the screen: indigo `secondary` fill in light,
+ * `surface` + `border` in dark (where `secondary` is lavender, not a fill).
+ */
+function ShiftBanner({ shift, name }: { shift: Shift; name: string }) {
+  const t = useTheme();
+  const onDark = t.themeName === "dark";
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: t.space[3],
+        backgroundColor: onDark ? t.c.surface : t.c.secondary,
+        borderWidth: onDark ? 1 : 0,
+        borderColor: t.c.border,
+        borderRadius: t.radius.md,
+        paddingVertical: t.space[3],
+        paddingHorizontal: t.space[4],
+      }}
+    >
+      <View style={{ flex: 1, gap: 2 }}>
+        <SectionLabel
+          style={{
+            letterSpacing: 2,
+            color: onDark ? t.c.foreground : t.color.neutral[100],
+          }}
+        >
+          Зміна · {shift.cafeName}
+        </SectionLabel>
+        <Text
+          accessibilityRole="header"
+          style={{
+            fontSize: 16,
+            fontFamily: fontFamily.body.semibold,
+            color: onDark ? t.c.foreground : t.color.neutral[100],
+          }}
+        >
+          {name}
+        </Text>
+      </View>
+      <Berehynia size={16} />
+    </View>
+  );
 }
 
 /**
@@ -27,7 +71,7 @@ function timeOf(iso: string): string {
  * Settings, no sign-out here — those require ending the shift first.
  */
 export function ScannerMode() {
-  const t = useTheme();
+  const { me } = useMe();
   const { shift, reloadShift } = useMode();
   const [ending, setEnding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,17 +96,7 @@ export function ScannerMode() {
   return (
     <ScanWorkstation
       cafeId={shift.cafeId}
-      header={
-        <View
-          style={[
-            styles.banner,
-            { borderColor: t.c["border-strong"], borderRadius: t.radius.md },
-          ]}
-        >
-          <OwnerBadge>Зміна — {shift.cafeName}</OwnerBadge>
-          <Muted>до {timeOf(shift.expiresAt)}</Muted>
-        </View>
-      }
+      header={<ShiftBanner shift={shift} name={me?.name || me?.email || ""} />}
       exit={
         <>
           <Button
@@ -77,12 +111,3 @@ export function ScannerMode() {
     />
   );
 }
-
-const styles = StyleSheet.create({
-  banner: {
-    borderWidth: 1,
-    paddingVertical: theme.space[2],
-    paddingHorizontal: theme.space[3],
-    gap: 2,
-  },
-});
