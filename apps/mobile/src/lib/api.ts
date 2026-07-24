@@ -90,6 +90,18 @@ export async function fetchProgram(cafeId: string): Promise<LoyaltyProgram> {
 }
 
 /**
+ * A rejected scan the API could name against the #50 taxonomy. Carries the
+ * `code` so the scanner can key its two-line recovery copy (2f) by it, while
+ * `message` stays a plain single-line fallback for logs and non-taxonomy paths.
+ */
+export class ScanRejectionError extends Error {
+  constructor(readonly code: ScanRejection) {
+    super(SCAN_REJECTIONS[code]);
+    this.name = "ScanRejectionError";
+  }
+}
+
+/**
  * What the scanner tells the CafeOwner for each rejection the API
  * distinguishes (#20). Keyed by the shared taxonomy (#50), so a rejection code
  * added there without copy here is a type error, not a fallback message.
@@ -123,7 +135,7 @@ async function requestPurchase(
     // Our API's error bodies are { error: "<code>" }; better-fetch folds the
     // parsed body into the error object, so the code sits on `error.error`.
     const code = (error as { error?: string }).error;
-    if (code && isScanRejection(code)) throw new Error(SCAN_REJECTIONS[code]);
+    if (code && isScanRejection(code)) throw new ScanRejectionError(code);
     throw new Error(error.message ?? "Не вдалося нарахувати зернятко");
   }
   return purchaseResultSchema.parse(data);
