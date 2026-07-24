@@ -19,6 +19,40 @@ const GLYPHS: Record<string, ReactNode> = {
     </>
   ),
   check: <Path d="M4.5 12.5l5 5 10-11" />,
+  // Navigation chevrons: row disclosure (right) and header back (left).
+  "chevron-right": <Path d="M9 5l7 7-7 7" />,
+  "chevron-left": <Path d="M15 5l-7 7 7 7" />,
+  // Плюс / мінус for the threshold stepper.
+  plus: <Path d="M12 5v14M5 12h14" />,
+  minus: <Path d="M5 12h14" />,
+  // Viewfinder brackets — the «Сканувати QR клієнта» hero glyph.
+  scan: (
+    <Path d="M4 8V6a2 2 0 012-2h2M16 4h2a2 2 0 012 2v2M20 16v2a2 2 0 01-2 2h-2M8 20H6a2 2 0 01-2-2v-2" />
+  ),
+  // Зміни — a clock.
+  clock: (
+    <>
+      <Circle cx={12} cy={12} r={9} />
+      <Path d="M12 7.5V12l3.5 2" />
+    </>
+  ),
+  // Ростер бариста / stat card — a pair of people.
+  people: (
+    <>
+      <Circle cx={9} cy={8} r={3.2} />
+      <Path d="M3.5 19.5a5.5 5.5 0 0111 0" />
+      <Path d="M16 5.6a3.2 3.2 0 010 6M17.5 14.4a5.5 5.5 0 013 5.1" />
+    </>
+  ),
+  // Розсилка — a megaphone.
+  megaphone: (
+    <>
+      <Path d="M4 10v4a1 1 0 001 1h2l2.5 4V6L7 9H5a1 1 0 00-1 1z" />
+      <Path d="M13 8.5a4.5 4.5 0 010 7" />
+    </>
+  ),
+  // Аналітика — a bar chart.
+  chart: <Path d="M5 20V11M12 20V4M19 20v-6M3.5 20h17" />,
   // Alert (danger strips): a ringed «!».
   alert: (
     <>

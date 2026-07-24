@@ -21,6 +21,13 @@ export const REWARD_PARAM: Partial<
   },
 };
 
+/** The «₴» / «%» unit shown inline on a discount Reward's config row (3b). */
+export function rewardUnit(type: RewardType): string | undefined {
+  if (type === "fixed_discount") return "₴";
+  if (type === "percent_discount") return "%";
+  return undefined;
+}
+
 /** The editable param of a Reward as a text-input string ("" when none). */
 export function rewardParamValue(reward: Reward | null): string {
   if (!reward) return "";

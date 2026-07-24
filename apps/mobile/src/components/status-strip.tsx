@@ -16,42 +16,52 @@ export type StatusIntent = "success" | "danger" | "info";
  *   recovery instruction.
  * - `info` — no tint (nothing failed): info glyph in `text-muted`, copy in
  *   `text-secondary`.
+ *
+ * `solid` is the dedicated-confirmation form (3c program saved): a 1px accent
+ * border and a solid accent circle badge with the glyph in the intent's
+ * foreground colour, and the title in `text-body` (no coloured sentence). Use it
+ * when the outcome IS the screen, not an inline note.
  */
 export function StatusStrip({
   intent,
   title,
   detail,
+  solid = false,
   testID,
 }: {
   intent: StatusIntent;
   title: string;
   detail?: string;
+  solid?: boolean;
   testID?: string;
 }) {
   const t = useTheme();
 
   const spec: Record<
     StatusIntent,
-    { bg: string; icon: IconName; accent: string }
+    { bg: string; icon: IconName; accent: string; onAccent: string }
   > = {
     success: {
       bg: t.c["success-surface"],
       icon: "check",
       accent: t.c.success,
+      onAccent: t.c["success-foreground"],
     },
     danger: {
       bg: t.c["danger-surface"],
       icon: "alert",
       accent: t.c.danger,
+      onAccent: t.c["danger-foreground"],
     },
     // Informational: no tinted background, muted glyph.
     info: {
       bg: "transparent",
       icon: "info",
       accent: t.c["text-muted"],
+      onAccent: t.c.foreground,
     },
   };
-  const { bg, icon, accent } = spec[intent];
+  const { bg, icon, accent, onAccent } = spec[intent];
 
   return (
     <View
@@ -61,26 +71,43 @@ export function StatusStrip({
       style={{
         alignSelf: "stretch",
         flexDirection: "row",
-        alignItems: "flex-start",
+        alignItems: solid ? "center" : "flex-start",
         gap: t.space[3],
         backgroundColor: bg,
         borderRadius: t.radius.md,
+        borderWidth: solid ? 1 : 0,
+        borderColor: accent,
         paddingVertical: t.space[3],
         paddingHorizontal: t.space[4],
       }}
     >
-      <Icon
-        name={icon}
-        size={22}
-        color={accent}
-        strokeWidth={intent === "success" ? 2.4 : 1.8}
-      />
+      {solid ? (
+        <View
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: t.radius.full,
+            backgroundColor: accent,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Icon name={icon} size={20} color={onAccent} strokeWidth={2.6} />
+        </View>
+      ) : (
+        <Icon
+          name={icon}
+          size={22}
+          color={accent}
+          strokeWidth={intent === "success" ? 2.4 : 1.8}
+        />
+      )}
       <View style={{ flex: 1, gap: 2 }}>
         <Text
           style={{
             fontSize: t.font.size.base,
             fontFamily: fontFamily.body.semibold,
-            color: intent === "info" ? t.c["text-secondary"] : accent,
+            color: solid || intent === "info" ? t.c.foreground : accent,
           }}
         >
           {title}

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { fetchProgram, fetchRewardDefaults, updateProgram } from "@/lib/api";
 
+import { clampThreshold } from "./program";
 import { buildReward, REWARD_PARAM, rewardParamValue } from "./reward";
 
 /**
@@ -52,6 +53,12 @@ export function useProgramEditor(cafeId: string) {
 
   function editThreshold(value: string) {
     setThreshold(value);
+    setSaved(false);
+  }
+
+  /** Nudge the threshold by ±1 from the stepper, clamped to the floor of 1. */
+  function stepThreshold(delta: number) {
+    setThreshold(String(clampThreshold(Number(threshold), delta)));
     setSaved(false);
   }
 
@@ -109,6 +116,7 @@ export function useProgramEditor(cafeId: string) {
     defaults,
     threshold,
     editThreshold,
+    stepThreshold,
     rewardType,
     selectReward,
     param,
