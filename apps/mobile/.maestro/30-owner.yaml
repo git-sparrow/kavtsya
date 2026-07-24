@@ -21,11 +21,11 @@ tags:
 - takeScreenshot: ${SHOTS}/owner/21-scan
 - tapOn: "Назад"
 - assertVisible: "Налаштування"
-- tapOn: "Налаштувати програму"
+- tapOn: "Програма лояльності"
 - takeScreenshot: ${SHOTS}/owner/22-program
 - tapOn: "Назад"
 - assertVisible: "Налаштування"
-- tapOn: "Зміна"
+- tapOn: "Зміни"
 - takeScreenshot: ${SHOTS}/owner/23-shifts
 - tapOn: "Назад"
 - assertVisible: "Налаштування"

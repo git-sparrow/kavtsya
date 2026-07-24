@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { fetchProgram, fetchRewardDefaults, updateProgram } from "@/lib/api";
 
+import { clampThreshold } from "./program";
 import { buildReward, REWARD_PARAM, rewardParamValue } from "./reward";
 
 /**
@@ -50,20 +51,33 @@ export function useProgramEditor(cafeId: string) {
     };
   }, [cafeId]);
 
+  // Any edit clears both the lingering "saved" confirmation and a stale
+  // validation error, so neither hangs over input the user has since changed.
+  function clearOutcome() {
+    setSaved(false);
+    setError(null);
+  }
+
   function editThreshold(value: string) {
     setThreshold(value);
-    setSaved(false);
+    clearOutcome();
+  }
+
+  /** Nudge the threshold by ±1 from the stepper, clamped to the floor of 1. */
+  function stepThreshold(delta: number) {
+    setThreshold(String(clampThreshold(Number(threshold), delta)));
+    clearOutcome();
   }
 
   function selectReward(type: RewardType | null) {
     setRewardType(type);
     setParam("");
-    setSaved(false);
+    clearOutcome();
   }
 
   function editParam(value: string) {
     setParam(value);
-    setSaved(false);
+    clearOutcome();
   }
 
   async function save() {
@@ -109,6 +123,7 @@ export function useProgramEditor(cafeId: string) {
     defaults,
     threshold,
     editThreshold,
+    stepThreshold,
     rewardType,
     selectReward,
     param,
