@@ -1,34 +1,110 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Switch, View } from "react-native";
+import { ActivityIndicator, Text, useColorScheme, View } from "react-native";
 
-import { Button } from "@/components/button";
-import { Card } from "@/components/card";
+import { Avatar } from "@/components/avatar";
+import { BackHeader } from "@/components/back-header";
+import { Badge } from "@/components/badge";
+import { ListGroup, ListRow, ToggleRow } from "@/components/list-row";
 import { Screen } from "@/components/screen";
-import {
-  ErrorText,
-  Muted,
-  OwnerBadge,
-  SectionLabel,
-  Title,
-} from "@/components/text";
+import { Surface } from "@/components/surface";
+import { ErrorText, Muted, SectionLabel } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
-import { RegisterCafeForm } from "@/features/cafe/register-cafe-form";
 import { useMode } from "@/features/mode/mode-context";
 import { registerDeviceForPush } from "@/features/push/push-registration";
 import { updatePushConsent } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
-import { useTheme } from "@/theme";
+import { fontFamily, ThemeProvider, useTheme } from "@/theme";
 
 /**
- * Settings (#96, ADR 0015): the excursion drawer where role transitions live,
- * so the Mode surfaces themselves stay uncluttered. Holds the #24 café-news
- * toggle, café registration (a Customer becoming an owner → drops into CafeOwner
- * Mode), and the non-persisted Mode switch (an owner stepping into their own
- * Customer Mode and back). Joining a «Зміна» lives here transitionally until the
- * café-poster path replaces it (#97/#98).
+ * Settings (#96, ADR 0015; redesign turn 4, screens 4a–4c): the excursion drawer
+ * where identity, notifications, role transitions, and account actions live —
+ * so the Mode surfaces stay uncluttered. The email lives HERE now (moved off the
+ * Customer home). Follows the OS colour scheme like the rest of the redesigned
+ * app (4a/4b light, 4c dark).
+ *
+ * «Видалити акаунт» is intentionally absent until #81 ships the deletion flow
+ * (endpoint, tombstone, café-archival warning) and turn 6 ships the ConfirmDialog
+ * behind it — a dead delete control would violate the product floor. Owners with
+ * a Café would additionally need the transfer decision (#143); both roles omit
+ * the row for now, matching the approved 4b mock.
  */
 export default function Settings() {
+  const scheme = useColorScheme() === "dark" ? "dark" : "light";
+  return (
+    <ThemeProvider theme={scheme}>
+      <SettingsBody />
+    </ThemeProvider>
+  );
+}
+
+/** The identity card (4a): avatar monogram, name, email, and the owner badge. */
+function IdentityCard({
+  name,
+  email,
+  owner,
+}: {
+  name: string;
+  email: string;
+  owner: boolean;
+}) {
+  const t = useTheme();
+  return (
+    <Surface
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: t.space[3],
+        padding: t.space[4],
+        borderRadius: t.radius.md,
+      }}
+    >
+      <Avatar name={name} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text
+          style={{
+            fontSize: 15,
+            fontFamily: fontFamily.body.bold,
+            color: t.c.foreground,
+          }}
+        >
+          {name}
+        </Text>
+        <Text
+          style={{
+            fontSize: 13,
+            fontFamily: fontFamily.body.regular,
+            color: t.c["text-muted"],
+          }}
+        >
+          {email}
+        </Text>
+      </View>
+      {owner ? <Badge label="КАВОВАР" /> : null}
+    </Surface>
+  );
+}
+
+/** A labelled settings group — an 11px/700 ls1.5 kicker over a `ListGroup`. */
+function Section({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  const t = useTheme();
+  return (
+    <View style={{ alignSelf: "stretch", gap: t.space[2] }}>
+      <SectionLabel style={{ letterSpacing: 1.5, marginLeft: t.space[1] }}>
+        {label}
+      </SectionLabel>
+      {children}
+    </View>
+  );
+}
+
+function SettingsBody() {
   const t = useTheme();
   const { me, reload } = useMe();
   const { mode, switchTo, clearExcursion } = useMode();
@@ -53,104 +129,143 @@ export default function Settings() {
     }
   }
 
-  return (
-    <Screen>
-      <Card>
-        <OwnerBadge>Налаштування</OwnerBadge>
-
-        <View style={styles.row}>
-          <View style={styles.rowText}>
-            <Title style={styles.left}>Новини від кав&apos;ярень</Title>
-            <Muted style={styles.left}>
-              Push-повідомлення лише від кав&apos;ярень, де ви буваєте
-            </Muted>
-          </View>
-          <Switch
-            value={me?.pushConsent ?? false}
-            disabled={busy || !me}
-            onValueChange={(next) => void toggle(next)}
-            trackColor={{ true: t.c.primary, false: t.c.border }}
-          />
+  if (!me) {
+    return (
+      <Screen
+        header={<BackHeader title="Налаштування" testID="settings.back" />}
+      >
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <ActivityIndicator size="large" color={t.c.foreground} />
         </View>
-        {error && <ErrorText>{error}</ErrorText>}
+      </Screen>
+    );
+  }
 
-        {/* Role transitions. Owner-primary means the switch is an owner's way
-            into their own Customer Mode and back — never persisted. */}
-        <SectionLabel style={styles.sectionLabel}>Ролі</SectionLabel>
-        {isOwner ? (
-          mode === "owner" ? (
-            <Button
-              title="Перейти в режим клієнта"
-              variant="secondary"
-              onPress={() => {
-                switchTo("customer");
-                router.back();
-              }}
-            />
-          ) : (
-            <Button
-              title="Повернутися в режим Кавовара"
-              variant="secondary"
-              onPress={() => {
-                clearExcursion();
-                router.back();
-              }}
-            />
-          )
-        ) : (
-          <RegisterCafeForm
-            onRegistered={async () => {
-              await reload();
-              // A fresh owner lands in CafeOwner Mode — drop any excursion and
-              // let the dispatcher re-derive.
-              clearExcursion();
-              router.back();
-            }}
-          />
-        )}
-
-        {/* A barista scans a café's wall poster (#98, ADR 0013): rostered, it
-            starts their Shift; otherwise it raises a request the owner approves.
-            The one entry — the retired invite-join is gone. */}
-        <Button
-          title="Приєднатися до кав'ярні"
-          variant="secondary"
-          onPress={() => router.push("/shift/request")}
+  // The café-news toggle — same anatomy in both layouts, placed per the mocks
+  // (before РОЛІ for a Customer, after МОЇ КАВ'ЯРНІ + РОЛІ for an owner).
+  const notifications = (
+    <Section label="Сповіщення">
+      <ListGroup>
+        <ToggleRow
+          testID="settings.push-consent"
+          title="Новини від кав'ярень"
+          caption="Push лише від кав'ярень, де ти буваєш"
+          value={me.pushConsent}
+          disabled={busy}
+          onValueChange={(next) => void toggle(next)}
         />
+      </ListGroup>
+      {error ? (
+        <ErrorText style={{ textAlign: "left" }}>{error}</ErrorText>
+      ) : null}
+    </Section>
+  );
 
-        {/* Account. Sign-out lives here (ADR 0015): every role reaches it the
-            one way, through the gear — and the Scanner kiosk cannot. */}
-        <SectionLabel style={styles.sectionLabel}>Акаунт</SectionLabel>
-        <Button
+  const signOut = (
+    <Section label="Акаунт">
+      <ListGroup>
+        <ListRow
+          testID="settings.sign-out"
+          icon="logout"
           title="Вийти"
-          variant="secondary"
-          onPress={() => authClient.signOut()}
+          chevron={false}
+          onPress={() => void authClient.signOut()}
         />
+      </ListGroup>
+    </Section>
+  );
 
-        <Button
-          title="Назад"
-          variant="secondary"
-          onPress={() => router.back()}
-        />
-      </Card>
+  return (
+    <Screen header={<BackHeader title="Налаштування" testID="settings.back" />}>
+      <IdentityCard name={me.name} email={me.email} owner={isOwner} />
+
+      {isOwner ? (
+        <>
+          <Section label="Мої кав'ярні">
+            <ListGroup>
+              {me.cafes.map((cafe) => (
+                <ListRow
+                  key={cafe.id}
+                  testID={`settings.cafe.${cafe.id}`}
+                  icon="storefront"
+                  title={cafe.name}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/owner/[cafeId]",
+                      params: { cafeId: cafe.id },
+                    })
+                  }
+                />
+              ))}
+              <ListRow
+                testID="settings.register-cafe"
+                icon="plus"
+                title="Зареєструвати ще одну"
+                chevron={false}
+                onPress={() => router.push("/cafe/register")}
+              />
+            </ListGroup>
+          </Section>
+
+          <Section label="Ролі">
+            <ListGroup>
+              {mode === "customer" ? (
+                <ListRow
+                  testID="settings.owner-mode"
+                  icon="storefront"
+                  title="Повернутися в режим Кавовара"
+                  chevron={false}
+                  onPress={() => {
+                    clearExcursion();
+                    router.back();
+                  }}
+                />
+              ) : (
+                <ListRow
+                  testID="settings.customer-mode"
+                  icon="user"
+                  title="Мій профіль клієнта"
+                  caption="Твій QR і зернятка — як у Customer Mode"
+                  onPress={() => {
+                    switchTo("customer");
+                    router.back();
+                  }}
+                />
+              )}
+            </ListGroup>
+          </Section>
+
+          {notifications}
+          {signOut}
+        </>
+      ) : (
+        <>
+          {notifications}
+
+          <Section label="Ролі">
+            <ListGroup>
+              <ListRow
+                testID="settings.become-owner"
+                icon="storefront"
+                title="Стати Кавоваром"
+                onPress={() => router.push("/cafe/register")}
+              />
+              <ListRow
+                testID="settings.join-cafe"
+                icon="scan"
+                title="Приєднатися до кав'ярні"
+                onPress={() => router.push("/shift/request")}
+              />
+            </ListGroup>
+            <Muted style={{ textAlign: "left" }}>
+              Реєструєш свою кав&apos;ярню — відкривається Режим Кавовара.
+              Бариста? Скануй постер кав&apos;ярні, щоб почати Зміну.
+            </Muted>
+          </Section>
+
+          {signOut}
+        </>
+      )}
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  rowText: {
-    flex: 1,
-    gap: 2,
-  },
-  left: {
-    textAlign: "left",
-  },
-  sectionLabel: {
-    marginTop: 4,
-  },
-});
