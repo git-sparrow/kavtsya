@@ -1,4 +1,5 @@
 import type { LoyaltyProgram } from "@kavtsya/shared";
+import { kyivDayOf } from "./clock";
 import type { Database, Queryable } from "./db";
 import { programFromRow } from "./loyalty";
 
@@ -172,10 +173,14 @@ export async function startShift(
     `;
 
     const expiresAt = new Date(now.getTime() + SHIFT_MAX_DURATION_MS);
+    // `created_at` is set from the injected clock, not the DB default, so a
+    // shift's start and its expiry come from ONE clock — `started_at + 16h ===
+    // expires_at` always holds, and the board's «з HH:MM» is deterministic under
+    // a pinned test clock (the shift window that attributes scans depends on it).
     await tx`
       insert into cafe_scanner_grants
-        ("cafe_id", "user_id", "expires_at", "created_by")
-      values (${cafeId}, ${userId}, ${expiresAt}, ${userId})
+        ("cafe_id", "user_id", "expires_at", "created_by", "created_at")
+      values (${cafeId}, ${userId}, ${expiresAt}, ${userId}, ${now})
     `;
     return expiresAt;
   });
@@ -228,34 +233,141 @@ export async function endActiveGrants(
 }
 
 /**
- * The owner's shift board: active grants at their Café, most recent first.
- * Null when the Café isn't theirs (or doesn't exist — indistinguishable).
+ * A shift's «сканів» tally (5c): the Зернятка this account issued at this Café
+ * within the grant's window, attributed via `purchases.issued_by_user_id` (the
+ * #62 audit column set on every issuance path). The window runs from the grant's
+ * start up to its end — `revoked_at` for an ended shift, else `expires_at`, which
+ * for a still-active grant sits in the future so the count naturally includes
+ * every scan up to now. Written once here and shared by both board lists so the
+ * active and completed tallies can't drift.
  */
-export async function listActiveShifts(
+function shiftScanCount(sql: Queryable) {
+  // Both board queries alias the grant table `g`; the fragment reads its columns.
+  const g = (name: string) => sql`${sql("g")}.${sql(name)}`;
+  return sql`(
+    select count(*) from purchases p
+    where p."cafe_id" = ${g("cafe_id")}
+      and p."issued_by_user_id" = ${g("user_id")}
+      and p."created_at" >= ${g("created_at")}
+      and p."created_at" <= coalesce(${g("revoked_at")}, ${g("expires_at")})
+  )`;
+}
+
+/** One active shift as the board reads it — start, expiry, and its scan tally. */
+export interface ActiveShift {
+  id: string;
+  baristaName: string;
+  startedAt: Date;
+  expiresAt: Date;
+  scanCount: number;
+}
+
+/** One shift that closed today (owner-ended, self-ended, or auto-expired). */
+export interface CompletedShift {
+  baristaName: string;
+  startedAt: Date;
+  endedAt: Date;
+  scanCount: number;
+}
+
+/**
+ * The owner's shift board (5c): who is on shift now (most recent first), and
+ * which shifts already closed **today** (Europe/Kyiv business day, like
+ * analytics — an evening never rolls the day over mid-shift). Null when the Café
+ * isn't theirs (or doesn't exist — indistinguishable, like every ownership miss).
+ *
+ * A completed shift is one no longer active — revoked (owner/self/removal) or
+ * past its rolling cap — whose end instant falls on today's Kyiv day; `ended_at`
+ * is the revoke instant if any, else the expiry. Both lists share one scan-count
+ * expression so the tally means the same thing on either side.
+ */
+export async function listShiftBoard(
   db: Database,
   cafeId: string,
   ownerUserId: string,
   now: Date,
-): Promise<{ id: string; baristaName: string; expiresAt: Date }[] | null> {
+): Promise<{ active: ActiveShift[]; completedToday: CompletedShift[] } | null> {
   const [cafe] = await db<{ id: string }[]>`
     select "id" from cafes
     where "id" = ${cafeId} and "owner_user_id" = ${ownerUserId}
   `;
   if (!cafe) return null;
 
-  const rows = await db<
-    { id: string; barista_name: string; expires_at: Date }[]
+  const activeRows = await db<
+    {
+      id: string;
+      barista_name: string;
+      started_at: Date;
+      expires_at: Date;
+      scan_count: string;
+    }[]
   >`
-    select g."id", u."name" as barista_name, g."expires_at"
+    select
+      g."id",
+      u."name" as barista_name,
+      g."created_at" as started_at,
+      g."expires_at",
+      ${shiftScanCount(db)} as scan_count
     from cafe_scanner_grants g join "user" u on u."id" = g."user_id"
     where g."cafe_id" = ${cafeId} and ${activeGrant(db, now, "g")}
     order by g."created_at" desc
   `;
-  return rows.map((row) => ({
-    id: row.id,
-    baristaName: row.barista_name,
-    expiresAt: row.expires_at,
-  }));
+
+  const completedRows = await db<
+    {
+      barista_name: string;
+      started_at: Date;
+      ended_at: Date;
+      scan_count: string;
+    }[]
+  >`
+    select
+      u."name" as barista_name,
+      g."created_at" as started_at,
+      coalesce(g."revoked_at", g."expires_at") as ended_at,
+      ${shiftScanCount(db)} as scan_count
+    from cafe_scanner_grants g join "user" u on u."id" = g."user_id"
+    where g."cafe_id" = ${cafeId}
+      and not (${activeGrant(db, now, "g")})
+      and (coalesce(g."revoked_at", g."expires_at") at time zone 'Europe/Kyiv')::date
+          = ${kyivDayOf(now)}::date
+    order by ended_at desc
+  `;
+
+  return {
+    active: activeRows.map((row) => ({
+      id: row.id,
+      baristaName: row.barista_name,
+      startedAt: row.started_at,
+      expiresAt: row.expires_at,
+      scanCount: Number(row.scan_count),
+    })),
+    completedToday: completedRows.map((row) => ({
+      baristaName: row.barista_name,
+      startedAt: row.started_at,
+      endedAt: row.ended_at,
+      scanCount: Number(row.scan_count),
+    })),
+  };
+}
+
+/**
+ * Which of a Café's accounts hold an active scanner grant right now — the source
+ * of the Roster board's «● на зміні» dot (5b). Lives here, not in `roster.ts`, so
+ * the grant predicate and the `cafe_scanner_grants` table stay behind the Shift
+ * module's seam (#111): the roster decorates its rows through this set instead of
+ * querying the grant table itself.
+ */
+export async function activeShiftUserIds(
+  db: Database,
+  cafeId: string,
+  now: Date,
+): Promise<Set<string>> {
+  const rows = await db<{ user_id: string }[]>`
+    select distinct "user_id" from cafe_scanner_grants
+    where "cafe_id" = ${cafeId} and ${activeGrant(db, now)}
+  `;
+  return new Set(rows.map((row) => row.user_id));
 }
 
 /**

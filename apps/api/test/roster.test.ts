@@ -362,8 +362,8 @@ test("a rostered barista scanning the poster starts a Shift → Scanner Mode", a
     await app.request(`/api/cafes/${cafeId}/shifts`, {
       headers: { cookie: owner },
     })
-  ).json()) as { baristaName: string }[];
-  expect(shifts).toHaveLength(1);
+  ).json()) as { active: { baristaName: string }[] };
+  expect(shifts.active).toHaveLength(1);
 });
 
 test("re-scanning the same poster mid-shift is idempotent — one grant, not two", async () => {
@@ -383,8 +383,8 @@ test("re-scanning the same poster mid-shift is idempotent — one grant, not two
     await app.request(`/api/cafes/${cafeId}/shifts`, {
       headers: { cookie: owner },
     })
-  ).json()) as unknown[];
-  expect(shifts).toHaveLength(1);
+  ).json()) as { active: unknown[] };
+  expect(shifts.active).toHaveLength(1);
 });
 
 test("the owner scanning their own poster starts nothing — owner_cafe, not a Shift", async () => {
@@ -401,8 +401,8 @@ test("the owner scanning their own poster starts nothing — owner_cafe, not a S
     await app.request(`/api/cafes/${cafeId}/shifts`, {
       headers: { cookie: owner },
     })
-  ).json()) as unknown[];
-  expect(shifts).toEqual([]);
+  ).json()) as { active: unknown[] };
+  expect(shifts.active).toEqual([]);
   const mine = (await (
     await app.request("/api/me/shift", { headers: { cookie: owner } })
   ).json()) as { shift: unknown };
@@ -490,13 +490,13 @@ test("confirmSwitch ends the old shift and starts the new one", async () => {
     await app.request("/api/me/shift", { headers: { cookie: barista } })
   ).json()) as { shift: { cafeId: string } };
   expect(mine.shift.cafeId).toBe(cafe2);
-  // Café 1's board no longer lists them — the old shift ended.
+  // Café 1's board no longer lists them as active — the old shift ended.
   const board1 = (await (
     await app.request(`/api/cafes/${cafeId}/shifts`, {
       headers: { cookie: owner },
     })
-  ).json()) as unknown[];
-  expect(board1).toEqual([]);
+  ).json()) as { active: unknown[] };
+  expect(board1.active).toEqual([]);
 });
 
 // --- the Roster board: approve + remove --------------------------------------------
@@ -512,6 +512,28 @@ test("the demoable loop: scan → owner approves → the account is rostered", a
   expect(board.pending).toEqual([]);
   expect(board.rostered.map((r) => r.userId)).toEqual([baristaId]);
   expect(board.rostered[0]?.name).toBe("Test");
+  // Rostered but not scanned onto a shift yet — the «на зміні» dot is off.
+  expect(board.rostered[0]?.onShift).toBe(false);
+});
+
+test("a rostered barista shows «на зміні» once they scan onto a shift", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
+  const { owner, cafeId, posterCode } = await rosterFixture(app);
+  const { barista, baristaId } = await rosterBarista(
+    app,
+    cafeId,
+    posterCode,
+    owner,
+  );
+
+  // A rostered re-scan starts the shift.
+  expect((await scanPoster(app, posterCode, barista)).status).toBe(201);
+
+  const board = rosterBoardResponseSchema.parse(
+    await (await readBoard(app, cafeId, owner)).json(),
+  );
+  const member = board.rostered.find((r) => r.userId === baristaId);
+  expect(member?.onShift).toBe(true);
 });
 
 test("removing a rostered barista drops them back to none", async () => {

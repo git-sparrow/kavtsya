@@ -510,18 +510,45 @@ export const posterScanResultSchema = z.discriminatedUnion("status", [
 export type PosterScanResult = z.infer<typeof posterScanResultSchema>;
 
 /**
- * One entry of `GET /api/cafes/:id/shifts` — an active shift on the owner's
- * board: who is behind the counter and when their grant self-expires. `id` is
- * what `DELETE /api/cafes/:id/shifts/:grantId` revokes.
+ * One entry of `GET /api/cafes/:id/shifts` «НА ЗМІНІ» list — an active shift on
+ * the owner's board (5c): who is behind the counter, when the shift `startedAt`,
+ * how many Зернятка they've issued this shift (`scanCount`), and when the grant
+ * self-expires. `id` is what `DELETE /api/cafes/:id/shifts/:grantId` revokes.
+ * A "scan" is a Зернятко issuance attributed to the barista via
+ * `purchases.issued_by_user_id` (#62 audit column) within the shift window.
  */
 export const shiftGrantSchema = z.object({
   id: z.string().uuid(),
   baristaName: z.string(),
+  startedAt: z.string().datetime(),
   expiresAt: z.string().datetime(),
+  scanCount: z.number().int().nonnegative(),
 });
 export type ShiftGrant = z.infer<typeof shiftGrantSchema>;
 
-export const shiftsResponseSchema = z.array(shiftGrantSchema);
+/**
+ * One entry of the board's «ЗАВЕРШЕНІ СЬОГОДНІ» list (5c): a shift that ended
+ * today (Kyiv day) — whether the owner ended it, the barista did, or it hit the
+ * rolling cap. `endedAt` is the revoke or expiry instant; `scanCount` is the
+ * Зернятка issued across its window. No `id` — a closed shift is not revocable.
+ */
+export const completedShiftSchema = z.object({
+  baristaName: z.string(),
+  startedAt: z.string().datetime(),
+  endedAt: z.string().datetime(),
+  scanCount: z.number().int().nonnegative(),
+});
+export type CompletedShift = z.infer<typeof completedShiftSchema>;
+
+/**
+ * `GET /api/cafes/:id/shifts` (5c): the two-part board — who is on shift now, and
+ * which shifts already closed today. "Today" is the Europe/Kyiv business day
+ * (like analytics), so an evening never rolls over mid-shift.
+ */
+export const shiftsResponseSchema = z.object({
+  active: z.array(shiftGrantSchema),
+  completedToday: z.array(completedShiftSchema),
+});
 export type ShiftsResponse = z.infer<typeof shiftsResponseSchema>;
 
 /**
@@ -543,11 +570,16 @@ export const rosterPendingEntrySchema = z.object({
 });
 export type RosterPendingEntry = z.infer<typeof rosterPendingEntrySchema>;
 
-/** One rostered barista on the owner's Roster board — approved, removable. */
+/**
+ * One rostered barista on the owner's Roster board (5b) — approved, removable.
+ * `onShift` is a live «● на зміні» dot: whether they hold an active scanner grant
+ * at this Café right now (derived, not stored — the Shift module owns the grant).
+ */
 export const rosterMemberEntrySchema = z.object({
   userId: z.string(),
   name: z.string(),
   approvedAt: z.string().datetime(),
+  onShift: z.boolean(),
 });
 export type RosterMemberEntry = z.infer<typeof rosterMemberEntrySchema>;
 

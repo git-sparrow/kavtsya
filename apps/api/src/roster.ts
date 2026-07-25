@@ -2,7 +2,12 @@ import { normalizeMemberCode } from "@kavtsya/shared";
 import type { Clock } from "./clock";
 import type { Database, Queryable } from "./db";
 import { isUniqueViolation } from "./db";
-import { activeShiftFor, endActiveGrants, startShift } from "./shifts";
+import {
+  activeShiftFor,
+  activeShiftUserIds,
+  endActiveGrants,
+  startShift,
+} from "./shifts";
 
 /**
  * The Barista Roster (#97) + poster-started Shifts (#98/#99, ADR 0013). A Café's
@@ -212,18 +217,29 @@ export interface RosterBoard {
   /** The Café's printable poster join-code (#97). */
   posterCode: string;
   pending: { userId: string; name: string; requestedAt: Date }[];
-  rostered: { userId: string; name: string; approvedAt: Date }[];
+  rostered: {
+    userId: string;
+    name: string;
+    approvedAt: Date;
+    /** Live «● на зміні» dot (5b): holds an active scanner grant here right now. */
+    onShift: boolean;
+  }[];
 }
 
 /**
  * The owner's Roster board: the poster code to print, the pending requests
- * (the badge source), and the rostered baristas. Null when the Café isn't the
- * caller's (or doesn't exist — indistinguishable, like every ownership miss).
+ * (the badge source), and the rostered baristas (each flagged with whether they
+ * are on shift right now — 5b). Null when the Café isn't the caller's (or doesn't
+ * exist — indistinguishable, like every ownership miss).
+ *
+ * The on-shift flag comes from the Shift module's `activeShiftUserIds`, not a
+ * grant-table query here, so the grant predicate stays behind that seam (#111).
  */
 export async function listRoster(
   db: Database,
   cafeId: string,
   ownerUserId: string,
+  now: Date,
 ): Promise<RosterBoard | null> {
   const [cafe] = await db<{ poster_code: string }[]>`
     select "poster_code" from cafes
@@ -246,6 +262,8 @@ export async function listRoster(
     order by r."created_at" asc
   `;
 
+  const onShift = await activeShiftUserIds(db, cafeId, now);
+
   return {
     posterCode: cafe.poster_code,
     pending: rows
@@ -263,6 +281,7 @@ export async function listRoster(
         // A rostered row always has an approved_at; fall back to requested_at
         // defensively so the contract's non-null date never breaks.
         approvedAt: row.approved_at ?? row.requested_at,
+        onShift: onShift.has(row.user_id),
       })),
   };
 }

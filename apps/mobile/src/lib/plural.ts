@@ -23,3 +23,6 @@ export const CLIENT_FORMS = { one: "клієнт", few: "клієнти", many: 
 
 /** «зернятко» in its three count forms — 1 зернятко / 3 зернятка / 7 зернят. */
 export const BEAN_FORMS = { one: "зернятко", few: "зернятка", many: "зернят" };
+
+/** «скан» in its three count forms — the shift board's tally (1 скан / 41 скан). */
+export const SCAN_FORMS = { one: "скан", few: "скани", many: "сканів" };

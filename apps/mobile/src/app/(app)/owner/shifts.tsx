@@ -1,74 +1,90 @@
 import type { ShiftsResponse } from "@kavtsya/shared";
-import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useState } from "react";
+import { ActivityIndicator, Text, useColorScheme, View } from "react-native";
 
+import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
-import { Card } from "@/components/card";
+import { RoleHeader } from "@/components/role-header";
 import { Screen } from "@/components/screen";
-import { ErrorText, Muted, OwnerBadge, Title } from "@/components/text";
+import {
+  CountPill,
+  ShiftDot,
+  staffMeta,
+  staffName,
+} from "@/components/staff-list";
+import { StatusStrip } from "@/components/status-strip";
+import { Surface } from "@/components/surface";
+import { Muted, SectionLabel } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
 import { fetchShifts, revokeShift } from "@/lib/api";
-import { theme } from "@/theme";
+import { pluralizeUk, SCAN_FORMS } from "@/lib/plural";
+import { fontFamily, ThemeProvider, useTheme } from "@/theme";
 
-/** An instant as the wall-clock time the owner reasons in. */
+/** An instant as the café's wall-clock time (Kyiv business day, like the board). */
 function timeOf(iso: string): string {
   return new Date(iso).toLocaleTimeString("uk-UA", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Europe/Kyiv",
   });
 }
 
+/** «N сканів» — the shift's issued-Зернятка tally, correctly pluralized. */
+function scansLabel(count: number): string {
+  return `${count} ${pluralizeUk(count, SCAN_FORMS)}`;
+}
+
 /**
- * The owner's «Зміна» board (#98/#99, ADR 0013): who is behind the counter
- * right now, and one tap to end a shift early. Shifts START from the barista
- * scanning the wall poster (see the Roster board for the code to print) — the
- * owner does nothing to begin one, so this screen is watch-and-end only.
- * Forgotten shifts end themselves at the rolling cap; ending here is for "left
- * at lunch" and instant off-boarding.
+ * The owner's «Зміна» board (#98/#99, ADR 0013; redesign turn 5c): who is behind
+ * the counter right now — with when they started and how many Зернятка they've
+ * issued this shift — and one tap to end a shift early, plus the shifts that
+ * already closed today. Shifts START from the barista scanning the wall poster
+ * (the code lives on the Roster board), so the owner never begins one; this
+ * screen is watch-and-end only. The lists self-refresh on focus — no manual
+ * refresh button — and a forgotten shift closes itself at the rolling safety cap.
+ * Follows the OS colour scheme (5c light / 5i dark).
  */
 export default function OwnerShifts() {
+  const scheme = useColorScheme() === "dark" ? "dark" : "light";
+  return (
+    <ThemeProvider theme={scheme}>
+      <OwnerShiftsBody />
+    </ThemeProvider>
+  );
+}
+
+function OwnerShiftsBody() {
+  const t = useTheme();
   const { cafeId } = useLocalSearchParams<{ cafeId: string }>();
   const { me } = useMe();
   const cafeName = me?.cafes.find((cafe) => cafe.id === cafeId)?.name ?? "";
 
-  const [shifts, setShifts] = useState<ShiftsResponse | null>(null);
+  const [board, setBoard] = useState<ShiftsResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function reloadShifts() {
+  const reload = useCallback(async () => {
     try {
-      setShifts(await fetchShifts(cafeId));
+      setBoard(await fetchShifts(cafeId));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не вдалося завантажити зміни");
     }
-  }
-
-  useEffect(() => {
-    let active = true;
-    void fetchShifts(cafeId)
-      .then((loaded) => {
-        if (active) setShifts(loaded);
-      })
-      .catch((e: unknown) => {
-        if (active) {
-          setError(
-            e instanceof Error ? e.message : "Не вдалося завантажити зміни",
-          );
-        }
-      });
-    return () => {
-      active = false;
-    };
   }, [cafeId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void reload();
+    }, [reload]),
+  );
 
   async function endShift(grantId: string) {
     setBusy(true);
     try {
       await revokeShift(cafeId, grantId);
       setError(null);
-      await reloadShifts();
+      await reload();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не вдалося завершити зміну");
     } finally {
@@ -76,63 +92,144 @@ export default function OwnerShifts() {
     }
   }
 
+  const header = (
+    <RoleHeader
+      kicker="Зміни"
+      title={cafeName}
+      action={{
+        icon: "chevron-left",
+        label: "Назад",
+        testID: "shifts-back",
+        onPress: () => router.back(),
+      }}
+    />
+  );
+
+  if (board === null) {
+    return (
+      <Screen header={header}>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <ActivityIndicator size="large" color={t.c.foreground} />
+        </View>
+        {error && <StatusStrip intent="danger" title={error} />}
+      </Screen>
+    );
+  }
+
   return (
-    <Screen>
-      <Card>
-        <OwnerBadge>Зміна — {cafeName}</OwnerBadge>
+    <Screen header={header}>
+      <Muted style={{ textAlign: "left" }}>
+        Бариста починають зміну самі — сканують постер кав&apos;ярні зі свого
+        застосунку. Код постера — у «Ростері бариста».
+      </Muted>
 
-        <Muted>
-          Бариста починають зміну самі — сканують постер кав&apos;ярні зі свого
-          застосунку. Код постера — у «Ростері бариста».
-        </Muted>
+      {/* On shift now. */}
+      <View style={{ gap: t.space[3] }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: t.space[2],
+          }}
+        >
+          <SectionLabel>На зміні</SectionLabel>
+          {board.active.length > 0 && (
+            <CountPill count={board.active.length} tint="success" />
+          )}
+        </View>
 
-        <Title>На зміні</Title>
-        {shifts === null ? (
-          <ActivityIndicator color={theme.c.foreground} />
-        ) : shifts.length === 0 ? (
-          <Muted>
+        {board.active.length === 0 ? (
+          <Muted style={{ textAlign: "left" }}>
             {"Наразі нікого — бариста з'явиться тут, щойно відкриє зміну."}
           </Muted>
         ) : (
-          shifts.map((shift) => (
-            <View key={shift.id} style={styles.shiftRow}>
-              <Title>{shift.baristaName}</Title>
-              <Muted>до {timeOf(shift.expiresAt)}</Muted>
-              <Button
-                title="Завершити зміну"
-                variant="secondary"
-                disabled={busy}
-                onPress={() => void endShift(shift.id)}
-              />
-            </View>
+          board.active.map((shift) => (
+            <Surface key={shift.id}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: t.space[3],
+                }}
+              >
+                <Avatar name={shift.baristaName} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={staffName(t)}>{shift.baristaName}</Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <ShiftDot />
+                    <Text
+                      style={[
+                        staffMeta(t),
+                        {
+                          color: t.c.success,
+                          fontFamily: fontFamily.body.semibold,
+                        },
+                      ]}
+                    >
+                      з {timeOf(shift.startedAt)}
+                    </Text>
+                  </View>
+                  <Text style={staffMeta(t)}>
+                    {scansLabel(shift.scanCount)}
+                  </Text>
+                </View>
+                <Button
+                  title="Завершити"
+                  variant="secondary"
+                  testID={`shifts-end-${shift.id}`}
+                  disabled={busy}
+                  onPress={() => void endShift(shift.id)}
+                />
+              </View>
+            </Surface>
           ))
         )}
-        <Button
-          title="Оновити"
-          variant="secondary"
-          disabled={busy}
-          onPress={() => void reloadShifts()}
-        />
+      </View>
 
-        {error && <ErrorText>{error}</ErrorText>}
+      {/* Closed today. */}
+      {board.completedToday.length > 0 && (
+        <View style={{ gap: t.space[3] }}>
+          <SectionLabel>Завершені сьогодні</SectionLabel>
+          <Surface style={{ padding: 0, gap: 0 }}>
+            {board.completedToday.map((shift, i) => (
+              <View key={`${shift.baristaName}-${shift.endedAt}-${i}`}>
+                {i > 0 ? (
+                  <View style={{ height: 1, backgroundColor: t.c.border }} />
+                ) : null}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: t.space[3],
+                    paddingVertical: t.space[3],
+                    paddingHorizontal: t.space[5],
+                  }}
+                >
+                  <Avatar name={shift.baristaName} />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={staffName(t)}>{shift.baristaName}</Text>
+                    <Text style={staffMeta(t)}>
+                      {timeOf(shift.startedAt)}–{timeOf(shift.endedAt)} ·{" "}
+                      {scansLabel(shift.scanCount)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </Surface>
+        </View>
+      )}
 
-        <Button
-          title="Назад"
-          variant="secondary"
-          onPress={() => router.back()}
-        />
-      </Card>
+      {error && <StatusStrip intent="danger" title={error} />}
+
+      <View style={{ flex: 1 }} />
+      <Muted>Зміна закривається сама після ліміту безпеки</Muted>
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  shiftRow: {
-    borderWidth: 1,
-    borderColor: theme.c.border,
-    borderRadius: theme.radius.md,
-    paddingVertical: theme.space[3],
-    paddingHorizontal: theme.space[3],
-    gap: theme.space[2],
-  },
-});
