@@ -125,7 +125,7 @@ export function registerRosterRoutes(
     const cafeId = cafeIdSchema.safeParse(c.req.param("id"));
     if (!cafeId.success) return c.json({ error: "not_found" }, 404);
 
-    const board = await listRoster(db, cafeId.data, user.id);
+    const board = await listRoster(db, cafeId.data, user.id, clock.now());
     if (!board) return c.json({ error: "not_found" }, 404);
 
     const body: RosterBoardResponse = {
@@ -139,6 +139,7 @@ export function registerRosterRoutes(
         userId: r.userId,
         name: r.name,
         approvedAt: r.approvedAt.toISOString(),
+        onShift: r.onShift,
       })),
     };
     return c.json(body);

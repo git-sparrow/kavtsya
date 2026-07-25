@@ -12,7 +12,7 @@ import { ThemeProvider } from "@/theme";
  * «Стати Кавоваром» / «Зареєструвати ще одну» — the register-café subscreen the
  * Settings РОЛІ / МОЇ КАВ'ЯРНІ rows open (redesign turn 4: progressive
  * disclosure, never an inline form). A thin, working home for the existing
- * `RegisterCafeForm`; turn 5d restyles this screen (two-field form, promise
+ * `RegisterCafeForm`; turn 5d restyles this screen (labelled name field, unlock
  * card, price footer). On success it re-derives from server truth — a fresh
  * owner lands in CafeOwner Mode — by refetching /api/me, dropping any excursion,
  * and popping back to the Mode dispatcher.

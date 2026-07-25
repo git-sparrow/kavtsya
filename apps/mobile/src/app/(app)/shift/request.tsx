@@ -8,40 +8,116 @@ import {
 import { router } from "expo-router";
 import type { ComponentType } from "react";
 import { useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+} from "react-native";
 
+import { BackHeader } from "@/components/back-header";
 import { Button } from "@/components/button";
-import { Card } from "@/components/card";
 import { Screen } from "@/components/screen";
-import { ErrorText, Muted, OwnerBadge, Title } from "@/components/text";
+import { StatusStrip } from "@/components/status-strip";
+import { Surface } from "@/components/surface";
+import { Muted } from "@/components/text";
 import { TextField } from "@/components/text-field";
+import { WaitingState } from "@/components/waiting-state";
 import { useMode } from "@/features/mode/mode-context";
 import { scanPoster } from "@/lib/api";
-import { theme } from "@/theme";
+import { fontFamily, ThemeProvider, useTheme } from "@/theme";
 
 // Same React 19 strict-JSX workaround as scan-workstation.tsx.
 const CameraView = CameraViewBase as unknown as ComponentType<CameraViewProps>;
 
-/** Side of the camera viewfinder square, in dp. */
-const VIEWFINDER_SIZE = 260;
-
 /**
- * The barista scans a Café's wall poster (#98/#99, ADR 0013): with their OWN
- * account, one scan does one of three things. A rostered barista starts a Shift
- * and lands in the near-kiosk Scanner Mode. A stranger raises a request the
- * owner approves — a reassuring terminal state. A barista already on shift
- * elsewhere is asked to switch, then re-scans to confirm. Security rests on the
- * roster, not the poster: the code only ever identifies the Café.
+ * The barista scans a Café's wall poster (#98/#99, ADR 0013; redesign turn
+ * 5e/5f): with their OWN account, one scan does one of three things. A rostered
+ * barista starts a Shift and lands in the near-kiosk Scanner Mode. A stranger
+ * raises a request the owner approves — the shared waiting-state (5f). A barista
+ * already on shift elsewhere is asked to switch, then re-scans to confirm.
+ * Camera-first with the trust rule shown BEFORE the scan (ADR 0013: access is
+ * the owner's confirmation, not the code). Follows the OS colour scheme.
  */
 export default function ScanPosterScreen() {
+  const scheme = useColorScheme() === "dark" ? "dark" : "light";
+  return (
+    <ThemeProvider theme={scheme}>
+      <ScanPosterBody />
+    </ThemeProvider>
+  );
+}
+
+/** Corner brackets over the viewfinder — the «наведи камеру» framing (5e). */
+function ViewfinderBrackets() {
+  const t = useTheme();
+  const arm = 34;
+  const thickness = 3;
+  const inset = 22;
+  const base = {
+    position: "absolute" as const,
+    width: arm,
+    height: arm,
+    borderColor: t.c.primary,
+  };
+  return (
+    <>
+      <View
+        style={{
+          ...base,
+          top: inset,
+          left: inset,
+          borderTopWidth: thickness,
+          borderLeftWidth: thickness,
+          borderTopLeftRadius: 8,
+        }}
+      />
+      <View
+        style={{
+          ...base,
+          top: inset,
+          right: inset,
+          borderTopWidth: thickness,
+          borderRightWidth: thickness,
+          borderTopRightRadius: 8,
+        }}
+      />
+      <View
+        style={{
+          ...base,
+          bottom: inset,
+          left: inset,
+          borderBottomWidth: thickness,
+          borderLeftWidth: thickness,
+          borderBottomLeftRadius: 8,
+        }}
+      />
+      <View
+        style={{
+          ...base,
+          bottom: inset,
+          right: inset,
+          borderBottomWidth: thickness,
+          borderRightWidth: thickness,
+          borderBottomRightRadius: 8,
+        }}
+      />
+    </>
+  );
+}
+
+function ScanPosterBody() {
+  const t = useTheme();
   const { reloadShift } = useMode();
   const [permission, requestPermission] = useCameraPermissions();
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [manual, setManual] = useState(false);
   const [typedCode, setTypedCode] = useState("");
-  // A terminal, reassuring state — a landed request, or "this is your café".
+  // A terminal state: a landed request (5f waiting) or "this is your café" (info).
   const [terminal, setTerminal] = useState<{
-    badge: string;
+    kind: "pending" | "owner_cafe";
     cafeName: string;
     message: string;
   } | null>(null);
@@ -73,19 +149,18 @@ export default function ScanPosterScreen() {
       // The owner scanned their own poster — nothing to start; point them back
       // to CafeOwner Mode's own scan.
       setTerminal({
-        badge: "Це ваша кав'ярня",
+        kind: "owner_cafe",
         cafeName: result.cafeName,
         message:
-          "Клієнтів скануйте зі свого екрана — «Сканувати QR клієнта». Постер — для бариста.",
+          "Клієнтів скануй зі свого екрана — «Сканувати QR клієнта». Постер — для бариста.",
       });
       return;
     }
-    // pending
+    // pending — the shared waiting-state (5f).
     setTerminal({
-      badge: "Запит надіслано",
+      kind: "pending",
       cafeName: result.cafeName,
-      message:
-        "Кавовар отримав ваш запит. Щойно вас підтвердять, скануйте постер ще раз на початку зміни — і ви станете за касу.",
+      message: `Кав'ярня «${result.cafeName}» · чекаємо на підтвердження Кавовара. Сповістимо, щойно він підтвердить.`,
     });
   }
 
@@ -115,17 +190,39 @@ export default function ScanPosterScreen() {
     void submit(normalized);
   }
 
-  // A terminal, reassuring state — a landed request (the owner takes it from
-  // here) or the owner's own-poster acknowledgement. Nothing more to do here.
-  if (terminal) {
+  // Terminal: the request landed (5f waiting-state) — the owner takes it from
+  // here; nothing more to do on this device.
+  if (terminal?.kind === "pending") {
     return (
-      <Screen>
-        <Card>
-          <OwnerBadge>{terminal.badge}</OwnerBadge>
-          <Title>{terminal.cafeName}</Title>
-          <Muted>{terminal.message}</Muted>
-          <Button title="Готово" onPress={() => router.back()} />
-        </Card>
+      <Screen
+        header={<View accessibilityElementsHidden style={{ height: 0 }} />}
+      >
+        <WaitingState
+          testID="request-sent"
+          title="Запит надіслано"
+          body={terminal.message}
+          primaryAction={{
+            label: "Добре",
+            testID: "request-sent-done",
+            onPress: () => router.back(),
+          }}
+        />
+      </Screen>
+    );
+  }
+
+  // Terminal: the owner scanned their own poster — informational, not a wait.
+  if (terminal?.kind === "owner_cafe") {
+    return (
+      <Screen header={<BackHeader title="Приєднатися до кав'ярні" />}>
+        <StatusStrip
+          testID="request-owner-cafe"
+          intent="info"
+          title="Це твоя кав'ярня"
+          detail={terminal.message}
+        />
+        <View style={{ flex: 1 }} />
+        <Button title="Готово" onPress={() => router.back()} />
       </Screen>
     );
   }
@@ -134,111 +231,172 @@ export default function ScanPosterScreen() {
   // barista off their current post (#99).
   if (switchTo) {
     return (
-      <Screen>
-        <Card>
-          <OwnerBadge>Уже на зміні</OwnerBadge>
-          <Muted>
-            Ви зараз на зміні в «{switchTo.currentCafeName}». Завершити її та
+      <Screen header={<BackHeader title="Уже на зміні" />}>
+        <Surface emphasis="promise">
+          <Text
+            style={{
+              fontSize: t.font.size.base,
+              lineHeight: t.font.size.base * t.font.lineHeight.snug,
+              fontFamily: fontFamily.body.regular,
+              color: t.c.foreground,
+            }}
+          >
+            Ти зараз на зміні в «{switchTo.currentCafeName}». Завершити її та
             почати зміну в «{switchTo.cafeName}»?
-          </Muted>
-          <Button
-            title={`Перейти в «${switchTo.cafeName}»`}
-            busy={sending}
-            onPress={() => void submit(switchTo.posterCode, true)}
-          />
-          <Button
-            title="Скасувати"
-            variant="secondary"
-            disabled={sending}
-            onPress={() => setSwitchTo(null)}
-          />
-          {error && <ErrorText>{error}</ErrorText>}
-        </Card>
+          </Text>
+        </Surface>
+        {error && <StatusStrip intent="danger" title={error} />}
+        <View style={{ flex: 1 }} />
+        <Button
+          title={`Перейти в «${switchTo.cafeName}»`}
+          testID="request-switch-confirm"
+          busy={sending}
+          onPress={() => void submit(switchTo.posterCode, true)}
+        />
+        <Button
+          title="Скасувати"
+          variant="quiet"
+          disabled={sending}
+          onPress={() => setSwitchTo(null)}
+        />
       </Screen>
     );
   }
 
   if (!permission) {
     return (
-      <Screen>
-        <ActivityIndicator size="large" color={theme.c.foreground} />
+      <Screen header={<BackHeader title="Приєднатися до кав'ярні" />}>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <ActivityIndicator size="large" color={t.c.foreground} />
+        </View>
       </Screen>
     );
   }
 
   return (
-    <Screen>
-      <Card>
-        <OwnerBadge>Приєднатися до кав&apos;ярні</OwnerBadge>
+    <Screen header={<BackHeader title="Приєднатися до кав'ярні" />}>
+      <Muted style={{ textAlign: "left" }}>
+        Бариста? Скануй постер Кавці біля каси своєї кав&apos;ярні.
+      </Muted>
 
-        {permission.granted ? (
-          <View style={styles.viewfinder}>
-            <CameraView
-              style={StyleSheet.absoluteFill}
-              barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-              onBarcodeScanned={
-                sending ? undefined : ({ data }) => void submit(data)
-              }
-            />
-          </View>
-        ) : (
-          <>
-            <Muted>
-              Щоб сканувати постер, потрібен доступ до камери — або введіть код
-              нижче.
-            </Muted>
-            <Button
-              title="Дозволити камеру"
-              variant="secondary"
-              onPress={() => void requestPermission()}
-            />
-          </>
-        )}
-
+      {/* The viewfinder — a fixed-dark framed card (a camera preview reads dark
+          in both themes), gold corner brackets, caption under the frame. */}
+      <View style={styles.viewfinder}>
+        {permission.granted && !sending ? (
+          <CameraView
+            style={StyleSheet.absoluteFill}
+            barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+            onBarcodeScanned={
+              sending ? undefined : ({ data }) => void submit(data)
+            }
+          />
+        ) : null}
+        <ViewfinderBrackets />
         {sending ? (
-          <ActivityIndicator color={theme.c.foreground} />
-        ) : (
-          <>
-            <Muted>
-              Наведіть камеру на постер кав&apos;ярні. Якщо ви вже в ростері —
-              почнеться зміна; якщо ні — кавовар отримає ваш запит.
-            </Muted>
-            <TextField
-              value={typedCode}
-              onChangeText={setTypedCode}
-              placeholder="Або введіть код з постера"
-              autoCapitalize="characters"
-              autoCorrect={false}
-              onSubmitEditing={submitTypedCode}
-            />
-            {typedCode.length > 0 && (
+          <ActivityIndicator
+            color={t.c.primary}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
+        <View style={styles.viewfinderCaption}>
+          {permission.granted ? (
+            <Text style={captionStyle(t)}>Наведи камеру на код постера</Text>
+          ) : (
+            // Permission not granted: a light caption + a gold CTA — a
+            // `secondary` button's dark label would vanish on the dark
+            // viewfinder ground, so this stays a legible `primary`.
+            <View style={{ alignSelf: "stretch", gap: t.space[3] }}>
+              <Text style={captionStyle(t)}>
+                Дозволь доступ до камери, щоб сканувати
+              </Text>
               <Button
-                title="Продовжити за кодом"
-                variant="secondary"
-                onPress={submitTypedCode}
+                title="Дозволити камеру"
+                onPress={() => void requestPermission()}
               />
-            )}
-          </>
-        )}
-        {error && <ErrorText>{error}</ErrorText>}
+            </View>
+          )}
+        </View>
+      </View>
 
-        <Button
-          title="Назад"
-          variant="secondary"
-          onPress={() => router.back()}
-        />
-      </Card>
+      {/* The trust rule, shown before the scan (ADR 0013). */}
+      <Surface emphasis="promise">
+        <Muted
+          style={{
+            fontSize: t.font.size.base,
+            lineHeight: t.font.size.base * t.font.lineHeight.snug,
+            color: t.c.foreground,
+          }}
+        >
+          Доступ підтверджує Кавовар — твій запит з&apos;явиться в нього в
+          Ростері.
+        </Muted>
+      </Surface>
+
+      {/* Manual entry — hidden until asked (camera-first). */}
+      {manual ? (
+        <View style={{ gap: t.space[2] }}>
+          <TextField
+            testID="request-code"
+            value={typedCode}
+            onChangeText={setTypedCode}
+            placeholder="Код з постера, напр. K7Q4-M2ZX"
+            autoCapitalize="characters"
+            autoCorrect={false}
+            autoFocus
+            onSubmitEditing={submitTypedCode}
+          />
+          <Button
+            title="Продовжити за кодом"
+            testID="request-code-submit"
+            disabled={typedCode.length === 0}
+            onPress={submitTypedCode}
+          />
+        </View>
+      ) : null}
+
+      {error && <StatusStrip intent="danger" title={error} />}
+
+      {!manual && (
+        <>
+          <View style={{ flex: 1 }} />
+          <Button
+            title="Ввести код вручну"
+            variant="secondary"
+            testID="request-manual"
+            onPress={() => setManual(true)}
+          />
+        </>
+      )}
     </Screen>
   );
 }
 
+function captionStyle(t: ReturnType<typeof useTheme>) {
+  return {
+    fontSize: t.font.size.sm,
+    fontFamily: fontFamily.body.semibold,
+    // Fixed light on the always-dark viewfinder ground.
+    color: t.color.neutral[100],
+    textAlign: "center" as const,
+  };
+}
+
 const styles = StyleSheet.create({
   viewfinder: {
-    width: VIEWFINDER_SIZE,
-    height: VIEWFINDER_SIZE,
-    alignSelf: "center",
-    borderRadius: theme.radius.md,
+    alignSelf: "stretch",
+    height: 300,
+    borderRadius: 20,
     overflow: "hidden",
-    backgroundColor: theme.c.border,
+    // Theme-invariant deep indigo — a camera preview is dark in both themes.
+    backgroundColor: "#241b3a",
+    justifyContent: "flex-end",
+  },
+  viewfinderCaption: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 24,
+    alignItems: "center",
+    paddingHorizontal: 16,
   },
 });

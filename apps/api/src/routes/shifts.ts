@@ -5,7 +5,7 @@ import type { AppDeps, AppEnv } from "../app";
 import {
   activeShiftFor,
   endMyShift,
-  listActiveShifts,
+  listShiftBoard,
   revokeShiftGrant,
 } from "../shifts";
 
@@ -32,19 +32,24 @@ export function registerShiftRoutes(
     const cafeId = cafeIdSchema.safeParse(c.req.param("id"));
     if (!cafeId.success) return c.json({ error: "not_found" }, 404);
 
-    const shifts = await listActiveShifts(
-      db,
-      cafeId.data,
-      user.id,
-      clock.now(),
-    );
-    if (!shifts) return c.json({ error: "not_found" }, 404);
+    const board = await listShiftBoard(db, cafeId.data, user.id, clock.now());
+    if (!board) return c.json({ error: "not_found" }, 404);
 
-    const responseBody: ShiftsResponse = shifts.map((shift) => ({
-      id: shift.id,
-      baristaName: shift.baristaName,
-      expiresAt: shift.expiresAt.toISOString(),
-    }));
+    const responseBody: ShiftsResponse = {
+      active: board.active.map((shift) => ({
+        id: shift.id,
+        baristaName: shift.baristaName,
+        startedAt: shift.startedAt.toISOString(),
+        expiresAt: shift.expiresAt.toISOString(),
+        scanCount: shift.scanCount,
+      })),
+      completedToday: board.completedToday.map((shift) => ({
+        baristaName: shift.baristaName,
+        startedAt: shift.startedAt.toISOString(),
+        endedAt: shift.endedAt.toISOString(),
+        scanCount: shift.scanCount,
+      })),
+    };
     return c.json(responseBody);
   });
 

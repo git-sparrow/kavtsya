@@ -378,21 +378,24 @@ test("the owner sees who is on shift; a revoked shift ends immediately", async (
   const { owner, cafeId, barista } = await shiftOnDuty(app);
   const customer = await signUp(app, "customer@example.com");
 
-  const shifts = shiftsResponseSchema.parse(
+  const board = shiftsResponseSchema.parse(
     await (
       await app.request(`/api/cafes/${cafeId}/shifts`, {
         headers: { cookie: owner },
       })
     ).json(),
   );
-  expect(shifts).toHaveLength(1);
-  expect(shifts[0]).toMatchObject({
+  expect(board.active).toHaveLength(1);
+  expect(board.active[0]).toMatchObject({
     baristaName: "Test",
+    startedAt: OPEN_AT.toISOString(),
     expiresAt: SHIFT_EXPIRES_AT,
+    scanCount: 0,
   });
+  expect(board.completedToday).toEqual([]);
 
   const revokeRes = await app.request(
-    `/api/cafes/${cafeId}/shifts/${shifts[0]!.id}`,
+    `/api/cafes/${cafeId}/shifts/${board.active[0]!.id}`,
     { method: "DELETE", headers: { cookie: owner } },
   );
   expect(revokeRes.status).toBe(204);
@@ -403,13 +406,69 @@ test("the owner sees who is on shift; a revoked shift ends immediately", async (
     barista,
   );
   expect(scan.status).toBe(404);
-  const after = await app.request(`/api/cafes/${cafeId}/shifts`, {
-    headers: { cookie: owner },
+  // Revoked now, ended today: off the active board, onto «завершені сьогодні».
+  const after = shiftsResponseSchema.parse(
+    await (
+      await app.request(`/api/cafes/${cafeId}/shifts`, {
+        headers: { cookie: owner },
+      })
+    ).json(),
+  );
+  expect(after.active).toEqual([]);
+  expect(after.completedToday).toHaveLength(1);
+  expect(after.completedToday[0]).toMatchObject({
+    baristaName: "Test",
+    endedAt: OPEN_AT.toISOString(),
+    scanCount: 0,
   });
-  expect(shiftsResponseSchema.parse(await after.json())).toEqual([]);
 });
 
-test("expired shifts drop off the board on their own", async () => {
+test("the board tallies each shift's scans and keeps the count once it closes", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
+  const { owner, cafeId, baristaId } = await shiftOnDuty(app);
+
+  // Seed two Зернятка issued by this barista during the shift window, backdated
+  // to the pinned clock — the same direct-SQL seam the analytics suite uses,
+  // since the HTTP issue path stamps `created_at` with the real DB clock.
+  for (let i = 0; i < 2; i++) {
+    const customer = await signUp(app, `c${i}@example.com`);
+    await db`
+      insert into purchases
+        ("cafe_id", "customer_user_id", "qr_jti", "entry_source",
+         "issued_by_user_id", "created_at")
+      values
+        (${cafeId}, ${await userId(app, customer)}, ${crypto.randomUUID()},
+         'qr', ${baristaId}, ${OPEN_AT})
+    `;
+  }
+
+  const onDuty = shiftsResponseSchema.parse(
+    await (
+      await app.request(`/api/cafes/${cafeId}/shifts`, {
+        headers: { cookie: owner },
+      })
+    ).json(),
+  );
+  expect(onDuty.active[0]?.scanCount).toBe(2);
+
+  // Ending the shift moves it to «завершені сьогодні» with the same tally — a
+  // closed shift keeps the scans it earned.
+  await app.request(`/api/cafes/${cafeId}/shifts/${onDuty.active[0]!.id}`, {
+    method: "DELETE",
+    headers: { cookie: owner },
+  });
+  const closed = shiftsResponseSchema.parse(
+    await (
+      await app.request(`/api/cafes/${cafeId}/shifts`, {
+        headers: { cookie: owner },
+      })
+    ).json(),
+  );
+  expect(closed.active).toEqual([]);
+  expect(closed.completedToday[0]?.scanCount).toBe(2);
+});
+
+test("expired shifts drop off the active board and land in «завершені сьогодні»", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
   const { owner, cafeId } = await shiftOnDuty(app);
   const expired = makeApp({ db, auth, clock: fixedClock(AFTER_EXPIRY) });
@@ -418,7 +477,15 @@ test("expired shifts drop off the board on their own", async () => {
     headers: { cookie: owner },
   });
 
-  expect(shiftsResponseSchema.parse(await res.json())).toEqual([]);
+  // The rolling cap fell earlier today (Kyiv): no longer on shift, but closed
+  // today — the owner still sees it ended at its expiry.
+  const board = shiftsResponseSchema.parse(await res.json());
+  expect(board.active).toEqual([]);
+  expect(board.completedToday).toHaveLength(1);
+  expect(board.completedToday[0]).toMatchObject({
+    baristaName: "Test",
+    endedAt: SHIFT_EXPIRES_AT,
+  });
 });
 
 test("another café's owner can neither see nor revoke a shift that isn't theirs", async () => {
@@ -426,7 +493,7 @@ test("another café's owner can neither see nor revoke a shift that isn't theirs
   const { owner, cafeId } = await shiftOnDuty(app);
   const rival = await signUp(app, "rival@example.com");
   await registerCafe(app, "Кавця конкурента", rival);
-  const shifts = shiftsResponseSchema.parse(
+  const board = shiftsResponseSchema.parse(
     await (
       await app.request(`/api/cafes/${cafeId}/shifts`, {
         headers: { cookie: owner },
@@ -438,7 +505,7 @@ test("another café's owner can neither see nor revoke a shift that isn't theirs
     headers: { cookie: rival },
   });
   const foreignRevoke = await app.request(
-    `/api/cafes/${cafeId}/shifts/${shifts[0]!.id}`,
+    `/api/cafes/${cafeId}/shifts/${board.active[0]!.id}`,
     { method: "DELETE", headers: { cookie: rival } },
   );
 
@@ -447,7 +514,7 @@ test("another café's owner can neither see nor revoke a shift that isn't theirs
   const after = await app.request(`/api/cafes/${cafeId}/shifts`, {
     headers: { cookie: owner },
   });
-  expect(shiftsResponseSchema.parse(await after.json())).toHaveLength(1);
+  expect(shiftsResponseSchema.parse(await after.json()).active).toHaveLength(1);
 });
 
 // --- the barista's app asks "am I on shift?" ----------------------------------------
@@ -508,7 +575,7 @@ test("«Завершити зміну» ends the barista's own shift: the next s
   const board = await app.request(`/api/cafes/${cafeId}/shifts`, {
     headers: { cookie: owner },
   });
-  expect(shiftsResponseSchema.parse(await board.json())).toEqual([]);
+  expect(shiftsResponseSchema.parse(await board.json()).active).toEqual([]);
 });
 
 test("ending a shift is idempotent — a second «Завершити зміну» with none active still succeeds", async () => {
