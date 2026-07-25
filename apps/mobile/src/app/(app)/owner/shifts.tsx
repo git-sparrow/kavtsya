@@ -1,10 +1,11 @@
-import type { ShiftsResponse } from "@kavtsya/shared";
+import type { ShiftGrant, ShiftsResponse } from "@kavtsya/shared";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Text, useColorScheme, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { RoleHeader } from "@/components/role-header";
 import { Screen } from "@/components/screen";
 import {
@@ -17,23 +18,13 @@ import { StatusStrip } from "@/components/status-strip";
 import { Surface } from "@/components/surface";
 import { Muted, SectionLabel } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
+import {
+  endShiftConfirm,
+  scansLabel,
+  shiftClock,
+} from "@/features/shift/staff-copy";
 import { fetchShifts, revokeShift } from "@/lib/api";
-import { pluralizeUk, SCAN_FORMS } from "@/lib/plural";
 import { fontFamily, ThemeProvider, useTheme } from "@/theme";
-
-/** An instant as the café's wall-clock time (Kyiv business day, like the board). */
-function timeOf(iso: string): string {
-  return new Date(iso).toLocaleTimeString("uk-UA", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Europe/Kyiv",
-  });
-}
-
-/** «N сканів» — the shift's issued-Зернятка tally, correctly pluralized. */
-function scansLabel(count: number): string {
-  return `${count} ${pluralizeUk(count, SCAN_FORMS)}`;
-}
 
 /**
  * The owner's «Зміна» board (#98/#99, ADR 0013; redesign turn 5c): who is behind
@@ -63,6 +54,9 @@ function OwnerShiftsBody() {
   const [board, setBoard] = useState<ShiftsResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The shift awaiting the owner's confirmation to end (6d) — ending it closes
+  // the scanner on the barista's device mid-service, so it is never a one-tap action.
+  const [ending, setEnding] = useState<ShiftGrant | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -89,6 +83,7 @@ function OwnerShiftsBody() {
       setError(e instanceof Error ? e.message : "Не вдалося завершити зміну");
     } finally {
       setBusy(false);
+      setEnding(null);
     }
   }
 
@@ -99,7 +94,7 @@ function OwnerShiftsBody() {
       action={{
         icon: "chevron-left",
         label: "Назад",
-        testID: "shifts-back",
+        testID: "shifts.back",
         onPress: () => router.back(),
       }}
     />
@@ -172,7 +167,7 @@ function OwnerShiftsBody() {
                         },
                       ]}
                     >
-                      з {timeOf(shift.startedAt)}
+                      з {shiftClock(shift.startedAt)}
                     </Text>
                   </View>
                   <Text style={staffMeta(t)}>
@@ -182,9 +177,9 @@ function OwnerShiftsBody() {
                 <Button
                   title="Завершити"
                   variant="secondary"
-                  testID={`shifts-end-${shift.id}`}
+                  testID={`shifts.active.${shift.id}.end`}
                   disabled={busy}
-                  onPress={() => void endShift(shift.id)}
+                  onPress={() => setEnding(shift)}
                 />
               </View>
             </Surface>
@@ -215,8 +210,8 @@ function OwnerShiftsBody() {
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text style={staffName(t)}>{shift.baristaName}</Text>
                     <Text style={staffMeta(t)}>
-                      {timeOf(shift.startedAt)}–{timeOf(shift.endedAt)} ·{" "}
-                      {scansLabel(shift.scanCount)}
+                      {shiftClock(shift.startedAt)}–{shiftClock(shift.endedAt)}{" "}
+                      · {scansLabel(shift.scanCount)}
                     </Text>
                   </View>
                 </View>
@@ -230,6 +225,21 @@ function OwnerShiftsBody() {
 
       <View style={{ flex: 1 }} />
       <Muted>Зміна закривається сама після ліміту безпеки</Muted>
+
+      {/* 6d: the same anatomy as 6c — who, the shift's facts, and the effect the
+          barista feels immediately (ADR 0013: the owner may end a shift). */}
+      {ending ? (
+        <ConfirmDialog
+          visible
+          testID="shifts.end-dialog"
+          chip={{ avatar: ending.baristaName }}
+          {...endShiftConfirm(ending)}
+          cancelLabel="Скасувати"
+          busy={busy}
+          onConfirm={() => void endShift(ending.id)}
+          onCancel={() => setEnding(null)}
+        />
+      ) : null}
     </Screen>
   );
 }

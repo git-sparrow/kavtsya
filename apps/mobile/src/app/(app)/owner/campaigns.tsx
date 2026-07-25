@@ -1,19 +1,18 @@
 import type { CampaignResult } from "@kavtsya/shared";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Linking, Text, useColorScheme, View } from "react-native";
+import { Linking, useColorScheme, View } from "react-native";
 
 import { Button } from "@/components/button";
-import { Icon } from "@/components/icon";
+import { OfferCard, PriceStrip } from "@/components/offer-card";
 import { RoleHeader } from "@/components/role-header";
 import { Screen } from "@/components/screen";
 import { StatusStrip } from "@/components/status-strip";
-import { Surface } from "@/components/surface";
-import { Heading, Muted } from "@/components/text";
+import { Muted } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { useMe } from "@/features/account/me-context";
 import { sendCampaign } from "@/lib/api";
-import { fontFamily, ThemeProvider, useTheme } from "@/theme";
+import { ThemeProvider, useTheme } from "@/theme";
 
 /** Where a Free owner reaches Kavtsya about Pro — Telegram-first (grilling 2026-07-10). */
 const KAVTSYA_TELEGRAM_URL = "https://t.me/kavtsya";
@@ -25,11 +24,12 @@ const MESSAGE_LIMIT = 200;
 /**
  * The campaigns screen (#24, ADR 0011; redesign turn 5a): on Pro — write a short
  * message, one tap, and it reaches the Café's recently-active Customers who opted
- * into café news. On Free — the same section as a pitch: what Pro buys (serif
- * headline + benefit checklist), the price strip (ADR 0011 — «від ₴390/міс», 14
- * днів безкоштовно), and the Telegram-first contact CTA the Platform answers to
- * flip the flag by hand. Follows the OS colour scheme like the rest of the owner
- * surface (5a light / 5g dark).
+ * into café news. On Free — the same section as a pitch: the shared `OfferCard`
+ * (serif promise + benefit checklist, twinned with the 6a Аналітика pitch), the
+ * price strip (ADR 0011 — «від ₴390/міс», 14 днів безкоштовно), and the
+ * Telegram-first contact CTA the Platform answers to flip the flag by hand.
+ * Follows the OS colour scheme like the rest of the owner surface (5a light /
+ * 5g dark).
  */
 export default function OwnerCampaigns() {
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
@@ -40,66 +40,12 @@ export default function OwnerCampaigns() {
   );
 }
 
-/** One benefit line in the pitch: a green check glyph + the promise. */
-function Benefit({ children }: { children: string }) {
-  const t = useTheme();
-  return (
-    <View style={{ flexDirection: "row", gap: t.space[3] }}>
-      <Icon name="check" size={20} color={t.c.success} strokeWidth={2.4} />
-      <Text
-        style={{
-          flex: 1,
-          fontSize: t.font.size.base,
-          lineHeight: t.font.size.base * t.font.lineHeight.snug,
-          fontFamily: fontFamily.body.regular,
-          color: t.c.foreground,
-        }}
-      >
-        {children}
-      </Text>
-    </View>
-  );
-}
-
-/** The «Pro — від ₴390/міс · 14 днів безкоштовно» price strip (ADR 0011). */
-function PriceStrip() {
-  const t = useTheme();
-  return (
-    <View
-      accessible
-      accessibilityLabel="Pro — від 390 гривень на місяць. 14 днів безкоштовно."
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: t.space[4],
-        backgroundColor: t.c["accent-surface"],
-        borderRadius: t.radius.md,
-        paddingVertical: t.space[4],
-        paddingHorizontal: t.space[5],
-      }}
-    >
-      <Text
-        style={{
-          fontSize: t.font.size.lg,
-          fontFamily: fontFamily.body.bold,
-          color: t.c.foreground,
-        }}
-      >
-        Pro — від ₴390/міс
-      </Text>
-      <Text
-        style={{
-          flex: 1,
-          fontSize: t.font.size.sm,
-          fontFamily: fontFamily.body.semibold,
-          color: t.c["text-secondary"],
-        }}
-      >
-        14 днів{"\n"}безкоштовно
-      </Text>
-    </View>
-  );
-}
+/** The three promises Pro Розсилка buys — the last cross-sells Аналітика (6a's twin). */
+const CAMPAIGN_CHECKS = [
+  "Отримують лише ті, хто був у тебе нещодавно та ввімкнув новини",
+  "Кампанія в один дотик — без POS, без IT",
+  "Разом з Аналітикою: пікові години, нові та постійні клієнти",
+];
 
 function OwnerCampaignsBody() {
   const t = useTheme();
@@ -119,7 +65,7 @@ function OwnerCampaignsBody() {
       action={{
         icon: "chevron-left",
         label: "Назад",
-        testID: "campaigns-back",
+        testID: "campaigns.back",
         onPress: () => router.back(),
       }}
     />
@@ -146,10 +92,11 @@ function OwnerCampaignsBody() {
   if (cafe?.plan !== "pro") {
     return (
       <Screen header={header}>
-        <Surface>
-          <Heading size={26} accessibilityRole="header">
-            Розкажи постійним про нове — одним повідомленням
-          </Heading>
+        <OfferCard
+          testID="campaigns.offer"
+          promise="Розкажи постійним про нове — одним повідомленням"
+          checks={CAMPAIGN_CHECKS}
+        >
           <Muted
             style={{
               textAlign: "left",
@@ -161,21 +108,12 @@ function OwnerCampaignsBody() {
             Заповнюй тихі години: одне повідомлення — і твої постійні клієнти
             знають про новий напій чи акцію.
           </Muted>
-          <View style={{ gap: t.space[3], marginTop: t.space[1] }}>
-            <Benefit>
-              Отримують лише ті, хто був у тебе нещодавно та ввімкнув новини
-            </Benefit>
-            <Benefit>Кампанія в один дотик — без POS, без IT</Benefit>
-            <Benefit>
-              Разом з Аналітикою: пікові години, нові та постійні клієнти
-            </Benefit>
-          </View>
-        </Surface>
+        </OfferCard>
         <PriceStrip />
         <View style={{ flex: 1 }} />
         <Button
           title="Написати нам у Telegram"
-          testID="campaigns-telegram"
+          testID="campaigns.telegram"
           onPress={() => void Linking.openURL(KAVTSYA_TELEGRAM_URL)}
         />
         <Muted>або {KAVTSYA_EMAIL}</Muted>
@@ -188,7 +126,7 @@ function OwnerCampaignsBody() {
     return (
       <Screen header={header}>
         <StatusStrip
-          testID="campaigns-sent"
+          testID="campaigns.sent"
           intent="success"
           solid
           title="Надіслано"
@@ -215,7 +153,7 @@ function OwnerCampaignsBody() {
         днів і хоче новин. Одна розсилка на день.
       </Muted>
       <TextField
-        testID="campaigns-message"
+        testID="campaigns.message"
         value={message}
         onChangeText={setMessage}
         placeholder="Напр.: Сьогодні новий сезонний напій!"
@@ -227,12 +165,12 @@ function OwnerCampaignsBody() {
         {message.length} / {MESSAGE_LIMIT}
       </Muted>
       {error && (
-        <StatusStrip testID="campaigns-error" intent="danger" title={error} />
+        <StatusStrip testID="campaigns.error" intent="danger" title={error} />
       )}
       <View style={{ flex: 1 }} />
       <Button
         title="Надіслати розсилку"
-        testID="campaigns-send"
+        testID="campaigns.send"
         busy={sending}
         onPress={() => void send()}
       />

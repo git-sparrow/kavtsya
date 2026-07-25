@@ -1,14 +1,15 @@
-import type { AnalyticsPeriod, OwnerCafe } from "@kavtsya/shared";
+import type { AnalyticsPeriod } from "@kavtsya/shared";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Linking, useColorScheme, View } from "react-native";
 
 import { Button } from "@/components/button";
+import { OfferCard, PriceStrip } from "@/components/offer-card";
 import { RoleHeader } from "@/components/role-header";
 import { Screen } from "@/components/screen";
 import { SegmentedControl } from "@/components/segmented-control";
 import { StatusStrip } from "@/components/status-strip";
-import { Muted, Title } from "@/components/text";
+import { Muted } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
 import {
   AnalyticsSkeleton,
@@ -69,32 +70,92 @@ function ProAnalytics({ cafeId }: { cafeId: string }) {
   );
 }
 
+/** The three promises Pro Аналітика buys — the last cross-sells Розсилка (5a's twin). */
+const ANALYTICS_CHECKS = [
+  "Пікові години — коли ставити другого бариста",
+  "Нові та постійні клієнти — за 7 чи 30 днів",
+  "Разом з Розсилкою: розкажи постійним про нове",
+];
+
 /**
- * The Free upgrade pitch (turn 6 restyles this into the 6a OfferCard): framed
- * around the owner's own free teaser number so upgrading feels like unlocking
- * more of something already working (story 6).
+ * The chart the pitch is selling, as a 12-bar silhouette with the peak trio in
+ * solid `primary` (6a). Deliberately fake and deliberately unreadable in detail:
+ * it shows the *shape* of the answer Pro gives, so it carries no numbers and is
+ * hidden from assistive tech — the checklist below states the same promise in words.
  */
-function FreePitch({ cafe }: { cafe: OwnerCafe }) {
+const PREVIEW_BARS = [
+  0.2, 0.3, 0.26, 0.46, 0.34, 0.54, 0.74, 0.94, 0.78, 0.42, 0.3, 0.22,
+];
+/** Indices of the peak trio — the bars drawn solid `primary`. */
+const PREVIEW_PEAKS = [6, 7, 8];
+const PREVIEW_HEIGHT = 58;
+
+function ChartPreview() {
   const t = useTheme();
+  // Turn-4 chart rule: quiet bars are `primary-surface` in light, `raised` in
+  // dark (where `primary-surface` collapses onto the card's own surface).
+  const nonPeak = t.themeName === "dark" ? t.c.raised : t.c["primary-surface"];
   return (
-    <View style={{ alignSelf: "stretch", gap: t.space[3] }}>
-      <Title style={{ textAlign: "left" }}>Аналітика — це Pro</Title>
-      <Muted style={{ textAlign: "left" }}>
-        За останні 30 днів до тебе повернулися {cafe.returningCustomers30d}{" "}
-        клієнтів. Pro покаже, коли саме вони приходять і скільки серед них нових
-        — щоб планувати зміни й акції.
-      </Muted>
-      <Button
-        title="Написати нам у Telegram"
-        onPress={() => void Linking.openURL(KAVTSYA_TELEGRAM_URL)}
-      />
-      <Muted>або {KAVTSYA_EMAIL}</Muted>
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{
+        flexDirection: "row",
+        alignItems: "flex-end",
+        gap: 4,
+        height: PREVIEW_HEIGHT,
+        marginTop: t.space[1],
+      }}
+    >
+      {PREVIEW_BARS.map((share, i) => (
+        <View
+          key={i}
+          style={{
+            flex: 1,
+            height: share * PREVIEW_HEIGHT,
+            backgroundColor: PREVIEW_PEAKS.includes(i) ? t.c.primary : nonPeak,
+            // A hair of rounding, not `radius-sm`: at these heights the token's
+            // 10px turns the quiet bars into domes instead of bars.
+            borderTopLeftRadius: 4,
+            borderTopRightRadius: 4,
+          }}
+        />
+      ))}
     </View>
   );
 }
 
 /**
- * Analytics in CafeOwner Mode (#25, ADR 0011; redesign turn 4, screens 4d/4e).
+ * The Free upgrade pitch (6a/6h) — the twin of the 5a Розсилка pitch: the shared
+ * `OfferCard` with a serif promise, the chart preview as proof, and a checklist
+ * whose last line cross-sells Розсилка exactly as 5a cross-sells Аналітика. The
+ * price strip carries the v1 upgrade path (ADR 0011): Pro is flipped by hand
+ * after a Telegram conversation, so the numbers must be on the screen.
+ */
+function FreePitch() {
+  return (
+    <>
+      <OfferCard
+        testID="analytics.offer"
+        promise="Побач, коли твоя кав'ярня жива"
+        checks={ANALYTICS_CHECKS}
+      >
+        <ChartPreview />
+      </OfferCard>
+      <PriceStrip />
+      <View style={{ flex: 1 }} />
+      <Button
+        title="Написати нам у Telegram"
+        testID="analytics.telegram"
+        onPress={() => void Linking.openURL(KAVTSYA_TELEGRAM_URL)}
+      />
+      <Muted>або {KAVTSYA_EMAIL}</Muted>
+    </>
+  );
+}
+
+/**
+ * Analytics in CafeOwner Mode (#25, ADR 0011; redesign turns 4d/4e + 6a/6h).
  * On Pro — the 7/30-day segmented control, the active/new/repeat stat trio, and
  * the peak-hours histogram, derived live from the ledger. On Free — the same
  * screen is the upgrade pitch. A role header «АНАЛІТИКА · PRO» + café name; no
@@ -120,7 +181,9 @@ function OwnerAnalyticsBody() {
     <Screen
       header={
         <RoleHeader
-          kicker={isPro ? "Аналітика · Pro" : "Аналітика"}
+          // «АНАЛІТИКА · PRO» on both sides (4d and 6a): the kicker names the
+          // feature's tier, like the PRO pill on the owner home's menu row.
+          kicker="Аналітика · PRO"
           title={cafe?.name ?? ""}
           action={{
             icon: "chevron-left",
@@ -131,11 +194,7 @@ function OwnerAnalyticsBody() {
         />
       }
     >
-      {isPro ? (
-        <ProAnalytics cafeId={cafeId} />
-      ) : cafe ? (
-        <FreePitch cafe={cafe} />
-      ) : null}
+      {isPro ? <ProAnalytics cafeId={cafeId} /> : cafe ? <FreePitch /> : null}
     </Screen>
   );
 }

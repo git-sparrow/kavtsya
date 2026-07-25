@@ -23,10 +23,12 @@ export function Surface({
   children,
   style,
   emphasis = "default",
+  testID,
 }: {
   children: ReactNode;
   style?: ViewStyle;
   emphasis?: SurfaceEmphasis;
+  testID?: string;
 }) {
   const t = useTheme();
   const isDark = t.themeName === "dark";
@@ -60,5 +62,9 @@ export function Surface({
     };
   }
 
-  return <View style={[base, treatment, style]}>{children}</View>;
+  return (
+    <View testID={testID} style={[base, treatment, style]}>
+      {children}
+    </View>
+  );
 }
