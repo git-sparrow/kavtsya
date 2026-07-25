@@ -104,10 +104,18 @@ sidesteps the bug entirely and gives us the review rhythm we actually want.
 ### Why the Expo surface is frozen for automation
 
 `.github/dependabot.yml` **ignores** the entire Expo-governed surface: `expo`, `expo-*`,
-`@expo/*`, `react`, `react-native`, `react-native-*`, and `@types/react`. These versions
-are dictated by the installed Expo SDK as a known-good, SDK-validated set. An independent
-bump — even a patch — can break the native build, so automation must never touch them.
-They are realigned only on the [Expo track](#expo-track).
+`@expo/*`, `react`, `react-native`, `react-native-*`, `@types/react`, and
+`eslint-config-expo`. These versions are dictated by the installed Expo SDK as a
+known-good, SDK-validated set. An independent bump — even a patch — can break the native
+build, so automation must never touch them. They are realigned only on the
+[Expo track](#expo-track).
+
+`eslint-config-expo` is the one Expo-governed package that is **not** matched by the
+name patterns: its major tracks the SDK (56.x for SDK 56, 57.x for SDK 57), but it is
+root-only tooling, so it lives in the repo-root `package.json` alongside `eslint` and
+`prettier` rather than in `apps/mobile`. It is therefore ignored by exact name and
+bumped by hand on the Expo track — `expo install --fix` does not reach outside
+`apps/mobile` and will not realign it for you.
 
 > **Do not "helpfully" bump an Expo package.** `react-native-qrcode-svg` is `^`-ranged
 > and looks updatable, but it is frozen wholesale with the rest of `react-native-*` for
@@ -151,6 +159,18 @@ core realignment recipe is:
 npx expo install --check   # detect drift against the installed SDK (report only)
 npx expo install --fix     # realign every Expo-governed package to the SDK's set
 npx expo-doctor            # validate the whole mobile dependency graph is coherent
+
+# From the repo root — `expo install --fix` does not reach outside apps/mobile:
+pnpm add -w -D eslint-config-expo@^<major>.0.0   # match the new SDK major
+```
+
+On a full SDK jump, also regenerate the CNG native output so it is rebuilt against the
+new SDK (`apps/mobile/ios` and `android` are git-ignored build artefacts, not sources):
+
+```bash
+# From apps/mobile:
+rm -rf ios android .expo && watchman watch-del-all
+npx expo prebuild --clean
 ```
 
 Then run the full gate (`pnpm typecheck && pnpm lint && pnpm format:check && pnpm test`)
