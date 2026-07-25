@@ -53,6 +53,28 @@ const GLYPHS: Record<string, ReactNode> = {
   ),
   // Аналітика — a bar chart.
   chart: <Path d="M5 20V11M12 20V4M19 20v-6M3.5 20h17" />,
+  // Стати Кавоваром / café row — a storefront with an awning.
+  storefront: (
+    <>
+      <Path d="M4 10.5V19a1 1 0 001 1h14a1 1 0 001-1v-8.5" />
+      <Path d="M3.5 10.5l1.4-4.2A2 2 0 016.8 5h10.4a2 2 0 011.9 1.3l1.4 4.2a2.2 2.2 0 01-4.25.8 2.2 2.2 0 01-4.2 0 2.2 2.2 0 01-4.2 0 2.2 2.2 0 01-4.25-.8z" />
+      <Path d="M10 20v-4.5h4V20" />
+    </>
+  ),
+  // Мій профіль клієнта — a single person (head + shoulders).
+  user: (
+    <>
+      <Circle cx={12} cy={8} r={3.4} />
+      <Path d="M5.5 20a6.5 6.5 0 0113 0" />
+    </>
+  ),
+  // Вийти — a door with an arrow leaving it («←]» on the canvas).
+  logout: (
+    <>
+      <Path d="M14 4h4a1 1 0 011 1v14a1 1 0 01-1 1h-4" />
+      <Path d="M10 8l-4 4 4 4M6 12h9" />
+    </>
+  ),
   // Alert (danger strips): a ringed «!».
   alert: (
     <>
