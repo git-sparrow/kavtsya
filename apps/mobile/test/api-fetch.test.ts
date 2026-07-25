@@ -16,6 +16,9 @@ vi.mock("react-native", () => ({
     currentState: "active",
     addEventListener: vi.fn(() => ({ remove: vi.fn() })),
   },
+  // auth-client reads the dev server's bundle URL to derive the API host; no
+  // dev server here, so the base URL falls back to localhost.
+  NativeModules: { SourceCode: { getConstants: () => ({}) } },
 }));
 vi.mock("expo-constants", () => ({ default: { expoConfig: {} } }));
 vi.mock("expo-linking", () => ({

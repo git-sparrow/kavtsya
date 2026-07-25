@@ -2,6 +2,7 @@ import { expoClient } from "@better-auth/expo/client";
 import { createAuthClient } from "better-auth/react";
 import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
+import { NativeModules } from "react-native";
 
 /** Port the API listens on in local development (see `apps/api`, `PORT`). */
 const DEV_API_PORT = 3000;
@@ -19,21 +20,47 @@ const DEV_API_PORT = 3000;
  *    machine's LAN address (e.g. `192.168.0.32:8081`) on a physical device —
  *    exactly the host its API is reachable on. Deriving it means a device build
  *    needs no hand-edited IP, and keeps working when DHCP moves the machine.
- * 3. Fall back to `localhost` when there is no Metro host (a production build
- *    with no env var — misconfigured, but better than crashing at import time).
+ * 3. Otherwise derive it from the dev server's `scriptURL`. `hostUri` only
+ *    exists where Metro serves a *manifest* — Expo Go and `expo-dev-client`.
+ *    A plain `expo run:ios --device` build has neither, so step 2 finds
+ *    nothing and the device silently fell back to `localhost`, i.e. itself
+ *    (#155). `scriptURL` is the URL the JS bundle was actually fetched from
+ *    ("http://192.168.0.32:8081/index.bundle?…"), which is populated in that
+ *    build and carries the same host.
+ * 4. Fall back to `localhost` when there is no dev server at all (a production
+ *    build with no env var — misconfigured, but better than crashing at import
+ *    time).
  *
  * Note this assumes the API runs on the same host as Metro, which holds for
- * local development and is the only case where step 2 applies at all.
+ * local development and is the only case where steps 2–3 apply at all.
  */
 function resolveApiUrl(): string {
   const fromEnv = process.env.EXPO_PUBLIC_API_URL;
   if (fromEnv) return fromEnv;
 
   // hostUri is "host:port" — take the host and pair it with the API's port.
-  const metroHost = Constants.expoConfig?.hostUri?.split(":")[0];
-  if (metroHost) return `http://${metroHost}:${DEV_API_PORT}`;
+  const manifestHost = Constants.expoConfig?.hostUri?.split(":")[0];
+  if (manifestHost) return `http://${manifestHost}:${DEV_API_PORT}`;
+
+  const bundleHost = devServerHost();
+  if (bundleHost) return `http://${bundleHost}:${DEV_API_PORT}`;
 
   return `http://localhost:${DEV_API_PORT}`;
+}
+
+/**
+ * Host the JS bundle was served from, or undefined when it was loaded from
+ * disk (any release build). Parsed by hand because React Native's `URL` is a
+ * partial polyfill whose `hostname` is unreliable across versions.
+ */
+function devServerHost(): string | undefined {
+  const scriptURL: unknown =
+    NativeModules.SourceCode?.getConstants?.().scriptURL;
+  if (typeof scriptURL !== "string") return undefined;
+
+  // "http://192.168.0.32:8081/index.bundle?platform=ios" -> "192.168.0.32".
+  // A file:// bundle has no "//host" to match, so it correctly yields nothing.
+  return /^https?:\/\/([^/:]+)/.exec(scriptURL)?.[1];
 }
 
 const API_URL = resolveApiUrl();

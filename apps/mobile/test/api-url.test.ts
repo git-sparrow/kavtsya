@@ -10,6 +10,7 @@ import { expect, it, vi } from "vitest";
  */
 async function loadAuthClient(options: {
   hostUri?: string;
+  scriptURL?: string;
   envUrl?: string;
 }): Promise<{ requestedUrl: () => string }> {
   vi.resetModules();
@@ -28,6 +29,11 @@ async function loadAuthClient(options: {
     AppState: {
       currentState: "active",
       addEventListener: vi.fn(() => ({ remove: vi.fn() })),
+    },
+    NativeModules: {
+      SourceCode: {
+        getConstants: () => ({ scriptURL: options.scriptURL }),
+      },
     },
   }));
   vi.doMock("expo-linking", () => ({
@@ -70,6 +76,38 @@ it("derives the API host from the Metro host, so a physical device works unconfi
 
   // Metro's port (8081) must not leak through — the API listens on 3000.
   expect(requestedUrl()).toContain("http://192.168.0.32:3000");
+});
+
+/**
+ * A plain `expo run:ios --device` build embeds no manifest, so `hostUri` is
+ * absent and only the bundle URL names the machine. Without this step the
+ * device fell back to localhost — itself — and every request failed with
+ * "Could not connect to the server" (#155).
+ */
+it("derives the API host from the bundle URL when there is no manifest hostUri", async () => {
+  const { requestedUrl } = await loadAuthClient({
+    scriptURL: "http://192.168.0.32:8081/index.bundle?platform=ios&dev=true",
+  });
+
+  expect(requestedUrl()).toContain("http://192.168.0.32:3000");
+});
+
+it("prefers the manifest host over the bundle URL when both are present", async () => {
+  const { requestedUrl } = await loadAuthClient({
+    hostUri: "192.168.0.32:8081",
+    scriptURL: "http://127.0.0.1:8081/index.bundle?platform=ios",
+  });
+
+  expect(requestedUrl()).toContain("http://192.168.0.32:3000");
+});
+
+it("ignores a bundle loaded from disk, since a release build has no dev host", async () => {
+  const { requestedUrl } = await loadAuthClient({
+    scriptURL:
+      "file:///var/containers/Bundle/Application/Kavtsya.app/main.jsbundle",
+  });
+
+  expect(requestedUrl()).toContain("http://localhost:3000");
 });
 
 it("falls back to localhost when Metro reports no host", async () => {
