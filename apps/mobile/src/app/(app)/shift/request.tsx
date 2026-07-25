@@ -302,11 +302,18 @@ function ScanPosterBody() {
           {permission.granted ? (
             <Text style={captionStyle(t)}>Наведи камеру на код постера</Text>
           ) : (
-            <Button
-              title="Дозволити камеру"
-              variant="secondary"
-              onPress={() => void requestPermission()}
-            />
+            // Permission not granted: a light caption + a gold CTA — a
+            // `secondary` button's dark label would vanish on the dark
+            // viewfinder ground, so this stays a legible `primary`.
+            <View style={{ alignSelf: "stretch", gap: t.space[3] }}>
+              <Text style={captionStyle(t)}>
+                Дозволь доступ до камери, щоб сканувати
+              </Text>
+              <Button
+                title="Дозволити камеру"
+                onPress={() => void requestPermission()}
+              />
+            </View>
           )}
         </View>
       </View>
