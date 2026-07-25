@@ -40,9 +40,9 @@ export default tseslint.config(
     },
   },
 
-  // Config files legitimately use CommonJS require().
+  // Config files and Expo config plugins legitimately use CommonJS require().
   {
-    files: ["**/*.config.{js,cjs}"],
+    files: ["**/*.config.{js,cjs}", "apps/mobile/plugins/**/*.js"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
     },
