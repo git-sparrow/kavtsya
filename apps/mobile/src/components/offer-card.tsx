@@ -14,6 +14,11 @@ import { fontFamily, useTheme } from "@/theme";
  *
  * Shared by the two Pro pitches (5a Розсилка, 6a Аналітика) and the turn-8
  * transfer invite, so the anatomy lives here once instead of drifting per screen.
+ *
+ * No Берегиня mark inside the card: the catalog's §12 prose lists one, but the
+ * approved renders (PNGs 40 / 52 / 68) all open on the serif promise. Following
+ * the drawings keeps the twins identical; 8a's inviter avatar is the one leading
+ * element any of them shows, and it belongs to that screen's chip.
  */
 export function OfferCard({
   promise,
@@ -78,7 +83,7 @@ export function PriceStrip() {
       accessible
       accessibilityLabel="Pro — від 390 гривень на місяць. 14 днів безкоштовно."
       style={{
-        backgroundColor: t.c["accent-surface"],
+        backgroundColor: t.c["primary-surface"],
         borderRadius: t.radius.md,
         paddingVertical: t.space[4],
         paddingHorizontal: t.space[5],

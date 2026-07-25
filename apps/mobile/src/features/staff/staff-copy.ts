@@ -1,11 +1,12 @@
 import { pluralizeUk, SCAN_FORMS } from "@/lib/plural";
 
 /**
- * The copy behind the CafeOwner's two staff confirm dialogs (redesign turn 6c/6d)
- * and the shift rows they act on. It lives apart from the screens because the
- * wording carries the product promise — a confirm dialog must name the *actual*
- * consequences, so the sentences are derived from the shift's facts rather than
- * hardcoded per screen, and can be tested without a renderer.
+ * The words for the CafeOwner's two staff boards — the Barista Roster (5b) and
+ * the «Зміна» board (5c), whose rows and confirm dialogs (6c/6d) say the same
+ * things about the same people. Copy lives here, apart from the screens, because
+ * a confirm dialog must name the *actual* consequences: the sentences are derived
+ * from the shift's facts, so they can be tested without a renderer. The rendering
+ * counterpart is `components/staff-list.tsx`.
  *
  * Deliberate deviation from the mockups: they read «Його активну зміну…» / «на
  * його пристрої» about Марко. We only know a barista's name, never their
@@ -14,11 +15,12 @@ import { pluralizeUk, SCAN_FORMS } from "@/lib/plural";
  * misgendered.
  */
 
-/** What a confirm dialog needs to say about one staff action. */
+/** Everything a confirm dialog says about one staff action — both button verbs included. */
 export type StaffConfirm = {
   title: string;
   body: string;
   confirmLabel: string;
+  cancelLabel: string;
 };
 
 /** An instant as the café's wall-clock time (the Kyiv business day, #112). */
@@ -50,6 +52,7 @@ export function endShiftConfirm(shift: {
       `З ${shiftClock(shift.startedAt)} · ${scansLabel(shift.scanCount)}. ` +
       "Сканер на пристрої бариста закриється одразу.",
     confirmLabel: "Завершити",
+    cancelLabel: "Скасувати",
   };
 }
 
@@ -70,5 +73,6 @@ export function removeFromRosterConfirm(barista: {
       `${barista.name} більше не зможе починати Зміни. ${activeShift}` +
       "Надіслати запит знову можна через постер.",
     confirmLabel: "Прибрати",
+    cancelLabel: "Скасувати",
   };
 }

@@ -5,7 +5,7 @@ import {
   removeFromRosterConfirm,
   scansLabel,
   shiftClock,
-} from "../src/features/shift/staff-copy";
+} from "../src/features/staff/staff-copy";
 
 describe("shiftClock", () => {
   it("reads an instant as the café's Kyiv wall clock", () => {
@@ -71,5 +71,17 @@ describe("removeFromRosterConfirm", () => {
     expect(
       removeFromRosterConfirm({ name: "Марко", onShift: false }).body,
     ).not.toContain("Активну зміну");
+  });
+});
+
+describe("both staff confirms", () => {
+  it("carry a verb on each button — never «Так/Ні» (catalog §10)", () => {
+    for (const dialog of [
+      endShiftConfirm({ startedAt: "2026-07-25T05:12:00.000Z", scanCount: 3 }),
+      removeFromRosterConfirm({ name: "Марко", onShift: true }),
+    ]) {
+      expect(dialog.confirmLabel).not.toMatch(/^(Так|Ні)$/);
+      expect(dialog.cancelLabel).toBe("Скасувати");
+    }
   });
 });

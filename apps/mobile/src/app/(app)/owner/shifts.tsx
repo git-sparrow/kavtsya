@@ -22,7 +22,7 @@ import {
   endShiftConfirm,
   scansLabel,
   shiftClock,
-} from "@/features/shift/staff-copy";
+} from "@/features/staff/staff-copy";
 import { fetchShifts, revokeShift } from "@/lib/api";
 import { fontFamily, ThemeProvider, useTheme } from "@/theme";
 
@@ -230,11 +230,9 @@ function OwnerShiftsBody() {
           barista feels immediately (ADR 0013: the owner may end a shift). */}
       {ending ? (
         <ConfirmDialog
-          visible
           testID="shifts.end-dialog"
           chip={{ avatar: ending.baristaName }}
           {...endShiftConfirm(ending)}
-          cancelLabel="Скасувати"
           busy={busy}
           onConfirm={() => void endShift(ending.id)}
           onCancel={() => setEnding(null)}

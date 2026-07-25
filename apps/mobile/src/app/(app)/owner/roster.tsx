@@ -26,7 +26,7 @@ import { StatusStrip } from "@/components/status-strip";
 import { Surface } from "@/components/surface";
 import { Muted, SectionLabel } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
-import { removeFromRosterConfirm } from "@/features/shift/staff-copy";
+import { removeFromRosterConfirm } from "@/features/staff/staff-copy";
 import { approveBarista, fetchRoster, removeBarista } from "@/lib/api";
 import { fontFamily, ThemeProvider, useTheme } from "@/theme";
 
@@ -306,11 +306,9 @@ function OwnerRosterBody() {
           the consequences, and «Прибрати» carries the verb. */}
       {removing ? (
         <ConfirmDialog
-          visible
           testID="roster.remove-dialog"
           chip={{ avatar: removing.name }}
           {...removeFromRosterConfirm(removing)}
-          cancelLabel="Скасувати"
           busy={busy}
           onConfirm={() => void confirmRemoval(removing)}
           onCancel={() => setRemoving(null)}

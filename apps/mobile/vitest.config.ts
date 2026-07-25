@@ -2,9 +2,9 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "vitest/config";
 
-// Node-environment unit tests for pure logic (lib/). Anything rendering React
-// Native stays out of here — on-device checks go through Argent instead
-// (docs/argent-howto.md).
+// Node-environment unit tests for pure logic (`lib/`, and the copy/derivation
+// modules under `features/`). Anything rendering React Native stays out of here —
+// on-device checks go through Argent instead (docs/argent-howto.md).
 export default defineConfig({
   // Mirror the app's `@/*` → `src/*` path alias (tsconfig.json) so a tested
   // module imports its neighbours the same way the app does.

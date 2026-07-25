@@ -27,6 +27,9 @@ export type ConfirmChip =
   | { glyph: IconName; tone?: "primary" | "danger" }
   | { avatar: string };
 
+/** A stable no-op, so a non-dismissible dialog doesn't allocate one per render. */
+const noop = () => {};
+
 /**
  * The app's confirm dialog (catalog §10, redesign turn 6) — the replacement for
  * OS alerts, so a destructive question is asked in the brand's own type and «ти»
@@ -38,14 +41,18 @@ export type ConfirmChip =
  * - Buttons carry verbs, never «Так/Ні» — `confirmLabel`/`cancelLabel` are required.
  * - Focus placement follows `tone` (safe action first on a danger dialog), and the
  *   card traps assistive focus while it is open (`accessibilityViewIsModal`).
+ * - The question is spoken on open — focus sits on a button, so without the
+ *   announcement a screen-reader user would hear the verb and not the
+ *   consequences. (React Native has no `alertdialog` role: the modal flag traps
+ *   focus, `role="alert"` + the announcement carry the rest of §10's contract.)
  * - The scrim and the OS back gesture cancel — except when `dismissible` is off
  *   (the delete-account class of dialog, where only an explicit button decides).
  *
- * `busy` keeps the dialog open with the confirm button spinning, so the caller
- * can await the server before it closes (and a second tap can't double-submit).
+ * Render it only while it should be open (`{pending ? <ConfirmDialog …/> : null}`);
+ * `busy` keeps it open with the confirm button spinning, so the caller can await
+ * the server before it closes (and a second tap can't double-submit).
  */
 export function ConfirmDialog({
-  visible,
   tone = "neutral",
   chip,
   title,
@@ -58,7 +65,6 @@ export function ConfirmDialog({
   onCancel,
   testID,
 }: {
-  visible: boolean;
   tone?: ConfirmTone;
   chip?: ConfirmChip;
   title: string;
@@ -75,30 +81,32 @@ export function ConfirmDialog({
   const confirmRef = useRef<View>(null);
   const cancelRef = useRef<View>(null);
 
-  // Initial focus: the safe action on a danger dialog, the confirm otherwise.
-  // Done on `onShow` — before the modal is mounted there is no node to focus.
-  const focusInitial = useCallback(() => {
+  // On open: speak the question, then park focus on the safe action (danger) or
+  // the confirm (neutral). Both happen in `onShow` — before the modal is mounted
+  // there is no node to focus.
+  const onShow = useCallback(() => {
+    AccessibilityInfo.announceForAccessibility(`${title}. ${body}`);
     const target = tone === "danger" ? cancelRef.current : confirmRef.current;
     const node = target && findNodeHandle(target);
     if (node) AccessibilityInfo.setAccessibilityFocus(node);
-  }, [tone]);
+  }, [tone, title, body]);
 
-  const dismiss = dismissible ? onCancel : () => {};
+  const dismiss = dismissible ? onCancel : noop;
 
   return (
     <Modal
-      visible={visible}
+      visible
       transparent
       animationType="fade"
-      onShow={focusInitial}
+      onShow={onShow}
       onRequestClose={dismiss}
     >
       <Pressable
         testID={testID ? `${testID}.scrim` : undefined}
-        // Tapping the scrim cancels — except on a non-dismissible dialog, where
-        // it is inert (and so must not advertise itself as a button).
-        accessibilityRole={dismissible ? "button" : undefined}
-        accessibilityLabel={dismissible ? cancelLabel : undefined}
+        // Tapping the scrim cancels (unless the dialog is non-dismissible), but
+        // it is a pointer affordance only: as an accessibility element it would
+        // duplicate the real «Скасувати» button in a full-screen target.
+        accessible={false}
         onPress={dismiss}
         style={{
           flex: 1,
@@ -126,10 +134,11 @@ export function ConfirmDialog({
         >
           {chip ? <ContextChip chip={chip} tone={tone} /> : null}
 
-          {/* Title + consequences read as one announcement; the buttons stay
+          {/* Title + consequences read as one element; the buttons stay
               separately reachable because the group wraps only the text. */}
           <View
             accessible
+            accessibilityRole="alert"
             accessibilityLiveRegion="assertive"
             accessibilityLabel={`${title}. ${body}`}
             style={{ gap: t.space[2] }}
@@ -189,7 +198,7 @@ function ContextChip({ chip, tone }: { chip: ConfirmChip; tone: ConfirmTone }) {
       <View
         style={{ flexDirection: "row", alignItems: "center", gap: t.space[3] }}
       >
-        <Avatar name={chip.avatar} size={34} />
+        <Avatar name={chip.avatar} size={32} />
         <Text
           style={{
             fontSize: t.font.size.base,
