@@ -1,4 +1,4 @@
-import type { RosterBoardResponse } from "@kavtsya/shared";
+import type { RosterBoardResponse, RosterMemberEntry } from "@kavtsya/shared";
 import { formatMemberCode } from "@kavtsya/shared";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
@@ -12,6 +12,7 @@ import {
 
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Icon } from "@/components/icon";
 import { RoleHeader } from "@/components/role-header";
 import { Screen } from "@/components/screen";
@@ -25,6 +26,7 @@ import { StatusStrip } from "@/components/status-strip";
 import { Surface } from "@/components/surface";
 import { Muted, SectionLabel } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
+import { removeFromRosterConfirm } from "@/features/staff/staff-copy";
 import { approveBarista, fetchRoster, removeBarista } from "@/lib/api";
 import { fontFamily, ThemeProvider, useTheme } from "@/theme";
 
@@ -68,6 +70,9 @@ function OwnerRosterBody() {
   const [loadedAt, setLoadedAt] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The barista whose removal is awaiting confirmation (6c) — removal is only
+  // reversible through a fresh poster request, so it is never a one-tap action.
+  const [removing, setRemoving] = useState<RosterMemberEntry | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -102,6 +107,14 @@ function OwnerRosterBody() {
     }
   }
 
+  async function confirmRemoval(barista: RosterMemberEntry) {
+    await act(
+      () => removeBarista(cafeId, barista.userId),
+      "Не вдалося видалити бариста",
+    );
+    setRemoving(null);
+  }
+
   const header = (
     <RoleHeader
       kicker="Ростер бариста"
@@ -109,7 +122,7 @@ function OwnerRosterBody() {
       action={{
         icon: "chevron-left",
         label: "Назад",
-        testID: "roster-back",
+        testID: "roster.back",
         onPress: () => router.back(),
       }}
     />
@@ -131,7 +144,7 @@ function OwnerRosterBody() {
       {/* The poster code to print by the till. */}
       <Surface>
         <SectionLabel>Код постера</SectionLabel>
-        <Text selectable testID="roster-poster-code" style={styleCode(t)}>
+        <Text selectable testID="roster.poster-code" style={styleCode(t)}>
           {formatMemberCode(board.posterCode)}
         </Text>
         <Muted style={{ textAlign: "left" }}>
@@ -174,7 +187,7 @@ function OwnerRosterBody() {
                 <View style={{ flex: 1 }}>
                   <Button
                     title="Підтвердити"
-                    testID={`roster-approve-${request.userId}`}
+                    testID={`roster.requests.${request.userId}.approve`}
                     disabled={busy}
                     onPress={() =>
                       void act(
@@ -188,7 +201,7 @@ function OwnerRosterBody() {
                   <Button
                     title="Відхилити"
                     variant="secondary"
-                    testID={`roster-reject-${request.userId}`}
+                    testID={`roster.requests.${request.userId}.reject`}
                     disabled={busy}
                     onPress={() =>
                       void act(
@@ -264,17 +277,12 @@ function OwnerRosterBody() {
                     )}
                   </View>
                   <Pressable
-                    testID={`roster-remove-${barista.userId}`}
+                    testID={`roster.baristas.${barista.userId}.remove`}
                     accessibilityRole="button"
-                    accessibilityLabel={`Видалити ${barista.name}`}
+                    accessibilityLabel={`Прибрати ${barista.name} з ростеру`}
                     hitSlop={8}
                     disabled={busy}
-                    onPress={() =>
-                      void act(
-                        () => removeBarista(cafeId, barista.userId),
-                        "Не вдалося видалити бариста",
-                      )
-                    }
+                    onPress={() => setRemoving(barista)}
                     style={{
                       width: 44,
                       height: 44,
@@ -293,6 +301,19 @@ function OwnerRosterBody() {
       </View>
 
       {error && <StatusStrip intent="danger" title={error} />}
+
+      {/* 6c: the removal confirm — the avatar chip names who, the body names all
+          the consequences, and «Прибрати» carries the verb. */}
+      {removing ? (
+        <ConfirmDialog
+          testID="roster.remove-dialog"
+          chip={{ avatar: removing.name }}
+          {...removeFromRosterConfirm(removing)}
+          busy={busy}
+          onConfirm={() => void confirmRemoval(removing)}
+          onCancel={() => setRemoving(null)}
+        />
+      ) : null}
     </Screen>
   );
 }
