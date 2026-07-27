@@ -15,7 +15,7 @@ Disposition legend: **RESTYLE** = existing screen, visual/UX overhaul · **NEW**
 | **6 — Analytics pitch + confirm dialogs** | #138 | 6a–6h | analytics pitch: `owner/analytics.tsx` · **dialogs: none** | RESTYLE (pitch) **+ NEW (dialogs)** | **Confirm-dialog component is net-new** — no Dialog/alertdialog in the tree; app currently uses OS alerts. Shared anatomy, reused across 6/7/8. 6b delete-account → **EXTENDS #81**. |
 | **7 — Owner deletion → transfer / close** | #143 | 7a–7h | **none** | NEW | Sits in front of #81's flow (tombstone + archival, ADR 0014) but is its own issue: the transfer-first design **conflicts with ADR 0014's v1 rejection of transfer** — conflict + resolution recorded in #143. #81 stays archival-only. |
 | **8 — Transfer accept (recipient)** | #143 | 8a–8f | **none** | NEW | Recipient side of the #143 transfer. Resolves the turn-7 "not designed" gap. |
-| **9 — Client export (CSV)** | #139 | 9a–9f | **none** | NEW | **No prior issue** (issue #9 is "Seasonal Ворожка", unrelated). Adds ДАНІ section to Settings (4b). **Scope = OPEN decision (brainstorm at build).** |
+| **9 — Client export (CSV)** | #139 | 9a–9f | **none** | NEW — **POSTPONED** | **Out of the epic and out of v1 (2026-07-27)** → `PROJECT_BRIEF.md` Backlog. The one turn that restyles nothing: needs an export endpoint (ownership enforced server-side), CSV generation, an export ledger, and the API's first transactional-email infrastructure. Adds ДАНІ section to Settings (4b) when built. **Scope = OPEN decision (brainstorm at build).** |
 
 ## Cross-cutting, do-during-restyle (not their own tickets)
 - **#125** (testID props for Maestro): add stable testIDs *as* each screen is restyled, not in a later sweep.
@@ -31,4 +31,4 @@ Disposition legend: **RESTYLE** = existing screen, visual/UX overhaul · **NEW**
 
 ## Open product decisions (deferred to build-time)
 1. **4b / turns 7–8** — deleting an account that owns a Café: turns 7–8 lean transfer-first, but ADR 0014 / #81 rejected café transfer for v1 («deletion is never blocked»). Decide before #143 starts — archival-only first, or supersede that ADR decision. Full write-up in #143.
-2. **Turn 9** — export scope: activity-only / no contacts / free-not-Pro (handoff argues it; lock at build).
+2. **Turn 9** — export scope: activity-only / no contacts / free-not-Pro (handoff argues it; lock at build). Still open, now deferred with #139 itself (postponed out of v1).
