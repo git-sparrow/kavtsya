@@ -24,10 +24,10 @@ import { fontFamily, ThemeProvider, useTheme } from "@/theme";
  * app (4a/4b light, 4c dark).
  *
  * «Видалити акаунт» is intentionally absent until #81 ships the deletion flow
- * (endpoint, tombstone, café-archival warning) and turn 6 ships the ConfirmDialog
- * behind it — a dead delete control would violate the product floor. Owners with
- * a Café would additionally need the transfer decision (#143); both roles omit
- * the row for now, matching the approved 4b mock.
+ * (endpoint, tombstone, café-archival warning) — a dead delete control would
+ * violate the product floor. The ConfirmDialog behind it landed with turn 6, and
+ * #143 adds the row itself for both roles (the owner variant confirms café
+ * closure; deletion is never blocked — transfer is post-v1, #160).
  */
 export default function Settings() {
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
