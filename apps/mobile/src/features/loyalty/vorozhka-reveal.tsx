@@ -140,6 +140,9 @@ function RevealBody({
                     balance: fortune.balance,
                     threshold: fortune.threshold,
                     reward: fortune.reward,
+                    // A reveal exists only because a scan just succeeded here,
+                    // and an archived Café can no longer issue (#81).
+                    archived: false,
                   })
                 }
               />

@@ -105,8 +105,12 @@ export async function authorizeCounter(
   >`
     select "owner_user_id", "zernyatko_threshold", "reward"
     from cafes
-    where "id" = ${cafeId}
+    where "id" = ${cafeId} and "archived_at" is null
   `;
+  // A Café that doesn't exist, one the caller may not operate, and one that has
+  // closed (#81, ADR 0014) all answer the same "not found": an archived Café
+  // issues and redeems nothing, and the predicate lives in the lookup so no
+  // counter path can forget it — this one query gates both ledger writes.
   if (!cafe) return { ok: false, reason: "cafe_not_owned" };
   if (
     cafe.owner_user_id !== actorUserId &&

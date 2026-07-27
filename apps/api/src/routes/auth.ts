@@ -1,5 +1,6 @@
 import type { Hono } from "hono";
 import type { MeResponse, OwnerCafe } from "@kavtsya/shared";
+import { deleteAccount, deletionPreview } from "../account-deletion";
 import { countReturningCustomers } from "../analytics";
 import type { AppDeps, AppEnv } from "../app";
 import { listCafesByOwner, rolesFor } from "../cafes";
@@ -44,5 +45,28 @@ export function registerAuthRoutes(
       pushConsent: await pushConsentFor(db, user.id),
     };
     return c.json(body);
+  });
+
+  // What deletion would cost, read before the account is asked to confirm it
+  // (#81, #143 screens 6b/7d). A pure read: the account may look and stay.
+  app.get("/api/me/deletion-preview", async (c) => {
+    const user = c.get("user");
+    if (!user) return c.json({ error: "unauthorized" }, 401);
+
+    return c.json(await deletionPreview(db, user.id));
+  });
+
+  // In-app account deletion (#81, ADR 0014, App Store Guideline 5.1.1(v)):
+  // tombstone the account, archive the Cafés it owns. Never blocked — not by
+  // owning a Café (ADR 0014 rejected requiring a transfer first; that stays
+  // post-v1, #160) and not by anything else, because a legally required exit
+  // that can be refused is not an exit. Permanent and immediate: 204, and by
+  // the time it returns the session that sent it no longer exists.
+  app.delete("/api/me", async (c) => {
+    const user = c.get("user");
+    if (!user) return c.json({ error: "unauthorized" }, 401);
+
+    await deleteAccount(db, user.id, clock.now());
+    return c.body(null, 204);
   });
 }

@@ -97,7 +97,9 @@ export function CafeBalances({
   return (
     <View style={{ alignSelf: "stretch", gap: t.space[3] }}>
       {balances.map((b) =>
-        isRedemptionReady(b) ? (
+        b.archived ? (
+          <ClosedCafeRow key={b.cafeId} cafe={b} />
+        ) : isRedemptionReady(b) ? (
           <RewardReadyCard
             key={b.cafeId}
             cafe={b}
@@ -118,22 +120,30 @@ export function CafeBalances({
   );
 }
 
+/**
+ * The plain Café card's frame (1a) — the chrome the collecting row and the
+ * closed row share, so a padding tweak can't drift between them. The elevated
+ * reward-ready card deliberately doesn't use it: `Surface emphasis="reward"` is
+ * a different object, gold border and glow included.
+ */
+function cafeCardStyle(t: ReturnType<typeof useTheme>) {
+  return {
+    backgroundColor: t.c.surface,
+    borderWidth: 1,
+    borderColor: t.c.border,
+    borderRadius: t.radius.md,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 6,
+  };
+}
+
 /** A Café still collecting toward its Reward (1a row). */
 function CafeRow({ cafe }: { cafe: CafeBalance }) {
   const t = useTheme();
   const remaining = cafe.threshold - cafe.balance;
   return (
-    <View
-      style={{
-        backgroundColor: t.c.surface,
-        borderWidth: 1,
-        borderColor: t.c.border,
-        borderRadius: t.radius.md,
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        gap: 6,
-      }}
-    >
+    <View style={cafeCardStyle(t)}>
       <CafeCardHeader cafe={cafe} />
       <Text
         style={{
@@ -146,6 +156,65 @@ function CafeRow({ cafe }: { cafe: CafeBalance }) {
         до Винагороди
       </Text>
       <BeanRow balance={cafe.balance} threshold={cafe.threshold} />
+    </View>
+  );
+}
+
+/**
+ * A Café that has closed (#81, ADR 0014): its CafeOwner deleted their account,
+ * so it was archived rather than deleted — the ledger stands and these Зернятка
+ * are still the Customer's history. The card keeps the count visible and says
+ * plainly why it can't move, because a balance that quietly disappeared would
+ * read as Kavtsya losing it. Muted, no progress row, no CTA: nothing here is
+ * actionable, and offering a bean row would imply it could still fill.
+ */
+function ClosedCafeRow({ cafe }: { cafe: CafeBalance }) {
+  const t = useTheme();
+  return (
+    <View
+      accessible
+      accessibilityLabel={`${cafe.cafeName}. Кав'ярня закрилася. ${cafe.balance} ${pluralizeUk(cafe.balance, BEAN_FORMS)} залишаються в історії`}
+      style={{ ...cafeCardStyle(t), opacity: 0.72 }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          gap: 8,
+        }}
+      >
+        <Text
+          style={{
+            flexShrink: 1,
+            fontSize: 16,
+            fontFamily: fontFamily.body.semibold,
+            color: t.c["text-secondary"],
+          }}
+        >
+          {cafe.cafeName}
+        </Text>
+        <Text
+          style={{
+            fontSize: 12,
+            fontFamily: fontFamily.body.semibold,
+            color: t.c["text-muted"],
+          }}
+        >
+          ЗАКРИТО
+        </Text>
+      </View>
+      <Text
+        style={{
+          fontSize: 13,
+          fontFamily: fontFamily.body.regular,
+          color: t.c["text-muted"],
+        }}
+      >
+        Кав&apos;ярня закрилася. Твої {cafe.balance}{" "}
+        {pluralizeUk(cafe.balance, BEAN_FORMS)} залишаються в історії, але
+        витратити їх уже не вийде.
+      </Text>
     </View>
   );
 }

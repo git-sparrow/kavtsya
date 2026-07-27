@@ -10,6 +10,8 @@ import {
   type CampaignRejection,
   type CampaignResult,
   campaignResultSchema,
+  type DeletionPreview,
+  deletionPreviewSchema,
   isAnalyticsRejection,
   isCampaignRejection,
   isRedemptionRejection,
@@ -250,6 +252,30 @@ export async function fetchBalances(): Promise<CafeBalancesResponse> {
   if (error)
     throw new Error(error.message ?? "Не вдалося завантажити зернятка");
   return cafeBalancesResponseSchema.parse(data);
+}
+
+/**
+ * What deleting the account would cost (#81): every Café balance that dies, and
+ * every Café that would close. Read BEFORE the confirm dialog opens, so the
+ * question the Customer answers names its own consequences instead of asking
+ * them to remember. A pure read — fetching it commits to nothing.
+ */
+export async function fetchDeletionPreview(): Promise<DeletionPreview> {
+  const { data, error } = await apiFetch("/api/me/deletion-preview");
+  if (error)
+    throw new Error(error.message ?? "Не вдалося перевірити, що буде видалено");
+  return deletionPreviewSchema.parse(data);
+}
+
+/**
+ * Delete the account (#81, ADR 0014) — permanent and immediate, with no grace
+ * period and nothing anyone can restore. The server tombstones the account and
+ * archives any Café it owns; the caller then signs the app out, because the
+ * session this request travelled on no longer exists.
+ */
+export async function deleteAccount(): Promise<void> {
+  const { error } = await apiFetch("/api/me", { method: "DELETE" });
+  if (error) throw new Error(error.message ?? "Не вдалося видалити акаунт");
 }
 
 /**

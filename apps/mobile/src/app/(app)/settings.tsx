@@ -9,6 +9,10 @@ import { ListGroup, ListRow, ToggleRow } from "@/components/list-row";
 import { Screen } from "@/components/screen";
 import { Surface } from "@/components/surface";
 import { ErrorText, Muted, SectionLabel } from "@/components/text";
+import {
+  DeleteAccountDialog,
+  useDeleteAccount,
+} from "@/features/account/delete-account";
 import { useMe } from "@/features/account/me-context";
 import { useMode } from "@/features/mode/mode-context";
 import { registerDeviceForPush } from "@/features/push/push-registration";
@@ -23,11 +27,10 @@ import { fontFamily, ThemeProvider, useTheme } from "@/theme";
  * Customer home). Follows the OS colour scheme like the rest of the redesigned
  * app (4a/4b light, 4c dark).
  *
- * «Видалити акаунт» is intentionally absent until #81 ships the deletion flow
- * (endpoint, tombstone, café-archival warning) — a dead delete control would
- * violate the product floor. The ConfirmDialog behind it landed with turn 6, and
- * #143 adds the row itself for both roles (the owner variant confirms café
- * closure; deletion is never blocked — transfer is post-v1, #160).
+ * «Видалити акаунт» closes the АКАУНТ section for both roles (#143, screens
+ * 6b/7d) now that #81's endpoint exists — the row opens the confirm, and the
+ * confirm is where the consequences are named. Deletion is never blocked, not
+ * even for a CafeOwner: transfer is post-v1 (#160, ADR 0014).
  */
 export default function Settings() {
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
@@ -108,6 +111,7 @@ function SettingsBody() {
   const t = useTheme();
   const { me, reload } = useMe();
   const { mode, switchTo, clearExcursion } = useMode();
+  const deletion = useDeleteAccount();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -161,7 +165,11 @@ function SettingsBody() {
     </Section>
   );
 
-  const signOut = (
+  // Leaving, in both its sizes: the reversible exit and the permanent one. The
+  // delete row only OPENS the question — it fetches what deletion would cost
+  // and hands it to the confirm (#81, #143), which is the only place the
+  // account can actually answer.
+  const account = (
     <Section label="Акаунт">
       <ListGroup>
         <ListRow
@@ -171,7 +179,21 @@ function SettingsBody() {
           chevron={false}
           onPress={() => void authClient.signOut()}
         />
+        <ListRow
+          testID="settings.delete-account"
+          icon="trash"
+          title="Видалити акаунт"
+          tone="danger"
+          chevron={false}
+          // Fetching the inventory is the first half of the tap; the row stays
+          // frozen (and says so) until the confirm can open with real numbers.
+          disabled={deletion.loading}
+          onPress={() => void deletion.open()}
+        />
       </ListGroup>
+      {deletion.error ? (
+        <ErrorText style={{ textAlign: "left" }}>{deletion.error}</ErrorText>
+      ) : null}
     </Section>
   );
 
@@ -236,7 +258,7 @@ function SettingsBody() {
           </Section>
 
           {notifications}
-          {signOut}
+          {account}
         </>
       ) : (
         <>
@@ -263,9 +285,16 @@ function SettingsBody() {
             </Muted>
           </Section>
 
-          {signOut}
+          {account}
         </>
       )}
+
+      <DeleteAccountDialog
+        preview={deletion.preview}
+        deleting={deletion.deleting}
+        onConfirm={() => void deletion.confirm()}
+        onCancel={deletion.cancel}
+      />
     </Screen>
   );
 }

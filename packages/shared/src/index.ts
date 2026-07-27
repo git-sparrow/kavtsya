@@ -135,12 +135,21 @@ export function isRedemptionReady({
   balance,
   threshold,
   reward,
+  archived = false,
 }: {
   balance: number;
   threshold: number;
   reward: Reward | null;
+  /**
+   * Whether the Café has closed (#81). A closed Café redeems nothing, so the
+   * rule lives here with the rest of readiness rather than beside it — otherwise
+   * a surface that forgot to check would keep offering «готово» at a counter
+   * that the server will refuse. Optional because the callers that pass a fresh
+   * scan or reveal have, by construction, just proved the Café is open.
+   */
+  archived?: boolean;
 }): boolean {
-  return reward !== null && balance >= threshold;
+  return !archived && reward !== null && balance >= threshold;
 }
 
 /**
@@ -706,8 +715,45 @@ export const cafeBalanceSchema = z.object({
   balance: z.number().int().nonnegative(),
   threshold: z.number().int(),
   reward: rewardSchema.nullable(),
+  /**
+   * The Café closed — its CafeOwner deleted their account, so it was archived
+   * (#81, ADR 0014). The Зернятка earned here are kept and shown, frozen: no
+   * further Purchase or Redemption is possible. The entry deliberately stays in
+   * the list, because a balance that silently vanished would read as data loss
+   * rather than as a closed café.
+   */
+  archived: z.boolean(),
 });
 export type CafeBalance = z.infer<typeof cafeBalanceSchema>;
 
 export const cafeBalancesResponseSchema = z.array(cafeBalanceSchema);
 export type CafeBalancesResponse = z.infer<typeof cafeBalancesResponseSchema>;
+
+/**
+ * A Café the account owns, as the deletion confirm names it (#81, #143 screen
+ * 7d): the name that goes in the title, and how many Customers hold Зернятка
+ * there — the «37 клієнтів втратять свої зернятка тут» the screen quantifies.
+ * The count is the promise's weight; it is never a reason to block the deletion
+ * (ADR 0014 — a legally required action is never blocked).
+ */
+export const ownedCafeClosureSchema = z.object({
+  cafeId: z.string().uuid(),
+  cafeName: z.string(),
+  affectedCustomers: z.number().int().nonnegative(),
+});
+export type OwnedCafeClosure = z.infer<typeof ownedCafeClosureSchema>;
+
+/**
+ * Contract for `GET /api/me/deletion-preview` — the inventory the confirm screen
+ * shows before `DELETE /api/me` (#81: "regret happens before the tap, not
+ * after"). It is a pure read that changes nothing.
+ *
+ * `balances` is the Customer's side, byte-identical to `GET /api/me/balances`
+ * (same query, so the screen can never quote a number the list contradicts);
+ * `cafes` is the CafeOwner's side, empty for a pure Customer.
+ */
+export const deletionPreviewSchema = z.object({
+  balances: z.array(cafeBalanceSchema),
+  cafes: z.array(ownedCafeClosureSchema),
+});
+export type DeletionPreview = z.infer<typeof deletionPreviewSchema>;

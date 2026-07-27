@@ -39,3 +39,27 @@ test("not ready without a configured Reward, even at or above the threshold", ()
     false,
   );
 });
+
+test("a closed Café is never ready, however full the balance", () => {
+  // #81: an archived Café redeems nothing, so a banked balance there must not
+  // show «готово» — the server would refuse the confirm as `not_found`.
+  expect(
+    isRedemptionReady({
+      balance: 50,
+      threshold: 10,
+      reward: freeDrink,
+      archived: true,
+    }),
+  ).toBe(false);
+});
+
+test("an open Café is unaffected by the archived clause", () => {
+  expect(
+    isRedemptionReady({
+      balance: 10,
+      threshold: 10,
+      reward: freeDrink,
+      archived: false,
+    }),
+  ).toBe(true);
+});

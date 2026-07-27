@@ -82,6 +82,23 @@ const GLYPHS: Record<string, ReactNode> = {
       <Path d="M12 7.5v5.5M12 16.4v.2" />
     </>
   ),
+  // Warning (the irreversible-action chip of 6b/7d): a triangle around «!». The
+  // ringed `alert` above is the inline-strip glyph; the triangle is reserved for
+  // the dialogs that destroy something, so the shape itself reads as heavier.
+  warning: (
+    <>
+      <Path d="M12 3.8L21.2 19a1.4 1.4 0 01-1.2 2H4a1.4 1.4 0 01-1.2-2z" />
+      <Path d="M12 9.5v4.2M12 17.1v.2" />
+    </>
+  ),
+  // Видалити акаунт — a bin with a lid.
+  trash: (
+    <>
+      <Path d="M4 7h16M9.5 7V5.2A1.2 1.2 0 0110.7 4h2.6a1.2 1.2 0 011.2 1.2V7" />
+      <Path d="M6.5 7l.9 12a1.5 1.5 0 001.5 1.4h6.2a1.5 1.5 0 001.5-1.4l.9-12" />
+      <Path d="M10.5 11v6M13.5 11v6" />
+    </>
+  ),
   // Info / excluded (informational strips): a ringed «i».
   info: (
     <>
