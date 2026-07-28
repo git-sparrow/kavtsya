@@ -53,8 +53,12 @@ const ThemePreferenceContext = createContext<ThemePreferenceValue | null>(null);
  */
 export function ThemePreferenceProvider({ children }: { children: ReactNode }) {
   const osScheme = useColorScheme();
-  // null = the store hasn't answered yet, which is distinct from "system".
-  const [preference, setStored] = useState<ThemePreference | null>(null);
+  const [preference, setStored] = useState<ThemePreference>(
+    DEFAULT_THEME_PREFERENCE,
+  );
+  // Whether the store has answered yet — distinct from the value it answered
+  // with, since "not read yet" and "chose Системна" must not look alike.
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -66,32 +70,38 @@ export function ThemePreferenceProvider({ children }: { children: ReactNode }) {
         // An unreadable store must never wedge launch — fall through to the
         // default and let the next choice rewrite the entry.
       }
-      if (active) setStored(parseThemePreference(stored));
+      if (!active) return;
+      setStored(parseThemePreference(stored));
+      setLoaded(true);
     })();
     return () => {
       active = false;
     };
   }, []);
 
-  const setPreference = useCallback((next: ThemePreference) => {
-    // Applies on tap: no confirm, no restart — the Settings screen repaints
-    // under the finger and is its own live preview.
-    setStored(next);
-    AccessibilityInfo.announceForAccessibility(themeChangeAnnouncement(next));
-    // Persisting is best-effort: the choice is already live either way, so a
-    // failed write costs the *next* launch, never this tap.
-    void SecureStore.setItemAsync(STORAGE_KEY, next).catch(() => {});
-  }, []);
+  const setPreference = useCallback(
+    (next: ThemePreference) => {
+      // Re-picking the current option changes nothing, so it says nothing and
+      // writes nothing: a radio group is left through another option, never
+      // re-confirmed, and a repeated «Тему змінено» would be pure noise.
+      if (next === preference) return;
+      // Otherwise it applies on tap: no confirm, no restart — the Settings
+      // screen repaints under the finger and is its own live preview.
+      setStored(next);
+      AccessibilityInfo.announceForAccessibility(themeChangeAnnouncement(next));
+      // Persisting is best-effort: the choice is already live either way, so a
+      // failed write costs the *next* launch, never this tap.
+      void SecureStore.setItemAsync(STORAGE_KEY, next).catch(() => {});
+    },
+    [preference],
+  );
 
   const value = useMemo<ThemePreferenceValue>(
-    () => ({
-      preference: preference ?? DEFAULT_THEME_PREFERENCE,
-      setPreference,
-    }),
+    () => ({ preference, setPreference }),
     [preference, setPreference],
   );
 
-  if (preference === null) return null;
+  if (!loaded) return null;
 
   return (
     <ThemePreferenceContext value={value}>

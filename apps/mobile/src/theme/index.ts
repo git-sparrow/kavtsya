@@ -1,14 +1,14 @@
 // The theme public surface, all sourced from Mari's design-tokens.json.
 //
-// Two ways in, both reading the same tokens:
-//   • `useTheme()` — for components (and any future dark subtree). Reacts to the
-//     active ThemeProvider: `const t = useTheme(); t.c.<semantic>, t.space[n]`.
-//   • `theme` — a static snapshot of the LIGHT semantics for module-level
-//     `StyleSheet.create` (which can't call hooks). Anything that must follow
-//     the Customer's theme choice (#162) reads `useTheme()` instead.
-//   • `fontFamily` — RN font-face names (see fonts.ts).
-import { tokens } from "./theme.generated";
-
+// One way in for colours: `useTheme()` — `const t = useTheme(); t.c.<semantic>,
+// t.space[n]`. It reacts to the active ThemeProvider, which the root feeds from
+// the remembered ВИГЛЯД choice (#162). There is deliberately NO static semantic
+// snapshot to style against at module level: a frozen light `c` would silently
+// paint light colours on a dark screen, which is exactly the bug the single
+// preference source exists to prevent. Style inline, or read `tokens` directly
+// for the theme-independent scales (space, radius, font).
+//
+// `fontFamily` — RN font-face names (see fonts.ts).
 export { tokens } from "./theme.generated";
 export { ThemeProvider, useTheme, type ThemeName } from "./theme";
 export {
@@ -24,9 +24,3 @@ export {
 } from "./preference-context";
 export { fontAssets, fontFamily } from "./fonts";
 export { toShadowStyle, type ShadowToken } from "./shadow";
-
-/** Static light theme for `StyleSheet.create`; `c` is the light semantic map. */
-export const theme = {
-  ...tokens,
-  c: tokens.light,
-} as const;

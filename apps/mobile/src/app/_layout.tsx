@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { authClient } from "@/lib/auth-client";
-import { ThemePreferenceProvider, fontAssets } from "@/theme";
+import { ThemePreferenceProvider, fontAssets, useTheme } from "@/theme";
 
 // Hold the splash until both the cached session and the brand fonts resolve, so
 // the app never flashes a wrong-font or signed-out frame on launch.
@@ -27,6 +27,7 @@ export default function RootLayout() {
 }
 
 function RootShell() {
+  const t = useTheme();
   // useSession reads the SecureStore-cached session first, so a returning
   // Customer lands authenticated without a network round-trip on launch.
   const { data: session, isPending } = authClient.useSession();
@@ -43,7 +44,10 @@ function RootShell() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="auto" />
+      {/* Derived from the app's theme, not `style="auto"` — that would read the
+          OS scheme and leave dark glyphs on a dark screen whenever the ВИГЛЯД
+          choice disagrees with the phone (#162). */}
+      <StatusBar style={t.themeName === "dark" ? "light" : "dark"} />
       {/* Stack.Protected gates routes on the session: when a group's guard is
           false the router redirects to the first available screen, so signing
           in/out reactively swaps the auth screen for the app and back. */}

@@ -44,7 +44,7 @@ export function RadioDot({ selected }: { selected: boolean }) {
         width: 22,
         height: 22,
         borderRadius: t.radius.full,
-        borderWidth: selected ? 2 : 1.5,
+        borderWidth: 2,
         borderColor: selected ? on : t.c["border-strong"],
         alignItems: "center",
         justifyContent: "center",

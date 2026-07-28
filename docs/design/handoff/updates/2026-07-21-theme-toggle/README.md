@@ -1,6 +1,8 @@
 # Update 2026-07-21 — Theme switch in Settings (Turn 10)
 Add-on to the main handoff package (`handoff/README.md`, `handoff/engineering-handoff.md`). Same ground rules apply: semantic tokens only, Ukrainian «ти» copy, a11y floor.
 
+> Vendored verbatim on 2026-07-28 as the build of #162 began. **The «Status» below is the designer's, frozen at hand-off** — what is actually built lives in `PROJECT_BRIEF.md`, the repo's one status home (#118). 10a was the treatment built.
+
 ## Status
 Designed, pending approval. Two treatments on the canvas — **10a (three-way, recommended)** and 10b (binary toggle, for comparison). 10c = dark twin of 10a. Build 10a unless told otherwise.
 
