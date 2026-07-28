@@ -11,13 +11,7 @@ import {
 } from "expo-camera";
 import type { ComponentType, ReactNode } from "react";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { BeanRow } from "@/components/bean-row";
 import { Berehynia } from "@/components/berehynia";
@@ -33,7 +27,7 @@ import {
   useScanPurchase,
 } from "@/features/scan/use-scan-purchase";
 import { BEAN_FORMS, pluralizeUk } from "@/lib/plural";
-import { fontFamily, ThemeProvider, toShadowStyle, useTheme } from "@/theme";
+import { fontFamily, toShadowStyle, useTheme } from "@/theme";
 
 // Same React 19 strict-JSX workaround as react-native-qrcode-svg in
 // customer-qr.tsx: expo-camera declares CameraView as a class whose type React
@@ -85,20 +79,14 @@ export interface ScanWorkstationProps {
  * component because the shift's Scanner Mode (#80) IS the owner's scan screen
  * — same two powers, only the frame (header/exit) differs.
  *
- * The redesign (turn 2) follows the OS colour scheme like Customer Mode: every
- * scan screen was drawn in both themes (2a–2l). The body reads the active theme
- * from inside this provider, so the passed-in `header`/`exit` nodes theme too.
+ * The redesign (turn 2) renders it in the theme chosen in Settings → ВИГЛЯД,
+ * like Customer Mode: every scan screen was drawn in both themes (2a–2l).
  */
-export function ScanWorkstation(props: ScanWorkstationProps) {
-  const scheme = useColorScheme() === "dark" ? "dark" : "light";
-  return (
-    <ThemeProvider theme={scheme}>
-      <ScanWorkstationBody {...props} />
-    </ThemeProvider>
-  );
-}
-
-function ScanWorkstationBody({ cafeId, header, exit }: ScanWorkstationProps) {
+export function ScanWorkstation({
+  cafeId,
+  header,
+  exit,
+}: ScanWorkstationProps) {
   const t = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const { state, onScanned, onMemberCode, confirmRedemption, scanNext } =

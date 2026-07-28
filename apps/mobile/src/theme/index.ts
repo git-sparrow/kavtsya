@@ -4,13 +4,24 @@
 //   • `useTheme()` — for components (and any future dark subtree). Reacts to the
 //     active ThemeProvider: `const t = useTheme(); t.c.<semantic>, t.space[n]`.
 //   • `theme` — a static snapshot of the LIGHT semantics for module-level
-//     `StyleSheet.create` (which can't call hooks). Screens are light-only today
-//     (design brief: "one theme per screen"), so they style against this.
+//     `StyleSheet.create` (which can't call hooks). Anything that must follow
+//     the Customer's theme choice (#162) reads `useTheme()` instead.
 //   • `fontFamily` — RN font-face names (see fonts.ts).
 import { tokens } from "./theme.generated";
 
 export { tokens } from "./theme.generated";
 export { ThemeProvider, useTheme, type ThemeName } from "./theme";
+export {
+  DEFAULT_THEME_PREFERENCE,
+  parseThemePreference,
+  resolveTheme,
+  themeChangeAnnouncement,
+  type ThemePreference,
+} from "./preference";
+export {
+  ThemePreferenceProvider,
+  useThemePreference,
+} from "./preference-context";
 export { fontAssets, fontFamily } from "./fonts";
 export { toShadowStyle, type ShadowToken } from "./shadow";
 

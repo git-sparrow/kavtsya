@@ -8,13 +8,7 @@ import {
 import { router } from "expo-router";
 import type { ComponentType } from "react";
 import { useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { BackHeader } from "@/components/back-header";
 import { Button } from "@/components/button";
@@ -26,28 +20,10 @@ import { TextField } from "@/components/text-field";
 import { WaitingState } from "@/components/waiting-state";
 import { useMode } from "@/features/mode/mode-context";
 import { scanPoster } from "@/lib/api";
-import { fontFamily, ThemeProvider, useTheme } from "@/theme";
+import { fontFamily, useTheme } from "@/theme";
 
 // Same React 19 strict-JSX workaround as scan-workstation.tsx.
 const CameraView = CameraViewBase as unknown as ComponentType<CameraViewProps>;
-
-/**
- * The barista scans a Café's wall poster (#98/#99, ADR 0013; redesign turn
- * 5e/5f): with their OWN account, one scan does one of three things. A rostered
- * barista starts a Shift and lands in the near-kiosk Scanner Mode. A stranger
- * raises a request the owner approves — the shared waiting-state (5f). A barista
- * already on shift elsewhere is asked to switch, then re-scans to confirm.
- * Camera-first with the trust rule shown BEFORE the scan (ADR 0013: access is
- * the owner's confirmation, not the code). Follows the OS colour scheme.
- */
-export default function ScanPosterScreen() {
-  const scheme = useColorScheme() === "dark" ? "dark" : "light";
-  return (
-    <ThemeProvider theme={scheme}>
-      <ScanPosterBody />
-    </ThemeProvider>
-  );
-}
 
 /** Corner brackets over the viewfinder — the «наведи камеру» framing (5e). */
 function ViewfinderBrackets() {
@@ -107,7 +83,17 @@ function ViewfinderBrackets() {
   );
 }
 
-function ScanPosterBody() {
+/**
+ * The barista scans a Café's wall poster (#98/#99, ADR 0013; redesign turn
+ * 5e/5f): with their OWN account, one scan does one of three things. A rostered
+ * barista starts a Shift and lands in the near-kiosk Scanner Mode. A stranger
+ * raises a request the owner approves — the shared waiting-state (5f). A barista
+ * already on shift elsewhere is asked to switch, then re-scans to confirm.
+ * Camera-first with the trust rule shown BEFORE the scan (ADR 0013: access is
+ * the owner's confirmation, not the code). Renders in the theme chosen in
+ * Settings → ВИГЛЯД.
+ */
+export default function ScanPosterScreen() {
   const t = useTheme();
   const { reloadShift } = useMode();
   const [permission, requestPermission] = useCameraPermissions();

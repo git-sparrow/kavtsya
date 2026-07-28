@@ -7,10 +7,14 @@ export type ThemeName = "light" | "dark";
 const ThemeContext = createContext<ThemeName>("light");
 
 /**
- * Supplies the active semantic theme to a subtree. The brand uses fixed
- * per-screen themes (design brief: "pick one theme per screen; don't mix"), so
- * this defaults to `light` — the calm everyday — rather than following the OS
- * colour scheme. The future dark Ворожка screen wraps itself in `theme="dark"`.
+ * Supplies the active semantic theme to a subtree. There is exactly ONE of
+ * these at the root, fed by `ThemePreferenceProvider` from the Customer's
+ * Settings → ВИГЛЯД choice (#162) — screens don't wrap their own and don't read
+ * the OS scheme.
+ *
+ * A nested provider is reserved for a subtree that deliberately overrides that
+ * choice: the Ворожка reveal wraps itself in `theme="dark"` in every theme,
+ * because its dark is the brand's magic cue rather than a setting.
  */
 export function ThemeProvider({
   theme = "light",

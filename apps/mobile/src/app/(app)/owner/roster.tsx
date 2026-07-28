@@ -2,13 +2,7 @@ import type { RosterBoardResponse, RosterMemberEntry } from "@kavtsya/shared";
 import { formatMemberCode } from "@kavtsya/shared";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  useColorScheme,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
@@ -28,25 +22,7 @@ import { Muted, SectionLabel } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
 import { removeFromRosterConfirm } from "@/features/staff/staff-copy";
 import { approveBarista, fetchRoster, removeBarista } from "@/lib/api";
-import { fontFamily, ThemeProvider, useTheme } from "@/theme";
-
-/**
- * The CafeOwner's Barista Roster board (#97, ADR 0013; redesign turn 5b): the
- * wall-poster code to print, the loud ЗАПИТИ list to approve, and the rostered
- * baristas — each with a live «● на зміні» dot — to remove. Security rests on
- * this list, not the poster: approving is what turns a scan into trust, and
- * removing ends a barista's access. The board self-refreshes on focus and after
- * every action, so there is no manual refresh button. Follows the OS colour
- * scheme like the rest of the owner surface (5b light / 5h dark).
- */
-export default function OwnerRoster() {
-  const scheme = useColorScheme() === "dark" ? "dark" : "light";
-  return (
-    <ThemeProvider theme={scheme}>
-      <OwnerRosterBody />
-    </ThemeProvider>
-  );
-}
+import { fontFamily, useTheme } from "@/theme";
 
 /** «запит N хв тому» — how long a pending request has waited, in café language. */
 function requestedAgo(iso: string, now: number): string {
@@ -57,7 +33,16 @@ function requestedAgo(iso: string, now: number): string {
   return `запит ${hours} год тому`;
 }
 
-function OwnerRosterBody() {
+/**
+ * The CafeOwner's Barista Roster board (#97, ADR 0013; redesign turn 5b): the
+ * wall-poster code to print, the loud ЗАПИТИ list to approve, and the rostered
+ * baristas — each with a live «● на зміні» dot — to remove. Security rests on
+ * this list, not the poster: approving is what turns a scan into trust, and
+ * removing ends a barista's access. The board self-refreshes on focus and after
+ * every action, so there is no manual refresh button. Renders in the theme
+ * chosen in Settings → ВИГЛЯД (5b light / 5h dark).
+ */
+export default function OwnerRoster() {
   const t = useTheme();
   const { cafeId } = useLocalSearchParams<{ cafeId: string }>();
   const { me } = useMe();

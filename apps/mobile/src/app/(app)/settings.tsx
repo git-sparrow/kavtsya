@@ -1,11 +1,17 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Text, useColorScheme, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
 import { BackHeader } from "@/components/back-header";
 import { Badge } from "@/components/badge";
-import { ListGroup, ListRow, ToggleRow } from "@/components/list-row";
+import {
+  ListGroup,
+  ListRow,
+  RadioRow,
+  RadioRowGroup,
+  ToggleRow,
+} from "@/components/list-row";
 import { Screen } from "@/components/screen";
 import { Surface } from "@/components/surface";
 import { ErrorText, Muted, SectionLabel } from "@/components/text";
@@ -18,29 +24,14 @@ import { useMode } from "@/features/mode/mode-context";
 import { registerDeviceForPush } from "@/features/push/push-registration";
 import { updatePushConsent } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
-import { fontFamily, ThemeProvider, useTheme } from "@/theme";
+import {
+  fontFamily,
+  useTheme,
+  useThemePreference,
+  type ThemePreference,
+} from "@/theme";
 
 /**
- * Settings (#96, ADR 0015; redesign turn 4, screens 4a–4c): the excursion drawer
- * where identity, notifications, role transitions, and account actions live —
- * so the Mode surfaces stay uncluttered. The email lives HERE now (moved off the
- * Customer home). Follows the OS colour scheme like the rest of the redesigned
- * app (4a/4b light, 4c dark).
- *
- * «Видалити акаунт» closes the АКАУНТ section for both roles (#143, screens
- * 6b/7d) now that #81's endpoint exists — the row opens the confirm, and the
- * confirm is where the consequences are named. Deletion is never blocked, not
- * even for a CafeOwner: transfer is post-v1 (#160, ADR 0014).
- */
-export default function Settings() {
-  const scheme = useColorScheme() === "dark" ? "dark" : "light";
-  return (
-    <ThemeProvider theme={scheme}>
-      <SettingsBody />
-    </ThemeProvider>
-  );
-}
-
 /** The identity card (4a): avatar monogram, name, email, and the owner badge. */
 function IdentityCard({
   name,
@@ -107,7 +98,69 @@ function Section({
   );
 }
 
-function SettingsBody() {
+/** The three ВИГЛЯД rows, in the order they appear (10a). */
+const APPEARANCE_OPTIONS: {
+  value: ThemePreference;
+  icon: "phone" | "sun" | "moon";
+  title: string;
+  caption?: string;
+}[] = [
+  {
+    value: "system",
+    icon: "phone",
+    title: "Системна",
+    caption: "Слідує за налаштуванням телефона",
+  },
+  { value: "light", icon: "sun", title: "Світла" },
+  { value: "dark", icon: "moon", title: "Темна" },
+];
+
+/**
+ * ВИГЛЯД (#162, turn 10a): the three-way theme choice, identical for both roles
+ * and placed directly under the identity card. It applies on tap — no confirm,
+ * no restart — so this very screen repaints as its own live preview.
+ *
+ * Three options rather than a «Темна тема» switch: a binary can't express «як у
+ * системі», so anyone whose phone dims itself in the evening would be flipping
+ * it by hand twice a day (10b, rejected).
+ */
+function AppearanceSection() {
+  const { preference, setPreference } = useThemePreference();
+  return (
+    <Section label="Вигляд">
+      <RadioRowGroup label="Вигляд">
+        {APPEARANCE_OPTIONS.map((option) => (
+          <RadioRow
+            key={option.value}
+            testID={`settings.appearance.${option.value}`}
+            icon={option.icon}
+            title={option.title}
+            caption={option.caption}
+            selected={preference === option.value}
+            onSelect={() => setPreference(option.value)}
+          />
+        ))}
+      </RadioRowGroup>
+      <Muted style={{ textAlign: "left" }}>
+        Ворожка завжди приходить у темному — це її магія, незалежно від теми.
+      </Muted>
+    </Section>
+  );
+}
+
+/**
+ * Settings (#96, ADR 0015; redesign turn 4, screens 4a–4c): the excursion drawer
+ * where identity, appearance, notifications, role transitions, and account
+ * actions live — so the Mode surfaces stay uncluttered. The email lives HERE now
+ * (moved off the Customer home). Renders in the theme chosen right here, in
+ * ВИГЛЯД (#162; 4a/4b light, 4c dark).
+ *
+ * «Видалити акаунт» closes the АКАУНТ section for both roles (#143, screens
+ * 6b/7d) now that #81's endpoint exists — the row opens the confirm, and the
+ * confirm is where the consequences are named. Deletion is never blocked, not
+ * even for a CafeOwner: transfer is post-v1 (#160, ADR 0014).
+ */
+export default function Settings() {
   const t = useTheme();
   const { me, reload } = useMe();
   const { mode, switchTo, clearExcursion } = useMode();
@@ -200,6 +253,10 @@ function SettingsBody() {
   return (
     <Screen header={<BackHeader title="Налаштування" testID="settings.back" />}>
       <IdentityCard name={me.name} email={me.email} owner={isOwner} />
+
+      {/* Same rows in the same place for both roles (10a): the theme is a
+          property of the person holding the phone, not of the role they run. */}
+      <AppearanceSection />
 
       {isOwner ? (
         <>

@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useEffect } from "react";
-import { Pressable, useColorScheme, View } from "react-native";
+import { Pressable, View } from "react-native";
 
 import { Berehynia } from "@/components/berehynia";
 import { Icon } from "@/components/icon";
@@ -13,7 +13,7 @@ import { usePendingFortune } from "@/features/loyalty/use-pending-fortune";
 import { VorozhkaReveal } from "@/features/loyalty/vorozhka-reveal";
 import { ConsentCard } from "@/features/push/consent-card";
 import { registerDeviceForPush } from "@/features/push/push-registration";
-import { ThemeProvider, useTheme } from "@/theme";
+import { useTheme } from "@/theme";
 
 /** The greeting + settings row that replaces the brand logo on home (1a). */
 function HomeHeader({ name }: { name: string }) {
@@ -77,12 +77,10 @@ function CafeSectionLabel() {
  * accretes another role's clutter.
  *
  * The redesign (turn 1) drops the brand logo (greeting + settings icon instead),
- * moves the raw email to Settings, and — unlike the rest of the app, which is
- * fixed-light for now — follows the OS colour scheme, since the customer home
- * was designed in both themes (1a/1b …).
+ * moves the raw email to Settings, and renders in the theme chosen in Settings →
+ * ВИГЛЯД — the home was designed in both themes (1a/1b …).
  */
 export function CustomerMode() {
-  const scheme = useColorScheme() === "dark" ? "dark" : "light";
   const { me } = useMe();
   // The Ворожка reveal (#23): appears when the CafeOwner scans (the Customer is
   // holding their QR up — the natural moment).
@@ -96,7 +94,7 @@ export function CustomerMode() {
   }, [consentsToPush]);
 
   return (
-    <ThemeProvider theme={scheme}>
+    <>
       <Screen header={<HomeHeader name={me?.name || me?.email || ""} />}>
         <CustomerQr />
 
@@ -109,6 +107,6 @@ export function CustomerMode() {
       {fortune ? (
         <VorozhkaReveal fortune={fortune} onDismiss={dismiss} />
       ) : null}
-    </ThemeProvider>
+    </>
   );
 }
