@@ -205,6 +205,7 @@ export async function listBalances(
       beans_spent: number;
       zernyatko_threshold: number;
       reward: unknown;
+      archived_at: Date | null;
     }[]
   >`
     select
@@ -213,7 +214,8 @@ export async function listBalances(
       count(p."id")::int as purchases,
       coalesce(r."beans_spent", 0) as beans_spent,
       c."zernyatko_threshold",
-      c."reward"
+      c."reward",
+      c."archived_at"
     from purchases p
     join cafes c on c."id" = p."cafe_id"
     left join (
@@ -234,8 +236,47 @@ export async function listBalances(
       balance: deriveBalance(row.purchases, row.beans_spent),
       threshold: program.threshold,
       reward: program.reward,
+      // An archived Café stays in the list with its balance frozen (#81): the
+      // Зернятка are still the Customer's history, they just can't grow or be
+      // spent any more.
+      archived: row.archived_at !== null,
     };
   });
+}
+
+/**
+ * How many Customers still hold Зернятка at a Café — the number the deletion
+ * confirm quantifies («37 клієнтів втратять свої зернятка тут», #143 screen 7d).
+ * "Hold" is a positive derived balance: a Customer who already spent everything
+ * they earned here loses nothing by the closure, so counting them would inflate
+ * the warning the screen exists to make honest.
+ *
+ * Same shape as {@link findNegativeBalances}: the `where` mirrors
+ * {@link deriveBalance} in SQL because a filter can't call the JS helper.
+ */
+export async function countCustomersHoldingBeans(
+  db: Queryable,
+  cafeId: string,
+): Promise<number> {
+  const [row] = await db<{ holders: number }[]>`
+    select count(*)::int as holders from (
+      select m."customer_user_id"
+      from cafe_memberships m
+      left join (
+        select "customer_user_id", count(*)::int as purchases
+        from purchases where "cafe_id" = ${cafeId}
+        group by "customer_user_id"
+      ) p on p."customer_user_id" = m."customer_user_id"
+      left join (
+        select "customer_user_id", sum("beans_spent")::int as beans_spent
+        from redemptions where "cafe_id" = ${cafeId}
+        group by "customer_user_id"
+      ) r on r."customer_user_id" = m."customer_user_id"
+      where m."cafe_id" = ${cafeId}
+        and coalesce(p."purchases", 0) - coalesce(r."beans_spent", 0) > 0
+    ) holders
+  `;
+  return row?.holders ?? 0;
 }
 
 /** A membership whose derived balance is below zero — the audited defect (#115). */

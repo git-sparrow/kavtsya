@@ -42,6 +42,14 @@ export function ListGroup({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * How a row reads: `default`, or `danger` for the one row in Settings that
+ * destroys something («Видалити акаунт», #143 screen 4a). Danger colours the
+ * title and the leading glyph — the row still only *opens* the confirm dialog,
+ * so the colour is a warning, not the action.
+ */
+export type RowTone = "default" | "danger";
+
 /** Shared row frame: 52pt min height, leading icon, pressed highlight. */
 function rowStyle(t: ReturnType<typeof useTheme>) {
   return ({ pressed }: { pressed: boolean }) => ({
@@ -56,7 +64,15 @@ function rowStyle(t: ReturnType<typeof useTheme>) {
 }
 
 /** Title (+ optional caption) column shared by both row kinds. */
-function RowText({ title, caption }: { title: string; caption?: string }) {
+function RowText({
+  title,
+  caption,
+  tone = "default",
+}: {
+  title: string;
+  caption?: string;
+  tone?: RowTone;
+}) {
   const t = useTheme();
   return (
     <View style={{ flex: 1, gap: 2 }}>
@@ -64,7 +80,7 @@ function RowText({ title, caption }: { title: string; caption?: string }) {
         style={{
           fontSize: 15,
           fontFamily: fontFamily.body.semibold,
-          color: t.c.foreground,
+          color: tone === "danger" ? t.c.danger : t.c.foreground,
         }}
       >
         {title}
@@ -98,6 +114,8 @@ export function ListRow({
   caption,
   badge,
   chevron = true,
+  tone = "default",
+  disabled = false,
   onPress,
   testID,
 }: {
@@ -106,6 +124,14 @@ export function ListRow({
   caption?: string;
   badge?: string;
   chevron?: boolean;
+  tone?: RowTone;
+  /**
+   * Freeze the row while its action is in flight — same contract as `ToggleRow`.
+   * It dims AND announces itself as unavailable, so the wait is visible to a
+   * sighted user and to a screen-reader user alike, rather than the row simply
+   * swallowing taps.
+   */
+  disabled?: boolean;
   onPress: () => void;
   testID?: string;
 }) {
@@ -116,11 +142,17 @@ export function ListRow({
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
-      style={rowStyle(t)}
+      style={(state) => [rowStyle(t)(state), disabled && { opacity: 0.5 }]}
     >
-      <Icon name={icon} size={24} color={t.c["text-secondary"]} />
-      <RowText title={title} caption={caption} />
+      <Icon
+        name={icon}
+        size={24}
+        color={tone === "danger" ? t.c.danger : t.c["text-secondary"]}
+      />
+      <RowText title={title} caption={caption} tone={tone} />
       {badge ? <Badge label={badge} /> : null}
       {chevron ? (
         <Icon name="chevron-right" size={20} color={t.c["text-muted"]} />

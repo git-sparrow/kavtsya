@@ -294,6 +294,7 @@ test("balances are independent per Café and listed most recently visited first"
       balance: 1,
       threshold: 10,
       reward: null,
+      archived: false,
     },
     {
       cafeId: aliceCafe,
@@ -301,6 +302,7 @@ test("balances are independent per Café and listed most recently visited first"
       balance: 2,
       threshold: 10,
       reward: null,
+      archived: false,
     },
   ]);
 });

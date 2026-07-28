@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { isTombstoned } from "./account-deletion";
 import type { Auth, AuthSession, AuthUser } from "./auth";
 import type { Clock } from "./clock";
 import type { Database } from "./db";
@@ -45,12 +46,23 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
 
   // Resolve the session from request cookies once per request and stash it in
   // context, so any route can read the current Customer via `c.get("user")`.
+  //
+  // A tombstoned account (#81) is treated as unauthenticated here, once, rather
+  // than by every route remembering to ask. Deletion already revokes its
+  // sessions, so this should never fire — which is the point: it is the floor
+  // under that revocation, and it means no request path can ever act as a
+  // deleted account. The cost is one primary-key lookup per *authenticated*
+  // request; anonymous traffic and a resolved-to-null session pay nothing.
   app.use("*", async (c, next) => {
     const session = await deps.auth.api.getSession({
       headers: c.req.raw.headers,
     });
-    c.set("user", session?.user ?? null);
-    c.set("session", session?.session ?? null);
+    const live =
+      session && !(await isTombstoned(deps.db, session.user.id))
+        ? session
+        : null;
+    c.set("user", live?.user ?? null);
+    c.set("session", live?.session ?? null);
     await next();
   });
 

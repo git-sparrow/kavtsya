@@ -94,7 +94,11 @@ export async function scanPoster(
   >`
     select "id", "name", "owner_user_id" from cafes
     where "poster_code" = ${normalizeMemberCode(posterCode)}
+      and "archived_at" is null
   `;
+  // A closed Café's poster stops working — the promise its deletion confirm
+  // makes («постер перестане працювати», #81/#143 screen 7d). The wall sticker
+  // outlives the Café, so this is the only place that can keep that promise.
   if (!cafe) return { status: "unknown_poster" };
 
   // The owner is fully privileged at their own Café by construction; scanning
