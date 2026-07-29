@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, Text } from "react-native";
 
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
@@ -7,11 +7,14 @@ import { Screen } from "@/components/screen";
 import { ErrorText } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { authClient } from "@/lib/auth-client";
-import { fontFamily, theme } from "@/theme";
+import { fontFamily, useTheme } from "@/theme";
 
 type Mode = "signin" | "signup";
 
 export default function SignIn() {
+  // Read the live theme, not the static light snapshot: the remembered ВИГЛЯД
+  // choice (#162) is already applied here, before anyone has signed in.
+  const t = useTheme();
   const [mode, setMode] = useState<Mode>("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -75,7 +78,15 @@ export default function SignIn() {
             setMode(isSignup ? "signin" : "signup");
           }}
         >
-          <Text style={styles.link}>
+          <Text
+            style={{
+              color: t.c.link,
+              fontSize: t.font.size.sm,
+              fontFamily: fontFamily.body.medium,
+              textAlign: "center",
+              marginTop: 4,
+            }}
+          >
             {isSignup
               ? "Вже маєте акаунт? Увійти"
               : "Немає акаунта? Зареєструватися"}
@@ -85,13 +96,3 @@ export default function SignIn() {
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  link: {
-    color: theme.c.link,
-    fontSize: theme.font.size.sm,
-    fontFamily: fontFamily.body.medium,
-    textAlign: "center",
-    marginTop: 4,
-  },
-});

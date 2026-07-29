@@ -27,17 +27,25 @@ export function RadioGroup({
   );
 }
 
-/** The 22px radio dot: a ring that fills with a `link` centre when selected. */
-function RadioDot({ selected }: { selected: boolean }) {
+/**
+ * The 22px radio dot: a ring that fills with a `link` centre when selected.
+ * Shared with the settings radio rows (#162) so one selection cue serves every
+ * single-choice control. Decorative — the enclosing row carries the `radio` role
+ * and its checked state.
+ */
+export function RadioDot({ selected }: { selected: boolean }) {
   const t = useTheme();
+  // Standing dark rule: the selection cue is `link` in light, `primary` in dark
+  // — `link` is the light theme's deep espresso and would sink into a dark card.
+  const on = t.themeName === "dark" ? t.c.primary : t.c.link;
   return (
     <View
       style={{
         width: 22,
         height: 22,
         borderRadius: t.radius.full,
-        borderWidth: selected ? 2 : 1.5,
-        borderColor: selected ? t.c.link : t.c["border-strong"],
+        borderWidth: 2,
+        borderColor: selected ? on : t.c["border-strong"],
         alignItems: "center",
         justifyContent: "center",
       }}
@@ -48,7 +56,7 @@ function RadioDot({ selected }: { selected: boolean }) {
             width: 10,
             height: 10,
             borderRadius: t.radius.full,
-            backgroundColor: t.c.link,
+            backgroundColor: on,
           }}
         />
       ) : null}

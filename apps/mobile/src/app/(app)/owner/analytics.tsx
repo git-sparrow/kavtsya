@@ -1,7 +1,7 @@
 import type { AnalyticsPeriod } from "@kavtsya/shared";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Linking, useColorScheme, View } from "react-native";
+import { Linking, View } from "react-native";
 
 import { Button } from "@/components/button";
 import { OfferCard, PriceStrip } from "@/components/offer-card";
@@ -16,7 +16,7 @@ import {
   AnalyticsView,
 } from "@/features/analytics/analytics-view";
 import { useAnalytics } from "@/features/analytics/use-analytics";
-import { ThemeProvider, useTheme } from "@/theme";
+import { useTheme } from "@/theme";
 
 /** Where a Free owner reaches Kavtsya about Pro — Telegram-first (grilling 2026-07-10). */
 const KAVTSYA_TELEGRAM_URL = "https://t.me/kavtsya";
@@ -159,19 +159,10 @@ function FreePitch() {
  * On Pro — the 7/30-day segmented control, the active/new/repeat stat trio, and
  * the peak-hours histogram, derived live from the ledger. On Free — the same
  * screen is the upgrade pitch. A role header «АНАЛІТИКА · PRO» + café name; no
- * logo, no bottom «Назад» (the header's back icon is the one way out). Follows
- * the OS colour scheme like the rest of the redesigned owner surface.
+ * logo, no bottom «Назад» (the header's back icon is the one way out). Renders
+ * in the theme chosen in Settings → ВИГЛЯД, like the rest of the owner surface.
  */
 export default function OwnerAnalytics() {
-  const scheme = useColorScheme() === "dark" ? "dark" : "light";
-  return (
-    <ThemeProvider theme={scheme}>
-      <OwnerAnalyticsBody />
-    </ThemeProvider>
-  );
-}
-
-function OwnerAnalyticsBody() {
   const { cafeId } = useLocalSearchParams<{ cafeId: string }>();
   const { me } = useMe();
   const cafe = me?.cafes.find((entry) => entry.id === cafeId);

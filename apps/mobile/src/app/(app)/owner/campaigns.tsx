@@ -1,7 +1,7 @@
 import type { CampaignResult } from "@kavtsya/shared";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Linking, useColorScheme, View } from "react-native";
+import { Linking, View } from "react-native";
 
 import { Button } from "@/components/button";
 import { OfferCard, PriceStrip } from "@/components/offer-card";
@@ -12,7 +12,7 @@ import { Muted } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { useMe } from "@/features/account/me-context";
 import { sendCampaign } from "@/lib/api";
-import { ThemeProvider, useTheme } from "@/theme";
+import { useTheme } from "@/theme";
 
 /** Where a Free owner reaches Kavtsya about Pro — Telegram-first (grilling 2026-07-10). */
 const KAVTSYA_TELEGRAM_URL = "https://t.me/kavtsya";
@@ -21,25 +21,6 @@ const KAVTSYA_EMAIL = "hello@kavtsya.app";
 /** The API caps the message at 200 — mirror it so the counter is honest. */
 const MESSAGE_LIMIT = 200;
 
-/**
- * The campaigns screen (#24, ADR 0011; redesign turn 5a): on Pro — write a short
- * message, one tap, and it reaches the Café's recently-active Customers who opted
- * into café news. On Free — the same section as a pitch: the shared `OfferCard`
- * (serif promise + benefit checklist, twinned with the 6a Аналітика pitch), the
- * price strip (ADR 0011 — «від ₴390/міс», 14 днів безкоштовно), and the
- * Telegram-first contact CTA the Platform answers to flip the flag by hand.
- * Follows the OS colour scheme like the rest of the owner surface (5a light /
- * 5g dark).
- */
-export default function OwnerCampaigns() {
-  const scheme = useColorScheme() === "dark" ? "dark" : "light";
-  return (
-    <ThemeProvider theme={scheme}>
-      <OwnerCampaignsBody />
-    </ThemeProvider>
-  );
-}
-
 /** The three promises Pro Розсилка buys — the last cross-sells Аналітика (6a's twin). */
 const CAMPAIGN_CHECKS = [
   "Отримують лише ті, хто був у тебе нещодавно та ввімкнув новини",
@@ -47,7 +28,17 @@ const CAMPAIGN_CHECKS = [
   "Разом з Аналітикою: пікові години, нові та постійні клієнти",
 ];
 
-function OwnerCampaignsBody() {
+/**
+ * The campaigns screen (#24, ADR 0011; redesign turn 5a): on Pro — write a short
+ * message, one tap, and it reaches the Café's recently-active Customers who opted
+ * into café news. On Free — the same section as a pitch: the shared `OfferCard`
+ * (serif promise + benefit checklist, twinned with the 6a Аналітика pitch), the
+ * price strip (ADR 0011 — «від ₴390/міс», 14 днів безкоштовно), and the
+ * Telegram-first contact CTA the Platform answers to flip the flag by hand.
+ * Renders in the theme the account chose in Settings → ВИГЛЯД, like the rest of
+ * the owner surface (5a light / 5g dark).
+ */
+export default function OwnerCampaigns() {
   const t = useTheme();
   const { cafeId } = useLocalSearchParams<{ cafeId: string }>();
   const { me } = useMe();

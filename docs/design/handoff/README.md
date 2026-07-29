@@ -8,6 +8,7 @@
 4. **`design-tokens-additions.md`** — ready-to-paste patch for `mobile/src/theme/design-tokens.json`: `qr-plate`, `shadow.reward`, `scrim`. Apply before building; the specs reference these tokens.
 5. **`customer-core-loop-canvas.html`** — the full design canvas (all turns, options, annotations, rationale). Self-contained; open in a browser. Use it when a spec line needs visual context.
 6. **`screens/`** — 79 PNGs @2x, `NN-{screenId}-{slug}.png`. Screen ids (1a, 2f, 9c…) match the spec and the canvas.
+7. **`updates/`** — add-on turns designed after this package shipped, one dated folder each with its own README, canvas, and screens. So far: `2026-07-21-theme-toggle/` (turn 10, the Settings ВИГЛЯД switch — #162).
 
 ## Ground rules (short version)
 - All colors/type/spacing via semantic tokens — no new hexes. Dark = same structure on `semantic.dark.*` plus the standing dark rules listed at the top of the catalog and in each turn's spec.

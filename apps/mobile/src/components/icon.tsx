@@ -107,6 +107,21 @@ const GLYPHS: Record<string, ReactNode> = {
     </>
   ),
   close: <Path d="M6 6l12 12M18 6L6 18" />,
+  // The ВИГЛЯД trio (#162): «Системна» is a phone, and the two explicit choices
+  // are the sun and the moon.
+  phone: (
+    <>
+      <Path d="M7.5 4.5A1.5 1.5 0 019 3h6a1.5 1.5 0 011.5 1.5v15A1.5 1.5 0 0115 21H9a1.5 1.5 0 01-1.5-1.5v-15z" />
+      <Path d="M10.75 18h2.5" />
+    </>
+  ),
+  sun: (
+    <>
+      <Circle cx={12} cy={12} r={4} />
+      <Path d="M12 2.5v2.2M12 19.3v2.2M4.4 4.4l1.6 1.6M18 18l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.4 19.6l1.6-1.6M18 6l1.6-1.6" />
+    </>
+  ),
+  moon: <Path d="M20 14.2A8.4 8.4 0 019.8 4 7.6 7.6 0 1020 14.2z" />,
 };
 
 export type IconName = keyof typeof GLYPHS;

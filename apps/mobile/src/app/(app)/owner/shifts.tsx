@@ -1,7 +1,7 @@
 import type { ShiftGrant, ShiftsResponse } from "@kavtsya/shared";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Text, useColorScheme, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
@@ -24,7 +24,7 @@ import {
   shiftClock,
 } from "@/features/staff/staff-copy";
 import { fetchShifts, revokeShift } from "@/lib/api";
-import { fontFamily, ThemeProvider, useTheme } from "@/theme";
+import { fontFamily, useTheme } from "@/theme";
 
 /**
  * The owner's «Зміна» board (#98/#99, ADR 0013; redesign turn 5c): who is behind
@@ -34,18 +34,9 @@ import { fontFamily, ThemeProvider, useTheme } from "@/theme";
  * (the code lives on the Roster board), so the owner never begins one; this
  * screen is watch-and-end only. The lists self-refresh on focus — no manual
  * refresh button — and a forgotten shift closes itself at the rolling safety cap.
- * Follows the OS colour scheme (5c light / 5i dark).
+ * Renders in the theme chosen in Settings → ВИГЛЯД (5c light / 5i dark).
  */
 export default function OwnerShifts() {
-  const scheme = useColorScheme() === "dark" ? "dark" : "light";
-  return (
-    <ThemeProvider theme={scheme}>
-      <OwnerShiftsBody />
-    </ThemeProvider>
-  );
-}
-
-function OwnerShiftsBody() {
   const t = useTheme();
   const { cafeId } = useLocalSearchParams<{ cafeId: string }>();
   const { me } = useMe();

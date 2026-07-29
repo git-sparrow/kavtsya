@@ -1,6 +1,6 @@
 import type { OwnerCafe } from "@kavtsya/shared";
 import { router } from "expo-router";
-import { Pressable, Text, useColorScheme, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { Icon } from "@/components/icon";
 import { ListGroup, ListRow } from "@/components/list-row";
@@ -9,7 +9,7 @@ import { Screen } from "@/components/screen";
 import { Heading, Muted } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
 import { CLIENT_FORMS, pluralizeUk } from "@/lib/plural";
-import { fontFamily, ThemeProvider, useTheme } from "@/theme";
+import { fontFamily, useTheme } from "@/theme";
 
 /**
  * The single free teaser stat (#25, ADR 0011) — the café-home number every
@@ -174,37 +174,34 @@ function OwnerCafeHome({
  * on running the café.
  *
  * The redesign (turn 3) drops the logo for a role header, groups the controls
- * into menu lists, and — like the Customer and scan surfaces — follows the OS
- * colour scheme (3a light / 3d dark).
+ * into menu lists, and — like the Customer and scan surfaces — renders in the
+ * theme chosen in Settings → ВИГЛЯД (3a light / 3d dark).
  */
 export function OwnerMode() {
-  const scheme = useColorScheme() === "dark" ? "dark" : "light";
   const { me } = useMe();
   const cafes = me?.cafes ?? [];
   const single = cafes.length === 1;
 
   return (
-    <ThemeProvider theme={scheme}>
-      <Screen
-        header={
-          <RoleHeader
-            kicker="Режим Кавовара"
-            title={single ? cafes[0].name : "Мої кав'ярні"}
-            action={{
-              icon: "settings",
-              label: "Налаштування",
-              testID: "owner-settings",
-              onPress: () => router.push("/settings"),
-            }}
-          />
-        }
-      >
-        {cafes.map((cafe) => (
-          <OwnerCafeHome key={cafe.id} cafe={cafe} showName={!single} />
-        ))}
-        <View style={{ flex: 1 }} />
-        <Muted>Твій особистий профіль — у Налаштуваннях</Muted>
-      </Screen>
-    </ThemeProvider>
+    <Screen
+      header={
+        <RoleHeader
+          kicker="Режим Кавовара"
+          title={single ? cafes[0].name : "Мої кав'ярні"}
+          action={{
+            icon: "settings",
+            label: "Налаштування",
+            testID: "owner-settings",
+            onPress: () => router.push("/settings"),
+          }}
+        />
+      }
+    >
+      {cafes.map((cafe) => (
+        <OwnerCafeHome key={cafe.id} cafe={cafe} showName={!single} />
+      ))}
+      <View style={{ flex: 1 }} />
+      <Muted>Твій особистий профіль — у Налаштуваннях</Muted>
+    </Screen>
   );
 }

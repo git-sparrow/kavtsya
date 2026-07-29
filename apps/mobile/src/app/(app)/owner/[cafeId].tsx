@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, Text, useColorScheme, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 
 import { BeanRow } from "@/components/bean-row";
 import { Button } from "@/components/button";
@@ -20,25 +20,16 @@ import {
 } from "@/features/loyalty/reward";
 import { useProgramEditor } from "@/features/loyalty/use-program-editor";
 import { BEAN_FORMS, pluralizeUk } from "@/lib/plural";
-import { fontFamily, ThemeProvider, useTheme } from "@/theme";
+import { fontFamily, useTheme } from "@/theme";
 
 /**
  * Loyalty program config for one Café (#18, screens 3b/3e + 3c/3f): the
  * CafeOwner sets the Зернятко threshold with a ± stepper (previewed as the
  * bean row the Customer will see) and picks a Reward from the platform-default
- * set. Saving swaps the form for a dedicated confirmation. Follows the OS colour
- * scheme like the rest of the redesigned owner surface.
+ * set. Saving swaps the form for a dedicated confirmation. Renders in the theme
+ * chosen in Settings → ВИГЛЯД, like the rest of the owner surface.
  */
 export default function CafeProgram() {
-  const scheme = useColorScheme() === "dark" ? "dark" : "light";
-  return (
-    <ThemeProvider theme={scheme}>
-      <CafeProgramBody />
-    </ThemeProvider>
-  );
-}
-
-function CafeProgramBody() {
   const t = useTheme();
   const { cafeId } = useLocalSearchParams<{ cafeId: string }>();
   const { me } = useMe();

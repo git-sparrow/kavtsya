@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { Badge } from "@/components/badge";
 import { Icon, type IconName } from "@/components/icon";
+import { RadioDot } from "@/components/radio-card";
 import { Toggle } from "@/components/toggle";
 import { fontFamily, toShadowStyle, useTheme } from "@/theme";
 
@@ -157,6 +158,66 @@ export function ListRow({
       {chevron ? (
         <Icon name="chevron-right" size={20} color={t.c["text-muted"]} />
       ) : null}
+    </Pressable>
+  );
+}
+
+/**
+ * A single-choice group of `RadioRow`s inside a `ListGroup` (§16 + §05): the
+ * container is announced as ONE radio group, labelled by the section kicker
+ * above it, so a screen-reader user hears «ВИГЛЯД, 1 з 3» rather than three
+ * unrelated controls. Used for Settings → ВИГЛЯД (#162).
+ */
+export function RadioRowGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <View accessibilityRole="radiogroup" accessibilityLabel={label}>
+      <ListGroup>{children}</ListGroup>
+    </View>
+  );
+}
+
+/**
+ * A settings choice row (§16 + the §05 radio card's selection cue): a leading
+ * line icon, a title, an optional caption, and the trailing 22px radio. The
+ * whole 52pt row is the `radio` — one accessible node carrying the label,
+ * caption, and checked state, so the dot itself stays decorative and the entire
+ * row is the target. Tapping an already-selected row is a no-op by design: a
+ * radio group is left through another option, never emptied.
+ */
+export function RadioRow({
+  icon,
+  title,
+  caption,
+  selected,
+  onSelect,
+  testID,
+}: {
+  icon: IconName;
+  title: string;
+  caption?: string;
+  selected: boolean;
+  onSelect: () => void;
+  testID?: string;
+}) {
+  const t = useTheme();
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected, selected }}
+      accessibilityLabel={caption ? `${title}. ${caption}` : title}
+      onPress={onSelect}
+      style={rowStyle(t)}
+    >
+      <Icon name={icon} size={24} color={t.c["text-secondary"]} />
+      <RowText title={title} caption={caption} />
+      <RadioDot selected={selected} />
     </Pressable>
   );
 }
