@@ -3,12 +3,15 @@ import SvgBase, {
   Circle as CircleBase,
   Defs as DefsBase,
   Ellipse as EllipseBase,
+  LinearGradient as LinearGradientBase,
   Path as PathBase,
   RadialGradient as RadialGradientBase,
+  Rect as RectBase,
   Stop as StopBase,
   type CircleProps,
   type EllipseProps,
   type PathProps,
+  type RectProps,
   type SvgProps,
 } from "react-native-svg";
 
@@ -21,10 +24,14 @@ export const Svg = SvgBase as unknown as ComponentType<SvgProps>;
 export const Path = PathBase as unknown as ComponentType<PathProps>;
 export const Circle = CircleBase as unknown as ComponentType<CircleProps>;
 export const Ellipse = EllipseBase as unknown as ComponentType<EllipseProps>;
+export const Rect = RectBase as unknown as ComponentType<RectProps>;
 export const Defs = DefsBase as unknown as ComponentType<{
   children: React.ReactNode;
 }>;
 export const RadialGradient = RadialGradientBase as unknown as ComponentType<
+  Record<string, unknown>
+>;
+export const LinearGradient = LinearGradientBase as unknown as ComponentType<
   Record<string, unknown>
 >;
 export const Stop = StopBase as unknown as ComponentType<
