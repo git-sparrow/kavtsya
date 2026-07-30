@@ -8,15 +8,16 @@ export type EdgeFadeStop = { offset: string; stopOpacity: number };
 
 export type EdgeFadeGeometry =
   | { kind: "solid"; height: number }
-  | { kind: "fade"; height: number; stops: [EdgeFadeStop, EdgeFadeStop] };
+  | { kind: "fade"; height: number; stops: EdgeFadeStop[] };
 
 /**
- * How far past the safe-area inset the ramp reaches into the viewport. It is
- * the same token as the scroll's content gutter (`Screen`'s `paddingTop` /
- * `paddingBottom` are `inset + space[6]`) on purpose: the ramp then ends
- * exactly where content is allowed to start, so nothing is ever fully faded.
+ * How far past the safe-area inset the ramp reaches into the viewport. It runs
+ * `space[10]` — longer than the scroll's `space[6]` content gutter, so the tail
+ * overlaps the first content by 16pt. That is deliberate: at the tail the ramp
+ * is already under 5% opaque, and a longer, softer falloff is what reads as
+ * depth rather than a painted band.
  */
-const RAMP = tokens.space[6];
+const RAMP = tokens.space[10];
 
 /**
  * Peak opacity at the screen edge. Not 1: the point of #165 is that content
@@ -24,6 +25,24 @@ const RAMP = tokens.space[6];
  * either — the clock and battery glyphs have to stay legible over it.
  */
 const PEAK = 0.88;
+
+/**
+ * Stops across the ramp. Five, not two: a straight linear ramp lands on zero
+ * with its slope intact, which the eye catches as a faint line across the
+ * screen. Easing the curve dissolves that edge.
+ */
+const STOPS = 5;
+
+/** Smoothstep — flat at both ends, steepest in the middle. */
+const smoothstep = (t: number) => t * t * (3 - 2 * t);
+
+/** Peak → 0 across the ramp, eased, rounded so the values stay legible. */
+function rampOpacities(): number[] {
+  return Array.from({ length: STOPS }, (_, i) => {
+    const opacity = PEAK * (1 - smoothstep(i / (STOPS - 1)));
+    return Math.round(opacity * 1e4) / 1e4;
+  });
+}
 
 /**
  * The size and gradient of one edge strip (#165), kept apart from the component
@@ -40,19 +59,16 @@ export function edgeFadeGeometry(
   reduceTransparency: boolean,
 ): EdgeFadeGeometry {
   if (reduceTransparency) return { kind: "solid", height: inset };
-  const edgeStop = { offset: "0%", stopOpacity: PEAK };
-  const innerStop = { offset: "100%", stopOpacity: 0 };
+  // The gradient always paints top → bottom, so the bottom strip is the same
+  // curve with its opacities reversed — offsets stay ascending either way.
+  const opacities = rampOpacities();
+  if (edge === "bottom") opacities.reverse();
   return {
     kind: "fade",
     height: inset + RAMP,
-    // The gradient always runs top→bottom, so at the bottom edge the opaque end
-    // is the *second* stop.
-    stops:
-      edge === "top"
-        ? [edgeStop, innerStop]
-        : [
-            { ...innerStop, offset: "0%" },
-            { ...edgeStop, offset: "100%" },
-          ],
+    stops: opacities.map((stopOpacity, i) => ({
+      offset: `${(i / (STOPS - 1)) * 100}%`,
+      stopOpacity,
+    })),
   };
 }
