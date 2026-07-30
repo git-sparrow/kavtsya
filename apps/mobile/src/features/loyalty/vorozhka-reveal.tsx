@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BeanRow } from "@/components/bean-row";
 import { Berehynia } from "@/components/berehynia";
 import { Button } from "@/components/button";
+import { EdgeFade } from "@/components/edge-fade";
 import { Circle, Defs, RadialGradient, Stop, Svg } from "@/components/svg";
 import { Heading } from "@/components/text";
 import { VorozhkaCup } from "@/components/vorozhka-cup";
@@ -157,6 +158,11 @@ function RevealBody({
           )}
         </View>
       </ScrollView>
+
+      {/* Edge-to-edge scroll (#165) — inside the always-dark ThemeProvider, so
+          these pick up the reveal's own background, not the app's. */}
+      <EdgeFade edge="top" />
+      <EdgeFade edge="bottom" />
 
       {/* Redemption from the reveal (1l → 1q): closing the sheet ends the reveal. */}
       <RedemptionSheet
