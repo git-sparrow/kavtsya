@@ -44,12 +44,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Validates that the mobile dependency set is coherent with the installed
-      # Expo SDK, so native-dependency drift or incompatibility is caught before
-      # merge. See docs/agents/dependency-updates.md (the Expo track).
-      - name: Expo Doctor (mobile native dependency health)
+      # The expo-doctor checks that are a function of THIS diff: Expo config
+      # schema, duplicate/overridden deps, peer deps, Metro config, native-module
+      # support-package compatibility, committed env files.
+      #
+      # One check is deliberately skipped: "packages match versions required by
+      # installed Expo SDK" resolves its expected set from Expo's LIVE version
+      # map, so it reddens a commit that changed nothing as soon as Expo ships a
+      # patch. That is a monitor, not a merge gate — expo-sdk-check.yml owns it,
+      # on a schedule and on dependency PRs. See docs/agents/dependency-updates.md.
+      - name: Expo Doctor (project health, excl. SDK version match)
         run: npx expo-doctor
         working-directory: apps/mobile
+        env:
+          EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: "1"
+          # A few checks call Expo's API; a network blip is not a broken PR.
+          EXPO_DOCTOR_WARN_ON_NETWORK_ERRORS: "1"
 
       - name: Typecheck
         run: pnpm typecheck

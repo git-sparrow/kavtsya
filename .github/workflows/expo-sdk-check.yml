@@ -1,0 +1,115 @@
+name: Expo SDK check
+
+# The FULL `expo-doctor`, including "Check that packages match versions required
+# by installed Expo SDK". That one check resolves the expected set from Expo's
+# live version map, so it can fail a commit that changed nothing the moment Expo
+# publishes a patch — it is a monitor, not a merge gate. The other 20 checks are
+# a function of the diff and run on every PR in ci.yml.
+#
+# Two triggers, one job:
+#   - pull_request touching the mobile manifests / lockfile — a dependency change
+#     is exactly where the strict version match must gate, so there it fails the
+#     build like any other check.
+#   - schedule (+ manual) — drift detection. On failure it opens a tracking issue,
+#     which is the trigger for the human-run Expo track in
+#     docs/agents/dependency-updates.md. Before this existed, drift was found by
+#     accident, via an unrelated PR going red.
+
+on:
+  pull_request:
+    paths:
+      - "apps/mobile/package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+  schedule:
+    # The Dependabot cadence (1st and 15th). GitHub cron is UTC-only — unlike
+    # .github/dependabot.yml, which takes a timezone — so 04:00 UTC lands at
+    # 06:00/07:00 Europe/Kyiv depending on DST. Close enough for a fortnightly
+    # monitor; do not chase the DST hour.
+    - cron: "0 4 1,15 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  expo-doctor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm (version from packageManager)
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node (version from engines.node)
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # continue-on-error so the schedule run can turn a failure into an issue
+      # instead of just a red X nobody is watching.
+      - name: Expo Doctor (full, incl. SDK version match)
+        id: doctor
+        continue-on-error: true
+        working-directory: apps/mobile
+        env:
+          EXPO_DOCTOR_WARN_ON_NETWORK_ERRORS: "1"
+        run: |
+          set -o pipefail
+          npx expo-doctor 2>&1 | tee "$RUNNER_TEMP/doctor.log"
+
+      - name: Fail the gate (dependency PRs only)
+        if: steps.doctor.outcome == 'failure' && github.event_name == 'pull_request'
+        run: |
+          echo "::error::expo-doctor failed on a PR that changes mobile dependencies."
+          exit 1
+
+      - name: Open a drift issue (scheduled runs)
+        if: steps.doctor.outcome == 'failure' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: "Expo SDK drift: mobile packages are behind the installed SDK"
+        run: |
+          existing=$(gh issue list --state open --label dependencies \
+            --search "\"$TITLE\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "Drift issue #$existing is already open — leaving it alone."
+            exit 0
+          fi
+          {
+            echo "\`expo-doctor\` reports the mobile dependency set has drifted from the installed Expo SDK."
+            echo
+            echo "This is **not** a bug in any PR: the check resolves its expected versions from Expo's"
+            echo "live version map, so it goes red on its own once Expo ships patches inside the SDK."
+            echo
+            echo "Fix it on the deliberate, human-run **Expo track** — never by hand-bumping and never"
+            echo "via automation (see \`docs/agents/dependency-updates.md\`):"
+            echo
+            echo '```sh'
+            echo "# from apps/mobile"
+            echo "npx expo install --check   # report the drift"
+            echo "npx expo install --fix     # realign to the SDK's known-good set"
+            echo "npx expo-doctor            # validate"
+            echo '```'
+            echo
+            echo "If \`react-native\` or any \`react-native-*\` package moves, rebuild the dev build and"
+            echo "smoke the app before merging — that native surface is exactly what the rule protects."
+            echo
+            echo "<details><summary>expo-doctor output</summary>"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/doctor.log"
+            echo '```'
+            echo
+            echo "</details>"
+            echo
+            echo "_Opened automatically by \`.github/workflows/expo-sdk-check.yml\` ([run](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID))._"
+          } > "$RUNNER_TEMP/issue.md"
+          gh issue create --title "$TITLE" --label dependencies --body-file "$RUNNER_TEMP/issue.md"
