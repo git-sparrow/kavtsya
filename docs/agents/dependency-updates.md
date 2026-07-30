@@ -132,18 +132,55 @@ merge green:
 - `pnpm typecheck`, `pnpm lint`, `pnpm format:check`
 - `pnpm test` — the API suite runs against a **real** Postgres service (no mocks)
 - **`npx expo-doctor`** (run in `apps/mobile`) — validates that the mobile dependency
-  set is coherent with the installed Expo SDK, so native-dependency drift or
-  incompatibility is caught automatically before merge.
+  set is coherent, so config, peer-dependency and native-module incompatibility is
+  caught automatically before merge.
 
 A bad update cannot merge green.
+
+### Gate vs monitor: why one expo-doctor check runs elsewhere
+
+`expo-doctor` runs 21 checks. Twenty are a pure function of the repo — Expo config
+schema, duplicate and overridden dependencies, missing peer deps, Metro config,
+committed env files, `@react-navigation` alongside `expo-router`, native-module
+support-package compatibility. Those belong on the merge gate: they fail because of
+*your diff*.
+
+One is not: **"Check that packages match versions required by installed Expo SDK"**
+resolves its expected set from Expo's **live** version map. It turns red the moment
+Expo publishes a patch inside the current SDK, on a commit that changed nothing. On
+the merge gate that is corrosive — it reddens unrelated PRs on Expo's release
+schedule, and teaches everyone to merge through red, which destroys the gate for the
+twenty checks that *are* about the diff. (It happened: `main` sat red from
+2026-07-29 until #167, discovered only because it also reddened an unrelated feature
+PR.)
+
+So the split is:
+
+| Where | What runs | Role |
+| --- | --- | --- |
+| `ci.yml`, every PR | `expo-doctor` with `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK=1` | **gate** — blocks merge |
+| `expo-sdk-check.yml`, PRs touching `apps/mobile/package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml` | full `expo-doctor` | **gate** — the strict version match, where a dependency change makes it meaningful |
+| `expo-sdk-check.yml`, fortnightly + `workflow_dispatch` | full `expo-doctor` | **monitor** — opens a drift issue, see below |
+
+Both jobs also set `EXPO_DOCTOR_WARN_ON_NETWORK_ERRORS=1`: several checks call Expo's
+API, and a network blip is not a broken PR.
+
+Note this is *not* a job for `expo.install.exclude` (which `expo-doctor`'s own advice
+suggests). That key would also hide those packages from `expo install --check`,
+blinding the Expo track itself. Never silence the packages; move the check.
 
 ## The maintainer's recurring task
 
 1. When the biweekly grouped Dependabot PR arrives, **review it tests-first** (as usual)
    and merge if the gate is green. Majors arrive as their own PRs — merge or hold each
    independently.
-2. **Separately, per Expo SDK release,** run the Expo track below. This is judgment-heavy
-   and stays a human decision, not automation.
+2. **Separately, when the Expo drift issue appears,** run the Expo track below. This is
+   judgment-heavy and stays a human decision, not automation — but you no longer have to
+   remember to look: `.github/workflows/expo-sdk-check.yml` runs the full `expo-doctor`
+   on the 1st and 15th and opens an issue labelled `dependencies` when the mobile set has
+   fallen behind the installed SDK (one issue at a time; it stays open until the track is
+   run). A full SDK release still arrives the usual way — via Expo's own announcements —
+   and follows the `expo:upgrading-expo` skill.
 
 <a id="expo-track"></a>
 
