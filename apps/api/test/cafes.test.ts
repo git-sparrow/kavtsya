@@ -40,12 +40,6 @@ function registerCafe(name: string, cookie?: string) {
   });
 }
 
-test("registering a Café requires authentication", async () => {
-  const res = await registerCafe("Кавця на Хрещатику");
-
-  expect(res.status).toBe(401);
-});
-
 test("a signed-in Customer can register a Café, persisted under their ownership", async () => {
   const cookie = await signUp(app(), "owner@example.com");
 

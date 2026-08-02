@@ -319,15 +319,6 @@ test("a sloppily typed poster code still resolves (normalization, shared with #2
   expect(posterScanResultSchema.parse(await res.json()).status).toBe("pending");
 });
 
-test("raising a request requires authentication — it must attach to an account", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
-  const { posterCode } = await rosterFixture(app);
-
-  const res = await scanPoster(app, posterCode);
-
-  expect(res.status).toBe(401);
-});
-
 // --- a rostered scan starts a Shift (#98) ------------------------------------------
 
 test("a rostered barista scanning the poster starts a Shift → Scanner Mode", async () => {
@@ -644,11 +635,10 @@ test("another café's owner can neither read the board nor approve/remove a bari
   expect((await remove(app, cafeId, baristaId, rival)).status).toBe(404);
 });
 
-test("the board requires authentication, and an unknown Café is not found", async () => {
+test("an unknown Café has no board", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
-  const { owner, cafeId } = await rosterFixture(app);
+  const { owner } = await rosterFixture(app);
 
-  expect((await readBoard(app, cafeId)).status).toBe(401);
   expect(
     (await readBoard(app, "00000000-0000-0000-0000-000000000000", owner))
       .status,

@@ -126,17 +126,6 @@ test("an empty message never leaves the validator", async () => {
   expect(res.status).toBe(400);
 });
 
-test("sending requires authentication", async () => {
-  const app = makeApp({ db, auth });
-  const owner = await signUp(app, "owner@example.com");
-  const cafeId = await registerCafe(app, "Кавця", owner);
-  await makePro(cafeId);
-
-  const res = await sendCampaign(app, cafeId, { message: "Привіт" });
-
-  expect(res.status).toBe(401);
-});
-
 // --- the fan-out: who a campaign actually reaches -----------------------------------
 
 /** Mid-afternoon in Kyiv summer time — the audience window is asserted against it. */

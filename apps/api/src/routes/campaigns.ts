@@ -1,16 +1,14 @@
 import type { Hono } from "hono";
-import { z } from "zod";
 import type { CampaignRejection, CampaignResult } from "@kavtsya/shared";
 import {
   campaignRejectionStatuses,
   sendCampaignBodySchema,
 } from "@kavtsya/shared";
-import type { AppDeps, AppEnv } from "../app";
+import type { AppDeps } from "../app";
 import type { SendCampaignRejection } from "../campaigns";
 import { sendCampaign } from "../campaigns";
-
-/** Café ids are uuids; a malformed id is simply "not found" (and avoids a DB cast error). */
-const cafeIdSchema = z.string().uuid();
+import type { AuthedEnv } from "../require-user";
+import { uuidParamSchema } from "./params";
 
 /** The one place a domain reason picks its wire code, as the scan does (#50). */
 const wireCodes: Record<SendCampaignRejection, CampaignRejection> = {
@@ -26,14 +24,13 @@ const wireCodes: Record<SendCampaignRejection, CampaignRejection> = {
  * renders off it.
  */
 export function registerCampaignRoutes(
-  app: Hono<AppEnv>,
+  app: Hono<AuthedEnv>,
   { db, clock, pushProvider }: AppDeps,
 ): void {
   app.post("/api/cafes/:id/campaigns", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
-    const cafeId = cafeIdSchema.safeParse(c.req.param("id"));
+    const cafeId = uuidParamSchema.safeParse(c.req.param("id"));
     if (!cafeId.success) return c.json({ error: "not_found" }, 404);
 
     const parsed = sendCampaignBodySchema.safeParse(

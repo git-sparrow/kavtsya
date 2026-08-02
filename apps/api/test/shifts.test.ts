@@ -608,13 +608,6 @@ test("ending my shift never touches a colleague's — each grant is its own", as
   );
 });
 
-test("ending a shift requires authentication", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
-  await shiftOnDuty(app);
-
-  expect((await endMyShift(app)).status).toBe(401);
-});
-
 // --- cross-family confusion holds: a Customer QR is not a poster scan ---------------
 
 test("a valid shift-era token is not accepted as a poster code (poster codes are not tokens)", async () => {

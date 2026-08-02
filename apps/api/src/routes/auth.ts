@@ -2,24 +2,24 @@ import type { Hono } from "hono";
 import type { MeResponse, OwnerCafe } from "@kavtsya/shared";
 import { deleteAccount, deletionPreview } from "../account-deletion";
 import { countReturningCustomers } from "../analytics";
-import type { AppDeps, AppEnv } from "../app";
+import type { AppDeps } from "../app";
 import { listCafesByOwner, rolesFor } from "../cafes";
 import { pushConsentFor } from "../push-tokens";
+import type { AuthedEnv } from "../require-user";
 
 /**
  * App-owned routes that depend on an authenticated session. Better Auth's own
  * endpoints live under /api/auth/*; this is where our domain reads the session.
  */
 export function registerAuthRoutes(
-  app: Hono<AppEnv>,
+  app: Hono<AuthedEnv>,
   { db, clock }: AppDeps,
 ): void {
-  // The account foundation every later slice builds on: who am I? Returns 401
-  // when no valid session cookie is present. `roles`/`cafes` let the mobile app
-  // decide whether to offer CafeOwner Mode (ADR 0003).
+  // The account foundation every later slice builds on: who am I? (The 401 for
+  // a missing session is the guard's, not this handler's — #51.) `roles`/`cafes`
+  // let the mobile app decide whether to offer CafeOwner Mode (ADR 0003).
   app.get("/api/me", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
     // Each owned Café carries its one free teaser stat (#25, ADR 0011): how many
     // Customers came back in the last 30 Kyiv days — the single permanent free
@@ -51,7 +51,6 @@ export function registerAuthRoutes(
   // (#81, #143 screens 6b/7d). A pure read: the account may look and stay.
   app.get("/api/me/deletion-preview", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
     return c.json(await deletionPreview(db, user.id));
   });
@@ -64,7 +63,6 @@ export function registerAuthRoutes(
   // the time it returns the session that sent it no longer exists.
   app.delete("/api/me", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
     await deleteAccount(db, user.id, clock.now());
     return c.body(null, 204);

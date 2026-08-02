@@ -1,18 +1,16 @@
 import type { Hono } from "hono";
-import { z } from "zod";
 import type { PosterScanResult, RosterBoardResponse } from "@kavtsya/shared";
 import { posterScanBodySchema } from "@kavtsya/shared";
-import type { AppDeps, AppEnv } from "../app";
+import type { AppDeps } from "../app";
 import { activePushTokensFor } from "../push-tokens";
+import type { AuthedEnv } from "../require-user";
 import {
   approveBarista,
   listRoster,
   removeBarista,
   scanPoster,
 } from "../roster";
-
-/** Café ids are uuids; a malformed id is simply "not found" (and avoids a DB cast error). */
-const cafeIdSchema = z.string().uuid();
+import { uuidParamSchema } from "./params";
 
 /**
  * The operational push body when a barista requests the roster (#97). Ukrainian
@@ -31,7 +29,7 @@ function rosterRequestPushBody(cafeName: string): string {
  * enforced by the ownership-scoped queries in `../roster`.
  */
 export function registerRosterRoutes(
-  app: Hono<AppEnv>,
+  app: Hono<AuthedEnv>,
   { db, clock, pushProvider }: AppDeps,
 ): void {
   // The barista's side: scan the poster (or type its code). A rostered account
@@ -39,7 +37,6 @@ export function registerRosterRoutes(
   // elsewhere asks for an explicit switch (#99).
   app.post("/api/poster-scans", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
     const parsed = posterScanBodySchema.safeParse(
       await c.req.json().catch(() => null),
@@ -120,9 +117,8 @@ export function registerRosterRoutes(
   // The owner's Roster board: the poster code to print, pending requests, roster.
   app.get("/api/cafes/:id/roster", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
-    const cafeId = cafeIdSchema.safeParse(c.req.param("id"));
+    const cafeId = uuidParamSchema.safeParse(c.req.param("id"));
     if (!cafeId.success) return c.json({ error: "not_found" }, 404);
 
     const board = await listRoster(db, cafeId.data, user.id, clock.now());
@@ -148,9 +144,8 @@ export function registerRosterRoutes(
   // Approve a pending request → rostered.
   app.post("/api/cafes/:id/roster/:userId/approve", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
-    const cafeId = cafeIdSchema.safeParse(c.req.param("id"));
+    const cafeId = uuidParamSchema.safeParse(c.req.param("id"));
     if (!cafeId.success) return c.json({ error: "not_found" }, 404);
 
     const approved = await approveBarista(db, clock, {
@@ -166,9 +161,8 @@ export function registerRosterRoutes(
   // this Café at once (#99).
   app.delete("/api/cafes/:id/roster/:userId", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
-    const cafeId = cafeIdSchema.safeParse(c.req.param("id"));
+    const cafeId = uuidParamSchema.safeParse(c.req.param("id"));
     if (!cafeId.success) return c.json({ error: "not_found" }, 404);
 
     const removed = await removeBarista(

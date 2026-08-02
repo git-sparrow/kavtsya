@@ -349,16 +349,6 @@ test("a Customer with no Purchases at the Café has nothing to redeem", async ()
   expect(await res.json()).toEqual({ error: "insufficient_balance" });
 });
 
-test("confirming requires authentication", async () => {
-  const res = await confirmRedemption({
-    cafeId: "00000000-0000-0000-0000-000000000000",
-    customerId: "someone",
-    idempotencyKey: "k",
-  });
-
-  expect(res.status).toBe(401);
-});
-
 test("a malformed confirm body is rejected", async () => {
   const owner = await signUp(app(), "owner@example.com");
 

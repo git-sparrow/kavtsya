@@ -87,13 +87,6 @@ test("Customer can log in and the session authenticates /api/me", async () => {
   expect(await me.json()).toMatchObject({ email: CUSTOMER.email });
 });
 
-test("/api/me rejects an unauthenticated request", async () => {
-  const me = await app().request("/api/me");
-
-  expect(me.status).toBe(401);
-  expect(await me.json()).toEqual({ error: "unauthorized" });
-});
-
 test("login with a wrong password is rejected", async () => {
   await postJson("/api/auth/sign-up/email", CUSTOMER);
 

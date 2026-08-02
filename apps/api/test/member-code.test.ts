@@ -57,9 +57,3 @@ test("two Customers get distinct member codes", async () => {
 
   expect(await memberCodeFor(one)).not.toBe(await memberCodeFor(two));
 });
-
-test("reading the member code requires authentication", async () => {
-  const res = await app().request("/api/me/member-code");
-
-  expect(res.status).toBe(401);
-});

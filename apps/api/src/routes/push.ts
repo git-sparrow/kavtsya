@@ -3,8 +3,9 @@ import {
   pushConsentBodySchema,
   registerPushTokenBodySchema,
 } from "@kavtsya/shared";
-import type { AppDeps, AppEnv } from "../app";
+import type { AppDeps } from "../app";
 import { registerPushToken, setPushConsent } from "../push-tokens";
+import type { AuthedEnv } from "../require-user";
 
 /**
  * The Customer's push endpoints (#24): consent (explicit opt-in, togglable any
@@ -12,10 +13,12 @@ import { registerPushToken, setPushConsent } from "../push-tokens";
  * once BOTH the OS permission and the in-app consent exist; the server still
  * re-checks consent at every fan-out — these writes are plumbing, not the gate.
  */
-export function registerPushRoutes(app: Hono<AppEnv>, { db }: AppDeps): void {
+export function registerPushRoutes(
+  app: Hono<AuthedEnv>,
+  { db }: AppDeps,
+): void {
   app.put("/api/me/push-consent", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
     const parsed = pushConsentBodySchema.safeParse(
       await c.req.json().catch(() => null),
@@ -28,7 +31,6 @@ export function registerPushRoutes(app: Hono<AppEnv>, { db }: AppDeps): void {
 
   app.post("/api/me/push-token", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
     const parsed = registerPushTokenBodySchema.safeParse(
       await c.req.json().catch(() => null),

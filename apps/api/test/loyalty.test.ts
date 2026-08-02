@@ -58,12 +58,6 @@ function putProgram(cafeId: string, body: unknown, cookie?: string) {
 
 // --- platform-default Reward set ----------------------------------------------
 
-test("reward defaults require authentication", async () => {
-  const res = await app().request("/api/reward-defaults");
-
-  expect(res.status).toBe(401);
-});
-
 test("reward defaults are read from platform_config (the four platform types)", async () => {
   const cookie = await signUp(app(), "owner@example.com");
 
@@ -82,15 +76,6 @@ test("reward defaults are read from platform_config (the four platform types)", 
 });
 
 // --- reading a Café's program -------------------------------------------------
-
-test("reading a program requires authentication", async () => {
-  const cookie = await signUp(app(), "owner@example.com");
-  const cafeId = await registerCafe("Кавця", cookie);
-
-  const res = await getProgram(cafeId);
-
-  expect(res.status).toBe(401);
-});
 
 test("a freshly registered Café defaults to threshold 10 and no Reward", async () => {
   const cookie = await signUp(app(), "owner@example.com");
@@ -114,18 +99,6 @@ test("a CafeOwner cannot read another owner's program", async () => {
 });
 
 // --- updating a Café's program ------------------------------------------------
-
-test("updating a program requires authentication", async () => {
-  const cookie = await signUp(app(), "owner@example.com");
-  const cafeId = await registerCafe("Кавця", cookie);
-
-  const res = await putProgram(cafeId, {
-    threshold: 8,
-    reward: { type: "free_drink" },
-  });
-
-  expect(res.status).toBe(401);
-});
 
 test("a CafeOwner sets the threshold and Reward, and a re-read reflects it", async () => {
   const cookie = await signUp(app(), "owner@example.com");

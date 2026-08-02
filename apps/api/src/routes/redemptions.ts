@@ -4,9 +4,10 @@ import {
   confirmRedemptionBodySchema,
   redemptionRejectionStatuses,
 } from "@kavtsya/shared";
-import type { AppDeps, AppEnv } from "../app";
+import type { AppDeps } from "../app";
 import type { ConfirmRedemptionRejection } from "../redemptions";
 import { confirmRedemption } from "../redemptions";
+import type { AuthedEnv } from "../require-user";
 
 /**
  * The CafeOwner's Redemption confirm (#22): a distinct action off the one scan
@@ -24,12 +25,11 @@ const wireCodes: Record<ConfirmRedemptionRejection, RedemptionRejection> = {
 };
 
 export function registerRedemptionRoutes(
-  app: Hono<AppEnv>,
+  app: Hono<AuthedEnv>,
   { db, clock }: AppDeps,
 ): void {
   app.post("/api/redemptions", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
     const parsed = confirmRedemptionBodySchema.safeParse(
       await c.req.json().catch(() => null),
