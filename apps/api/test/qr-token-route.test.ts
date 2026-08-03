@@ -6,6 +6,7 @@ import { systemClock } from "../src/clock";
 import type { Database } from "../src/db";
 import { validateQrToken } from "../src/qr-token";
 import { makeApp, signUp } from "./helpers/app";
+import { withoutPlatformConfig } from "./helpers/platform-config";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 const QR_SECRET = "qr-route-test-secret-at-least-32-chars-long";
@@ -63,15 +64,10 @@ test("an authed Customer gets a signed token that validates back to them", async
 test("a missing qr_token config row degrades to defaults instead of failing", async () => {
   const cookie = await signUp(app(), "customer@example.com");
 
-  // Simulate a DB where migration 0005 hasn't seeded qr_token yet. `app()`
-  // builds a fresh app — and so a cold config cache — per request, so the
-  // deletion is observed without anyone resetting anything (#54).
-  const [original] = await db<{ value: unknown }[]>`
-    select value from platform_config where key = 'qr_token'
-  `;
-  await db`delete from platform_config where key = 'qr_token'`;
-
-  try {
+  // A DB where migration 0005 hasn't seeded qr_token yet. `app()` builds a
+  // fresh app — and so a cold config cache — per request, so the missing row
+  // is observed without anyone resetting anything (#54).
+  await withoutPlatformConfig(db, "qr_token", async () => {
     const res = await app().request("/api/qr-token", { headers: { cookie } });
 
     // Still issues a usable token (fallback ttl/grace), not a 500.
@@ -83,10 +79,5 @@ test("a missing qr_token config row degrades to defaults instead of failing", as
       graceSeconds: 30,
     });
     expect(result.valid).toBe(true);
-  } finally {
-    await db`
-      insert into platform_config (key, value)
-      values ('qr_token', ${db.json(original!.value as never)})
-    `;
-  }
+  });
 });

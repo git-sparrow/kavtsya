@@ -21,8 +21,8 @@ const RECENCY_WINDOW_KYIV_DAYS = 90;
 
 /**
  * What a send needs from the outside world — the subset of `AppDeps` the route
- * hands straight through, so the call site can't scramble four same-shaped
- * positional arguments.
+ * passes on, named rather than positional so the call site can't scramble four
+ * same-shaped arguments.
  */
 export interface SendCampaignDeps {
   db: Database;

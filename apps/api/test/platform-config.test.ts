@@ -5,7 +5,10 @@ import {
   createPlatformConfig,
   PLATFORM_CONFIG_CACHE_TTL_MS,
 } from "../src/platform-config";
-import { withPlatformConfig } from "./helpers/platform-config";
+import {
+  withPlatformConfig,
+  withoutPlatformConfig,
+} from "./helpers/platform-config";
 import { setupTestDb } from "./helpers/testDb";
 
 /**
@@ -94,22 +97,24 @@ test("each reader instance caches on its own — no state is shared", async () =
 test("a missing row degrades to the built-in default instead of throwing", async () => {
   const clock = movableClock(new Date("2026-07-05T09:00:00Z"));
 
-  // Simulate a database where migration 0005 has not seeded `qr_token` yet.
-  const [original] = await db<{ value: unknown }[]>`
-    select "value" from platform_config where "key" = 'qr_token'
-  `;
-  await db`delete from platform_config where "key" = 'qr_token'`;
-
-  try {
+  // A database where migration 0005 has not seeded `qr_token` yet: the
+  // Customer's only earning path still issues tokens (ADR 0006).
+  await withoutPlatformConfig(db, "qr_token", async () => {
     const config = createPlatformConfig(db, clock);
     expect(await config.qrToken()).toEqual({
       ttlSeconds: 90,
       graceSeconds: 30,
     });
-  } finally {
-    await db`
-      insert into platform_config ("key", "value")
-      values ('qr_token', ${db.json(original!.value as never)})
-    `;
-  }
+  });
+});
+
+test("a missing Reward set degrades to empty, offering nothing unsanctioned", async () => {
+  const clock = movableClock(new Date("2026-07-05T09:00:00Z"));
+
+  // The one key with no safe stand-in: rather than invent a Reward the
+  // Platform never sanctioned, the chooser is handed an empty set.
+  await withoutPlatformConfig(db, "reward_defaults", async () => {
+    const config = createPlatformConfig(db, clock);
+    expect(await config.rewardDefaults()).toEqual([]);
+  });
 });

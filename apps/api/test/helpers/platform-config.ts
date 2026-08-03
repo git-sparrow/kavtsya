@@ -1,8 +1,7 @@
 import type { Database } from "../../src/db";
 
 /**
- * Run a test body with a `platform_config` key temporarily overridden, then
- * restore the original value no matter how the body exits.
+ * Temporarily change a `platform_config` key for the duration of a test body.
  *
  * The test database persists across runs and `platform_config` is deliberately
  * NOT truncated (it holds migration-seeded values), so a mutation that escapes
@@ -12,35 +11,78 @@ import type { Database } from "../../src/db";
  *
  * The write goes straight to the database, bypassing any app already reading
  * it. Since #54 each app instance owns its config cache, so build the app that
- * must observe the override INSIDE `body` — a reader started afterwards is
- * cold and reads the row. (An app built earlier would keep serving the old
- * value until its TTL, which is exactly what production does.)
+ * must observe the change INSIDE `body` — a reader started afterwards is cold
+ * and reads the row. (An app built earlier would keep serving the old value
+ * until its TTL, which is exactly what production does.)
  */
-export async function withPlatformConfig(
+
+/**
+ * Snapshot the key, apply `mutate`, run `body`, put the row back exactly as it
+ * was however the body exits — restored by upsert, so it holds whether `mutate`
+ * overwrote the row or deleted it.
+ */
+async function restoringPlatformConfig(
   db: Database,
   key: string,
-  value: unknown,
+  mutate: () => Promise<void>,
   body: () => Promise<void>,
 ): Promise<void> {
   const [original] = await db<{ value: unknown }[]>`
     select "value" from platform_config where "key" = ${key}
   `;
-  await db`
-    insert into platform_config ("key", "value")
-    values (${key}, ${db.json(value as never)})
-    on conflict ("key") do update set "value" = excluded."value"
-  `;
+  await mutate();
 
   try {
     await body();
   } finally {
     if (original) {
       await db`
-        update platform_config set "value" = ${db.json(original.value as never)}
-        where "key" = ${key}
+        insert into platform_config ("key", "value")
+        values (${key}, ${db.json(original.value as never)})
+        on conflict ("key") do update set "value" = excluded."value"
       `;
     } else {
       await db`delete from platform_config where "key" = ${key}`;
     }
   }
+}
+
+/** Run `body` with `key` overridden to `value` — the Platform tuning a knob. */
+export function withPlatformConfig(
+  db: Database,
+  key: string,
+  value: unknown,
+  body: () => Promise<void>,
+): Promise<void> {
+  return restoringPlatformConfig(
+    db,
+    key,
+    async () => {
+      await db`
+        insert into platform_config ("key", "value")
+        values (${key}, ${db.json(value as never)})
+        on conflict ("key") do update set "value" = excluded."value"
+      `;
+    },
+    body,
+  );
+}
+
+/**
+ * Run `body` with `key` absent — a database whose seeding migration hasn't been
+ * applied, which is the only way to exercise a reader's built-in fallback.
+ */
+export function withoutPlatformConfig(
+  db: Database,
+  key: string,
+  body: () => Promise<void>,
+): Promise<void> {
+  return restoringPlatformConfig(
+    db,
+    key,
+    async () => {
+      await db`delete from platform_config where "key" = ${key}`;
+    },
+    body,
+  );
 }
