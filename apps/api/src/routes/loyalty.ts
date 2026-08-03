@@ -1,16 +1,14 @@
 import type { Hono } from "hono";
-import { z } from "zod";
 import { updateLoyaltyProgramBodySchema } from "@kavtsya/shared";
-import type { AppDeps, AppEnv } from "../app";
+import type { AppDeps } from "../app";
 import {
   getLoyaltyProgram,
   getRewardDefaults,
   rewardTypeIsOffered,
   updateLoyaltyProgram,
 } from "../loyalty";
-
-/** Café ids are uuids; a malformed id is simply "not found" (and avoids a DB cast error). */
-const cafeIdSchema = z.string().uuid();
+import type { AuthedEnv } from "../require-user";
+import { uuidParamSchema } from "./params";
 
 /**
  * Loyalty program config for CafeOwner Mode (#18): the platform-default Reward
@@ -19,22 +17,18 @@ const cafeIdSchema = z.string().uuid();
  * Café (enforced by the ownership-scoped queries in `../loyalty`).
  */
 export function registerLoyaltyRoutes(
-  app: Hono<AppEnv>,
+  app: Hono<AuthedEnv>,
   { db }: AppDeps,
 ): void {
   // The platform-default Reward set the CafeOwner's chooser renders (story 38).
   app.get("/api/reward-defaults", async (c) => {
-    const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
-
     return c.json(await getRewardDefaults(db));
   });
 
   app.get("/api/cafes/:id/program", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
-    const cafeId = cafeIdSchema.safeParse(c.req.param("id"));
+    const cafeId = uuidParamSchema.safeParse(c.req.param("id"));
     if (!cafeId.success) return c.json({ error: "not_found" }, 404);
 
     const program = await getLoyaltyProgram(db, cafeId.data, user.id);
@@ -44,9 +38,8 @@ export function registerLoyaltyRoutes(
 
   app.put("/api/cafes/:id/program", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
-    const cafeId = cafeIdSchema.safeParse(c.req.param("id"));
+    const cafeId = uuidParamSchema.safeParse(c.req.param("id"));
     if (!cafeId.success) return c.json({ error: "not_found" }, 404);
 
     const parsed = updateLoyaltyProgramBodySchema.safeParse(

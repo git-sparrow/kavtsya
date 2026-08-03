@@ -34,12 +34,6 @@ function app() {
   return makeApp({ db, auth, qrTokenSecret: QR_SECRET });
 }
 
-test("a QR token requires authentication", async () => {
-  const res = await app().request("/api/qr-token");
-
-  expect(res.status).toBe(401);
-});
-
 test("an authed Customer gets a signed token that validates back to them", async () => {
   const cookie = await signUp(app(), "customer@example.com");
 

@@ -115,15 +115,6 @@ test("a Free café's analytics is refused with the upgrade code — gating is se
   expect(await res.json()).toEqual({ error: "pro_required" });
 });
 
-test("analytics requires authentication", async () => {
-  const app = makeApp({ db, auth, clock: fixedClock(NOW) });
-  const { cafeId } = await proCafe(app);
-
-  const res = await fetchAnalytics(app, cafeId);
-
-  expect(res.status).toBe(401);
-});
-
 test("an owner cannot read another café's analytics — a miss is indistinguishable", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(NOW) });
   const alice = await signUp(app, "alice@example.com");

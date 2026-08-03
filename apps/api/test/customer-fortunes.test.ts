@@ -109,6 +109,4 @@ test("the pending reveal is per-Customer and needs auth", async () => {
   expect(
     pendingFortuneResponseSchema.parse(await (await pending(other)).json()),
   ).toBeNull();
-  // And it takes a session at all.
-  expect((await pending()).status).toBe(401);
 });

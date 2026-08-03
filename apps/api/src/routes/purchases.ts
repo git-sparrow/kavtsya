@@ -4,7 +4,7 @@ import {
   issuePurchaseBodySchema,
   scanRejectionStatuses,
 } from "@kavtsya/shared";
-import type { AppDeps, AppEnv } from "../app";
+import type { AppDeps } from "../app";
 import { kyivDayOf } from "../clock";
 import {
   markFortuneSeen,
@@ -18,6 +18,7 @@ import type { IssuePurchaseRejection, PurchaseEntry } from "../purchases";
 import { issuePurchase, listBalances } from "../purchases";
 import type { QrTokenInvalidReason } from "../qr-token";
 import { validateQrToken } from "../qr-token";
+import type { AuthedEnv } from "../require-user";
 
 /**
  * The CafeOwner's scan (#20): validate the Customer's rotating QR token
@@ -57,7 +58,7 @@ const wireCodes: Record<
 
 /** The lookup lives inside, so no call site can skip the reason→code mapping. */
 function reject(
-  c: Context<AppEnv>,
+  c: Context<AuthedEnv>,
   reason:
     | QrTokenInvalidReason
     | MemberCodeInvalidReason
@@ -68,12 +69,11 @@ function reject(
 }
 
 export function registerPurchaseRoutes(
-  app: Hono<AppEnv>,
+  app: Hono<AuthedEnv>,
   { db, clock, qrTokenSecret }: AppDeps,
 ): void {
   app.post("/api/purchases", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
     const parsed = issuePurchaseBodySchema.safeParse(
       await c.req.json().catch(() => null),
@@ -146,7 +146,6 @@ export function registerPurchaseRoutes(
   // The Customer side of the ledger: the Cafés where they hold Зернятка.
   app.get("/api/me/balances", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
     return c.json(await listBalances(db, user.id));
   });
@@ -155,14 +154,12 @@ export function registerPurchaseRoutes(
   // marks it seen.
   app.get("/api/me/fortune/pending", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
     return c.json(await pendingFortuneFor(db, user.id));
   });
 
   app.post("/api/me/fortune/:id/seen", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
     await markFortuneSeen(db, user.id, c.req.param("id"));
     return c.body(null, 204);

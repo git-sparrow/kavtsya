@@ -231,19 +231,6 @@ test("a malformed token (not ours at all) is rejected", async () => {
   expect(await res.json()).toEqual({ error: "invalid_token" });
 });
 
-test("issuing requires authentication", async () => {
-  const owner = await signUp(app(), "owner@example.com");
-  const cafeId = await registerCafe("Кавця", owner);
-  const customer = await signUp(app(), "customer@example.com");
-
-  const res = await issuePurchase({
-    cafeId,
-    qrToken: await qrTokenFor(customer),
-  });
-
-  expect(res.status).toBe(401);
-});
-
 test("issuing at a Café the caller does not own is not found", async () => {
   const alice = await signUp(app(), "alice@example.com");
   const bob = await signUp(app(), "bob@example.com");
@@ -316,10 +303,4 @@ test("a Customer with no Purchases has no Café balances", async () => {
 
   expect(res.status).toBe(200);
   expect(await res.json()).toEqual([]);
-});
-
-test("reading balances requires authentication", async () => {
-  const res = await app().request("/api/me/balances");
-
-  expect(res.status).toBe(401);
 });

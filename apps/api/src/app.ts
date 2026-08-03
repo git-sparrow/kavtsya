@@ -4,6 +4,7 @@ import type { Auth, AuthSession, AuthUser } from "./auth";
 import type { Clock } from "./clock";
 import type { Database } from "./db";
 import type { PushProvider } from "./push";
+import { requireUser } from "./require-user";
 import { registerAnalyticsRoutes } from "./routes/analytics";
 import { registerAuthRoutes } from "./routes/auth";
 import { registerCafeRoutes } from "./routes/cafes";
@@ -33,19 +34,37 @@ export interface AppDeps {
   pushProvider: PushProvider;
 }
 
-/** Per-request context: the resolved session, populated by the auth middleware. */
+/** A live session: who is calling, and the session row backing them. */
+export interface ResolvedSession {
+  user: AuthUser;
+  session: AuthSession;
+}
+
+/**
+ * Per-request context before the guard: the session lookup, which is null for
+ * an anonymous request. Only `requireUser` reads it — everything past that
+ * point sees the guaranteed `user`/`session` of `AuthedEnv` (#51).
+ */
 export type AppEnv = {
   Variables: {
-    user: AuthUser | null;
-    session: AuthSession | null;
+    resolvedSession: ResolvedSession | null;
   };
 };
+
+/**
+ * The public surface: every other path needs a session (#51). Default-deny, so
+ * this list — not each handler's memory — is what decides. Health is the
+ * uptime probe; `/api/auth/*` is Better Auth's own signup/login, which by
+ * definition runs before anyone has a session.
+ */
+const PUBLIC_PATHS = ["/health", "/api/auth/*"] as const;
 
 export function createApp(deps: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
   // Resolve the session from request cookies once per request and stash it in
-  // context, so any route can read the current Customer via `c.get("user")`.
+  // context. Resolving is all this does — whether a route *requires* one is the
+  // next middleware's job.
   //
   // A tombstoned account (#81) is treated as unauthenticated here, once, rather
   // than by every route remembering to ask. Deletion already revokes its
@@ -61,26 +80,35 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
       session && !(await isTombstoned(deps.db, session.user.id))
         ? session
         : null;
-    c.set("user", live?.user ?? null);
-    c.set("session", live?.session ?? null);
+    c.set("resolvedSession", live);
     await next();
   });
 
-  // Better Auth owns signup/login/logout/session under /api/auth/*.
-  app.on(["POST", "GET"], "/api/auth/*", (c) => deps.auth.handler(c.req.raw));
+  // The one guard (#51), mounted BEFORE every route it covers — including the
+  // public ones. That ordering is what makes `PUBLIC_PATHS` load-bearing: a
+  // route registered ahead of the guard would answer without ever consulting
+  // it, and the allow-list would quietly become decoration. Past this line the
+  // session is guaranteed in the types as well as at runtime — `authed` is the
+  // same app seen as `Hono<AuthedEnv>`, so every handler registered on it reads
+  // a non-null `user` and none carries, or can forget, its own check.
+  const authed = app.use("*", requireUser(PUBLIC_PATHS));
 
+  // The public surface, named in PUBLIC_PATHS above. Better Auth owns
+  // signup/login/logout/session under /api/auth/*.
+  app.on(["POST", "GET"], "/api/auth/*", (c) => deps.auth.handler(c.req.raw));
   registerHealthRoute(app, deps);
-  registerAuthRoutes(app, deps);
-  registerCafeRoutes(app, deps);
-  registerLoyaltyRoutes(app, deps);
-  registerQrTokenRoutes(app, deps);
-  registerMemberCodeRoutes(app, deps);
-  registerPurchaseRoutes(app, deps);
-  registerRedemptionRoutes(app, deps);
-  registerShiftRoutes(app, deps);
-  registerRosterRoutes(app, deps);
-  registerCampaignRoutes(app, deps);
-  registerAnalyticsRoutes(app, deps);
-  registerPushRoutes(app, deps);
+
+  registerAuthRoutes(authed, deps);
+  registerCafeRoutes(authed, deps);
+  registerLoyaltyRoutes(authed, deps);
+  registerQrTokenRoutes(authed, deps);
+  registerMemberCodeRoutes(authed, deps);
+  registerPurchaseRoutes(authed, deps);
+  registerRedemptionRoutes(authed, deps);
+  registerShiftRoutes(authed, deps);
+  registerRosterRoutes(authed, deps);
+  registerCampaignRoutes(authed, deps);
+  registerAnalyticsRoutes(authed, deps);
+  registerPushRoutes(authed, deps);
   return app;
 }

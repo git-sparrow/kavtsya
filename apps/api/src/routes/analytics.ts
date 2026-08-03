@@ -1,5 +1,4 @@
 import type { Hono } from "hono";
-import { z } from "zod";
 import type { AnalyticsRejection } from "@kavtsya/shared";
 import {
   analyticsPeriodSchema,
@@ -7,10 +6,9 @@ import {
 } from "@kavtsya/shared";
 import { getCafeAnalytics } from "../analytics";
 import type { AnalyticsRejectionReason } from "../analytics";
-import type { AppDeps, AppEnv } from "../app";
-
-/** Café ids are uuids; a malformed id is simply "not found" (and avoids a DB cast error). */
-const cafeIdSchema = z.string().uuid();
+import type { AppDeps } from "../app";
+import type { AuthedEnv } from "../require-user";
+import { uuidParamSchema } from "./params";
 
 /** The one place a domain reason picks its wire code, as the campaign gate does (#50). */
 const wireCodes: Record<AnalyticsRejectionReason, AnalyticsRejection> = {
@@ -25,14 +23,13 @@ const wireCodes: Record<AnalyticsRejectionReason, AnalyticsRejection> = {
  * upgrade signal the campaigns screen renders off.
  */
 export function registerAnalyticsRoutes(
-  app: Hono<AppEnv>,
+  app: Hono<AuthedEnv>,
   { db, clock }: AppDeps,
 ): void {
   app.get("/api/cafes/:id/analytics", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
-    const cafeId = cafeIdSchema.safeParse(c.req.param("id"));
+    const cafeId = uuidParamSchema.safeParse(c.req.param("id"));
     if (!cafeId.success) return c.json({ error: "not_found" }, 404);
 
     // Presets only — an absent or unknown period falls back to the default 30d

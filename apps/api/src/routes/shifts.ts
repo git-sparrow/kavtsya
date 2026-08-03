@@ -1,16 +1,14 @@
 import type { Hono } from "hono";
-import { z } from "zod";
 import type { MyShiftResponse, ShiftsResponse } from "@kavtsya/shared";
-import type { AppDeps, AppEnv } from "../app";
+import type { AppDeps } from "../app";
+import type { AuthedEnv } from "../require-user";
 import {
   activeShiftFor,
   endMyShift,
   listShiftBoard,
   revokeShiftGrant,
 } from "../shifts";
-
-/** Café ids are uuids; a malformed id is simply "not found" (and avoids a DB cast error). */
-const cafeIdSchema = z.string().uuid();
+import { uuidParamSchema } from "./params";
 
 /**
  * «Зміна» over the wire (#98/#99, ADR 0013). A Shift is *started* by scanning a
@@ -21,15 +19,14 @@ const cafeIdSchema = z.string().uuid();
  * `../shifts` — same semantics as the loyalty config routes.
  */
 export function registerShiftRoutes(
-  app: Hono<AppEnv>,
+  app: Hono<AuthedEnv>,
   { db, clock }: AppDeps,
 ): void {
   // The owner's shift board: who is behind the counter right now.
   app.get("/api/cafes/:id/shifts", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
-    const cafeId = cafeIdSchema.safeParse(c.req.param("id"));
+    const cafeId = uuidParamSchema.safeParse(c.req.param("id"));
     if (!cafeId.success) return c.json({ error: "not_found" }, 404);
 
     const board = await listShiftBoard(db, cafeId.data, user.id, clock.now());
@@ -56,10 +53,9 @@ export function registerShiftRoutes(
   // The owner ends one shift early: the grant dies now instead of at its cap.
   app.delete("/api/cafes/:id/shifts/:grantId", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
-    const cafeId = cafeIdSchema.safeParse(c.req.param("id"));
-    const grantId = cafeIdSchema.safeParse(c.req.param("grantId"));
+    const cafeId = uuidParamSchema.safeParse(c.req.param("id"));
+    const grantId = uuidParamSchema.safeParse(c.req.param("grantId"));
     if (!cafeId.success || !grantId.success) {
       return c.json({ error: "not_found" }, 404);
     }
@@ -80,7 +76,6 @@ export function registerShiftRoutes(
   // a double-tap or a caller with no active shift is a no-op, always 204.
   app.delete("/api/me/shift", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
     await endMyShift(db, user.id, clock.now());
     return c.body(null, 204);
@@ -89,7 +84,6 @@ export function registerShiftRoutes(
   // The barista's side: "am I on shift?" — scanner mode's scope + banner expiry.
   app.get("/api/me/shift", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json({ error: "unauthorized" }, 401);
 
     const shift = await activeShiftFor(db, user.id, clock.now());
     const responseBody: MyShiftResponse = {
