@@ -2,7 +2,7 @@ import type { Clock } from "./clock";
 import { kyivDayOf, kyivWindowStart } from "./clock";
 import type { Database } from "./db";
 import { planForOwnedCafe } from "./cafes";
-import { getCampaignConfig } from "./platform-config";
+import type { PlatformConfig } from "./platform-config";
 import type { PushProvider } from "./push";
 
 /**
@@ -18,6 +18,18 @@ import type { PushProvider } from "./push";
  * (today inclusive) — one purchase in March must not mean marketing forever.
  */
 const RECENCY_WINDOW_KYIV_DAYS = 90;
+
+/**
+ * What a send needs from the outside world — the subset of `AppDeps` the route
+ * hands straight through, so the call site can't scramble four same-shaped
+ * positional arguments.
+ */
+export interface SendCampaignDeps {
+  db: Database;
+  clock: Clock;
+  pushProvider: PushProvider;
+  platformConfig: PlatformConfig;
+}
 
 export interface SendCampaignInput {
   cafeId: string;
@@ -44,9 +56,7 @@ interface AudienceRow {
 }
 
 export async function sendCampaign(
-  db: Database,
-  clock: Clock,
-  pushProvider: PushProvider,
+  { db, clock, pushProvider, platformConfig }: SendCampaignDeps,
   { cafeId, ownerUserId, message }: SendCampaignInput,
 ): Promise<SendCampaignOutcome> {
   // The requires-Pro guard (#24): ownership first (indistinguishable misses),
@@ -55,7 +65,7 @@ export async function sendCampaign(
   if (!plan) return { ok: false, reason: "cafe_not_owned" };
   if (plan !== "pro") return { ok: false, reason: "pro_required" };
 
-  const { dailyLimit } = await getCampaignConfig(db);
+  const { dailyLimit } = await platformConfig.campaigns();
   const now = clock.now();
   const kyivDay = kyivDayOf(now);
   // The window's oldest Kyiv day — day 1 of the 90 is today itself (#24).

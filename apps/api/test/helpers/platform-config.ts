@@ -1,4 +1,3 @@
-import { clearPlatformConfigCache } from "../../src/platform-config";
 import type { Database } from "../../src/db";
 
 /**
@@ -10,6 +9,12 @@ import type { Database } from "../../src/db";
  * a test poisons the NEXT `vitest run`, not the current one — a failure mode
  * that looks like an unrelated suite breaking a day later (#21 hit this with
  * the manual-entry ceiling). Every config-tuning test must go through here.
+ *
+ * The write goes straight to the database, bypassing any app already reading
+ * it. Since #54 each app instance owns its config cache, so build the app that
+ * must observe the override INSIDE `body` — a reader started afterwards is
+ * cold and reads the row. (An app built earlier would keep serving the old
+ * value until its TTL, which is exactly what production does.)
  */
 export async function withPlatformConfig(
   db: Database,
@@ -25,8 +30,6 @@ export async function withPlatformConfig(
     values (${key}, ${db.json(value as never)})
     on conflict ("key") do update set "value" = excluded."value"
   `;
-  // Writes bypass the app, so drop the read cache to observe them immediately.
-  clearPlatformConfigCache();
 
   try {
     await body();
@@ -39,6 +42,5 @@ export async function withPlatformConfig(
     } else {
       await db`delete from platform_config where "key" = ${key}`;
     }
-    clearPlatformConfigCache();
   }
 }

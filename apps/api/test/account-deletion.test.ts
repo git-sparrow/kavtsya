@@ -8,7 +8,6 @@ import {
 import { deleteAccount } from "../src/account-deletion";
 import type { Auth } from "../src/auth";
 import type { Database } from "../src/db";
-import { clearPlatformConfigCache } from "../src/platform-config";
 import {
   cookieFrom,
   makeApp,
@@ -44,7 +43,6 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
-  clearPlatformConfigCache();
 });
 
 function app() {

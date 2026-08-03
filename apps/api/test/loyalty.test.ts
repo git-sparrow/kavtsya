@@ -3,7 +3,6 @@ import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import { loyaltyProgramSchema, rewardDefaultsSchema } from "@kavtsya/shared";
 import type { Auth } from "../src/auth";
 import type { Database } from "../src/db";
-import { clearPlatformConfigCache } from "../src/platform-config";
 import { makeApp, registerCafe as registerCafeAt, signUp } from "./helpers/app";
 import { withPlatformConfig } from "./helpers/platform-config";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
@@ -26,9 +25,6 @@ beforeEach(async () => {
   // platform_config is intentionally NOT truncated: it holds migration-seeded
   // Platform config (the default Reward set) that every test relies on.
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
-  // Reads are cached in-process; drop it so a config change in one test never
-  // leaks into the next, and so a freshly-seeded value is read.
-  clearPlatformConfigCache();
 });
 
 function app() {

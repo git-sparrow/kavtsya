@@ -3,7 +3,6 @@ import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import { meResponseSchema } from "@kavtsya/shared";
 import type { Auth } from "../src/auth";
 import type { Database } from "../src/db";
-import { clearPlatformConfigCache } from "../src/platform-config";
 import { makeApp, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
@@ -32,7 +31,6 @@ beforeEach(async () => {
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
   // cascade also clears push_tickets (it references push_tokens).
   await db`truncate fortunes, push_tokens cascade`;
-  clearPlatformConfigCache();
 });
 
 function putConsent(

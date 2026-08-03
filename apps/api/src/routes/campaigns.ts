@@ -25,7 +25,7 @@ const wireCodes: Record<SendCampaignRejection, CampaignRejection> = {
  */
 export function registerCampaignRoutes(
   app: Hono<AuthedEnv>,
-  { db, clock, pushProvider }: AppDeps,
+  deps: AppDeps,
 ): void {
   app.post("/api/cafes/:id/campaigns", async (c) => {
     const user = c.get("user");
@@ -38,7 +38,7 @@ export function registerCampaignRoutes(
     );
     if (!parsed.success) return c.json({ error: "invalid_campaign" }, 400);
 
-    const outcome = await sendCampaign(db, clock, pushProvider, {
+    const outcome = await sendCampaign(deps, {
       cafeId: cafeId.data,
       ownerUserId: user.id,
       message: parsed.data.message,

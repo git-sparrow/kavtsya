@@ -7,7 +7,6 @@ import {
 import type { Auth } from "../src/auth";
 import { fixedClock } from "../src/clock";
 import type { Database } from "../src/db";
-import { clearPlatformConfigCache } from "../src/platform-config";
 import { makeApp, registerCafe as registerCafeAt, signUp } from "./helpers/app";
 import { withPlatformConfig } from "./helpers/platform-config";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
@@ -36,7 +35,6 @@ afterAll(async () => {
 beforeEach(async () => {
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
   await db`truncate fortunes`;
-  clearPlatformConfigCache();
 });
 
 function app() {

@@ -5,6 +5,7 @@ import { type AppEnv, createApp } from "../../src/app";
 import type { Auth } from "../../src/auth";
 import { type Clock, systemClock } from "../../src/clock";
 import type { Database } from "../../src/db";
+import { createPlatformConfig } from "../../src/platform-config";
 import type { PushProvider } from "../../src/push";
 
 /**
@@ -43,7 +44,14 @@ export interface MakeAppOptions {
   pushProvider?: PushProvider;
 }
 
-/** Build the app with test defaults; override only the dep a suite cares about. */
+/**
+ * Build the app with test defaults; override only the dep a suite cares about.
+ *
+ * Each app gets its OWN Platform-config reader (#54), so its read cache dies
+ * with it — that is what isolates suites from each other's config tuning, with
+ * no reset call for anyone to forget. A test that overrides a `platform_config`
+ * row (via `withPlatformConfig`) must therefore build its app after the write.
+ */
 export function makeApp({
   db,
   auth,
@@ -51,7 +59,14 @@ export function makeApp({
   qrTokenSecret = DEFAULT_QR_TOKEN_SECRET,
   pushProvider = swallowingPushProvider,
 }: MakeAppOptions): Hono<AppEnv> {
-  return createApp({ db, clock, auth, qrTokenSecret, pushProvider });
+  return createApp({
+    db,
+    clock,
+    auth,
+    qrTokenSecret,
+    pushProvider,
+    platformConfig: createPlatformConfig(db, clock),
+  });
 }
 
 /** Fold a response's Set-Cookie headers into a Cookie request header value. */

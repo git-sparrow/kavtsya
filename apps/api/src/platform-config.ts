@@ -3,12 +3,15 @@ import type {
   CampaignConfig,
   ManualEntryConfig,
   QrTokenConfig,
+  RewardDefaults,
 } from "@kavtsya/shared";
 import {
   campaignConfigSchema,
   manualEntryConfigSchema,
   qrTokenConfigSchema,
+  rewardDefaultsSchema,
 } from "@kavtsya/shared";
+import type { Clock } from "./clock";
 import type { Database } from "./db";
 
 /**
@@ -17,98 +20,94 @@ import type { Database } from "./db";
  * QR poll reads `qr_token`), so a short cache collapses many identical reads
  * into one DB round-trip. The cost is an up-to-this-long propagation delay after
  * the Platform changes a value — acceptable for config that changes by hand.
+ * Exported so a test can move the injected clock past it by name (#54).
  */
-const CACHE_TTL_MS = 30_000;
+export const PLATFORM_CONFIG_CACHE_TTL_MS = 30_000;
 
 type CacheEntry = { value: unknown; expiresAt: number };
-const cache = new Map<string, CacheEntry>();
 
 /**
- * The Platform-owned key/value store (`platform_config`, CONTEXT → Platform):
- * business-level config the Platform tunes without a code deploy. Every value is
- * an untrusted JSONB boundary, so reads validate with the same Zod schema the
- * domain uses, and fall back to a supplied default when the key is absent — a
- * not-yet-seeded or deleted row degrades to a sane default rather than throwing.
- * Reads are cached for {@link CACHE_TTL_MS}; see {@link clearPlatformConfigCache}.
+ * Reader for the Platform-owned key/value store (`platform_config`,
+ * CONTEXT → Platform): business-level config the Platform tunes without a code
+ * deploy. One accessor per key, so no caller picks its own schema or fallback.
  */
-export async function readPlatformConfig<T>(
-  db: Database,
-  key: string,
-  schema: z.ZodType<T>,
-  fallback: unknown,
-): Promise<T> {
-  const cached = cache.get(key);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.value as T;
-  }
-  const [row] = await db<{ value: unknown }[]>`
-    select "value" from platform_config where "key" = ${key}
-  `;
-  const value = schema.parse(row?.value ?? fallback);
-  cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
-  return value;
+export interface PlatformConfig {
+  /** The QR-token settings (ttl + grace), ADR 0006. */
+  qrToken(): Promise<QrTokenConfig>;
+  /** The manual-entry ceiling (#21, ADR 0006). */
+  manualEntry(): Promise<ManualEntryConfig>;
+  /** The campaign pacing cap (#24). */
+  campaigns(): Promise<CampaignConfig>;
+  /** The platform-default Reward set (story 38). */
+  rewardDefaults(): Promise<RewardDefaults>;
 }
 
 /**
- * Drop all cached config so the next read hits the database. Call after writing
- * `platform_config` directly (tests, or a future Platform-config write path) so
- * the change is observed immediately instead of after the TTL.
- */
-export function clearPlatformConfigCache(): void {
-  cache.clear();
-}
-
-/**
- * Safety-net defaults for the QR-token settings, used only if the `qr_token`
- * row is missing (e.g. migration 0005 not yet applied). Kept in sync with the
- * values that migration seeds so a fresh-but-unseeded DB still issues QR tokens
- * instead of failing the Customer's only earning path (ADR 0006).
+ * Safety-net defaults, used only when the row is missing (e.g. the seeding
+ * migration hasn't been applied). Each is kept in sync with the value its
+ * migration seeds, so a fresh-but-unseeded database degrades to sane behaviour
+ * instead of failing: 0005 for `qr_token` — the Customer's only earning path
+ * (ADR 0006) — 0009 for the manual-entry ceiling that bounds a colluding pair
+ * (#21), and 0011 for the pacing that stops one café burning the platform's
+ * push reputation (#24). The Reward set has no safe stand-in, so it degrades to
+ * empty: the CafeOwner's chooser shows nothing rather than offering a Reward
+ * the Platform never sanctioned.
  */
 const DEFAULT_QR_TOKEN_CONFIG: QrTokenConfig = {
   ttlSeconds: 90,
   graceSeconds: 30,
 };
-
-/** The Platform-tunable QR-token settings (ttl + grace), read from `platform_config` (ADR 0006). */
-export function getQrTokenConfig(db: Database): Promise<QrTokenConfig> {
-  return readPlatformConfig(
-    db,
-    "qr_token",
-    qrTokenConfigSchema,
-    DEFAULT_QR_TOKEN_CONFIG,
-  );
-}
-
-/**
- * Safety-net default for the manual-entry ceiling (#21), kept in sync with the
- * value migration 0009 seeds — an unseeded DB still bounds a colluding pair
- * instead of leaving manual entry unlimited.
- */
 const DEFAULT_MANUAL_ENTRY_CONFIG: ManualEntryConfig = { dailyLimit: 3 };
-
-/** The Platform-tunable manual-entry ceiling, read from `platform_config` (#21, ADR 0006). */
-export function getManualEntryConfig(db: Database): Promise<ManualEntryConfig> {
-  return readPlatformConfig(
-    db,
-    "manual_entry",
-    manualEntryConfigSchema,
-    DEFAULT_MANUAL_ENTRY_CONFIG,
-  );
-}
+const DEFAULT_CAMPAIGN_CONFIG: CampaignConfig = { dailyLimit: 1 };
+const DEFAULT_REWARD_DEFAULTS: RewardDefaults = [];
 
 /**
- * Safety-net default for the campaign pacing cap (#24), kept in sync with the
- * value migration 0011 seeds — an unseeded DB still paces sends instead of
- * letting one café burn the platform's push reputation.
+ * Build a config reader over a database and a clock. The read cache lives in
+ * this closure — one per instance, built once in the production entrypoint and
+ * once per app in tests — so config state never outlives the app that owns it
+ * and no suite has to remember to reset anything (#54).
+ *
+ * Every value is an untrusted JSONB boundary, so reads validate with the same
+ * Zod schema the domain uses, and fall back to the built-in default when the
+ * key is absent. Reads are cached for {@link PLATFORM_CONFIG_CACHE_TTL_MS},
+ * measured against the injected clock.
  */
-const DEFAULT_CAMPAIGN_CONFIG: CampaignConfig = { dailyLimit: 1 };
+export function createPlatformConfig(
+  db: Database,
+  clock: Clock,
+): PlatformConfig {
+  const cache = new Map<string, CacheEntry>();
 
-/** The Platform-tunable campaign pacing cap, read from `platform_config` (#24). */
-export function getCampaignConfig(db: Database): Promise<CampaignConfig> {
-  return readPlatformConfig(
-    db,
-    "campaigns",
-    campaignConfigSchema,
-    DEFAULT_CAMPAIGN_CONFIG,
-  );
+  async function read<T>(
+    key: string,
+    schema: z.ZodType<T>,
+    fallback: unknown,
+  ): Promise<T> {
+    const now = clock.now().getTime();
+    const cached = cache.get(key);
+    if (cached && cached.expiresAt > now) {
+      return cached.value as T;
+    }
+    const [row] = await db<{ value: unknown }[]>`
+      select "value" from platform_config where "key" = ${key}
+    `;
+    const value = schema.parse(row?.value ?? fallback);
+    cache.set(key, { value, expiresAt: now + PLATFORM_CONFIG_CACHE_TTL_MS });
+    return value;
+  }
+
+  return {
+    qrToken: () =>
+      read("qr_token", qrTokenConfigSchema, DEFAULT_QR_TOKEN_CONFIG),
+    manualEntry: () =>
+      read(
+        "manual_entry",
+        manualEntryConfigSchema,
+        DEFAULT_MANUAL_ENTRY_CONFIG,
+      ),
+    campaigns: () =>
+      read("campaigns", campaignConfigSchema, DEFAULT_CAMPAIGN_CONFIG),
+    rewardDefaults: () =>
+      read("reward_defaults", rewardDefaultsSchema, DEFAULT_REWARD_DEFAULTS),
+  };
 }

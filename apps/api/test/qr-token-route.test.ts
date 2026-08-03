@@ -4,7 +4,6 @@ import { meResponseSchema, qrTokenResponseSchema } from "@kavtsya/shared";
 import type { Auth } from "../src/auth";
 import { systemClock } from "../src/clock";
 import type { Database } from "../src/db";
-import { clearPlatformConfigCache } from "../src/platform-config";
 import { validateQrToken } from "../src/qr-token";
 import { makeApp, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
@@ -27,7 +26,6 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
-  clearPlatformConfigCache();
 });
 
 function app() {
@@ -65,12 +63,13 @@ test("an authed Customer gets a signed token that validates back to them", async
 test("a missing qr_token config row degrades to defaults instead of failing", async () => {
   const cookie = await signUp(app(), "customer@example.com");
 
-  // Simulate a DB where migration 0005 hasn't seeded qr_token yet.
+  // Simulate a DB where migration 0005 hasn't seeded qr_token yet. `app()`
+  // builds a fresh app — and so a cold config cache — per request, so the
+  // deletion is observed without anyone resetting anything (#54).
   const [original] = await db<{ value: unknown }[]>`
     select value from platform_config where key = 'qr_token'
   `;
   await db`delete from platform_config where key = 'qr_token'`;
-  clearPlatformConfigCache();
 
   try {
     const res = await app().request("/api/qr-token", { headers: { cookie } });
@@ -89,6 +88,5 @@ test("a missing qr_token config row degrades to defaults instead of failing", as
       insert into platform_config (key, value)
       values ('qr_token', ${db.json(original!.value as never)})
     `;
-    clearPlatformConfigCache();
   }
 });

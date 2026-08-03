@@ -3,7 +3,6 @@ import { updateLoyaltyProgramBodySchema } from "@kavtsya/shared";
 import type { AppDeps } from "../app";
 import {
   getLoyaltyProgram,
-  getRewardDefaults,
   rewardTypeIsOffered,
   updateLoyaltyProgram,
 } from "../loyalty";
@@ -18,11 +17,11 @@ import { uuidParamSchema } from "./params";
  */
 export function registerLoyaltyRoutes(
   app: Hono<AuthedEnv>,
-  { db }: AppDeps,
+  { db, platformConfig }: AppDeps,
 ): void {
   // The platform-default Reward set the CafeOwner's chooser renders (story 38).
   app.get("/api/reward-defaults", async (c) => {
-    return c.json(await getRewardDefaults(db));
+    return c.json(await platformConfig.rewardDefaults());
   });
 
   app.get("/api/cafes/:id/program", async (c) => {
@@ -49,7 +48,7 @@ export function registerLoyaltyRoutes(
 
     // A chosen Reward must be one the platform currently offers (story 38).
     if (parsed.data.reward) {
-      const defaults = await getRewardDefaults(db);
+      const defaults = await platformConfig.rewardDefaults();
       if (!rewardTypeIsOffered(parsed.data.reward, defaults)) {
         return c.json({ error: "reward_not_offered" }, 400);
       }
