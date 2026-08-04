@@ -13,7 +13,6 @@ import {
 } from "../customer-fortunes";
 import { fortuneForScan } from "../fortunes";
 import { customerIdForMemberCode } from "../member-code";
-import { getManualEntryConfig, getQrTokenConfig } from "../platform-config";
 import type { IssuePurchaseRejection, PurchaseEntry } from "../purchases";
 import { issuePurchase, listBalances } from "../purchases";
 import type { QrTokenInvalidReason } from "../qr-token";
@@ -70,7 +69,7 @@ function reject(
 
 export function registerPurchaseRoutes(
   app: Hono<AuthedEnv>,
-  { db, clock, qrTokenSecret }: AppDeps,
+  { db, clock, qrTokenSecret, platformConfig }: AppDeps,
 ): void {
   app.post("/api/purchases", async (c) => {
     const user = c.get("user");
@@ -84,7 +83,7 @@ export function registerPurchaseRoutes(
     // the rotating QR token or the typed member code.
     let identity: { customerId: string; entry: PurchaseEntry };
     if ("qrToken" in parsed.data) {
-      const { graceSeconds } = await getQrTokenConfig(db);
+      const { graceSeconds } = await platformConfig.qrToken();
       const token = validateQrToken(parsed.data.qrToken, {
         clock,
         secret: qrTokenSecret,
@@ -101,7 +100,7 @@ export function registerPurchaseRoutes(
         parsed.data.memberCode,
       );
       if (!customerId) return reject(c, "unknown_member_code");
-      const { dailyLimit } = await getManualEntryConfig(db);
+      const { dailyLimit } = await platformConfig.manualEntry();
       identity = {
         customerId,
         entry: {

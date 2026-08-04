@@ -8,7 +8,6 @@ import type { Auth } from "../src/auth";
 import { fixedClock } from "../src/clock";
 import type { Database } from "../src/db";
 import { FALLBACK_FORTUNES, generateDailyFortunes } from "../src/fortunes";
-import { clearPlatformConfigCache } from "../src/platform-config";
 import { makeApp, registerCafe as registerCafeAt, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
@@ -31,7 +30,6 @@ beforeEach(async () => {
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
   // The Ворожка pool is global (no FK) — each test controls its own day's pool.
   await db`truncate fortunes`;
-  clearPlatformConfigCache();
 });
 
 function app() {

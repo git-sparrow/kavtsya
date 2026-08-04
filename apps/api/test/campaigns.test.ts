@@ -4,7 +4,6 @@ import { meResponseSchema } from "@kavtsya/shared";
 import type { Auth } from "../src/auth";
 import { fixedClock } from "../src/clock";
 import type { Database } from "../src/db";
-import { clearPlatformConfigCache } from "../src/platform-config";
 import type { PushMessage, PushProvider, PushReceipt } from "../src/push";
 import { prunePushReceipts } from "../src/push-receipts";
 import { makeApp, registerCafe, signUp } from "./helpers/app";
@@ -36,7 +35,6 @@ beforeEach(async () => {
   // cascade also clears campaigns, push_tokens, and push_tickets.
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
   await db`truncate fortunes`;
-  clearPlatformConfigCache();
 });
 
 /** The v1 upgrade path: the Platform's hand on the flag (no billing, ADR 0011). */
@@ -543,18 +541,20 @@ test("a receipt Expo hasn't produced yet stays pending for the next run", async 
 });
 
 test("the daily cap is Platform-tunable without a deploy", async () => {
-  const { provider } = recordingProvider();
-  const app = makeApp({
-    db,
-    auth,
-    clock: fixedClock(SEND_AT),
-    pushProvider: provider,
-  });
-  const owner = await signUp(app, "owner@example.com");
-  const cafeId = await registerCafe(app, "Кавця", owner);
-  await makePro(cafeId);
-
   await withPlatformConfig(db, "campaigns", { dailyLimit: 2 }, async () => {
+    // Built inside the override: the app owns its config cache (#54), so it
+    // must start after the write to read the tuned cap.
+    const { provider } = recordingProvider();
+    const app = makeApp({
+      db,
+      auth,
+      clock: fixedClock(SEND_AT),
+      pushProvider: provider,
+    });
+    const owner = await signUp(app, "owner@example.com");
+    const cafeId = await registerCafe(app, "Кавця", owner);
+    await makePro(cafeId);
+
     expect(
       (await sendCampaign(app, cafeId, { message: "Раз" }, owner)).status,
     ).toBe(201);

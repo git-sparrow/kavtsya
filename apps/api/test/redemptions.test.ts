@@ -8,7 +8,6 @@ import {
 } from "@kavtsya/shared";
 import type { Auth } from "../src/auth";
 import type { Database } from "../src/db";
-import { clearPlatformConfigCache } from "../src/platform-config";
 import { makeApp, registerCafe as registerCafeAt, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
@@ -29,7 +28,6 @@ afterAll(async () => {
 beforeEach(async () => {
   // cascade also clears purchases, redemptions, and cafe_memberships.
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
-  clearPlatformConfigCache();
 });
 
 function app() {

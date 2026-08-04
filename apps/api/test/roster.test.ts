@@ -7,7 +7,6 @@ import {
 import type { Auth } from "../src/auth";
 import { fixedClock } from "../src/clock";
 import type { Database } from "../src/db";
-import { clearPlatformConfigCache } from "../src/platform-config";
 import type { PushMessage, PushProvider } from "../src/push";
 import { makeApp, registerCafe, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
@@ -40,7 +39,6 @@ beforeEach(async () => {
   // cascade also clears the roster, grants, push_tokens, and purchases.
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
   await db`truncate fortunes`;
-  clearPlatformConfigCache();
 });
 
 /** Mid-afternoon in Kyiv summer time — the rate-limit boundary is asserted against it. */

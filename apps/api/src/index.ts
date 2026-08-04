@@ -5,6 +5,7 @@ import { createAuth } from "./auth";
 import { systemClock } from "./clock";
 import { createDb } from "./db";
 import { loadDotEnv, loadEnv } from "./env";
+import { createPlatformConfig } from "./platform-config";
 import { createPushProvider } from "./push";
 
 loadDotEnv();
@@ -26,6 +27,8 @@ const app = createApp({
   // Expo push (#24) — no required env: unauthenticated sends unless the
   // account enables enhanced security (then EXPO_ACCESS_TOKEN applies).
   pushProvider: createPushProvider(),
+  // One config reader for the process — its cache lives as long as the app.
+  platformConfig: createPlatformConfig(db, systemClock),
 });
 
 serve({ fetch: app.fetch, port: env.PORT }, (info) => {

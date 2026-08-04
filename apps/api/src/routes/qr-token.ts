@@ -1,7 +1,6 @@
 import type { Hono } from "hono";
 import type { QrTokenResponse } from "@kavtsya/shared";
 import type { AppDeps } from "../app";
-import { getQrTokenConfig } from "../platform-config";
 import { signQrToken } from "../qr-token";
 import type { AuthedEnv } from "../require-user";
 
@@ -14,12 +13,12 @@ import type { AuthedEnv } from "../require-user";
  */
 export function registerQrTokenRoutes(
   app: Hono<AuthedEnv>,
-  { db, clock, qrTokenSecret }: AppDeps,
+  { clock, qrTokenSecret, platformConfig }: AppDeps,
 ): void {
   app.get("/api/qr-token", async (c) => {
     const user = c.get("user");
 
-    const { ttlSeconds } = await getQrTokenConfig(db);
+    const { ttlSeconds } = await platformConfig.qrToken();
     const { token, expiresAt } = signQrToken(user.id, {
       clock,
       secret: qrTokenSecret,

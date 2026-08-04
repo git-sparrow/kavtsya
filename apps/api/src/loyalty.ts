@@ -1,7 +1,6 @@
 import type { LoyaltyProgram, Reward, RewardDefaults } from "@kavtsya/shared";
-import { loyaltyProgramSchema, rewardDefaultsSchema } from "@kavtsya/shared";
+import { loyaltyProgramSchema } from "@kavtsya/shared";
 import type { Database } from "./db";
-import { readPlatformConfig } from "./platform-config";
 
 /**
  * The loyalty program a Café runs (CONTEXT → Зернятко, Reward) and the
@@ -9,8 +8,9 @@ import { readPlatformConfig } from "./platform-config";
  *
  * The program lives on the `cafes` row (1:1 in v1): the Зернятко `threshold`
  * (default 10, set by the column) and the chosen `reward` (null until picked).
- * The default Reward set is read from `platform_config`, never hardcoded, so the
- * Platform can tune it without a code deploy (story 38).
+ * The default Reward set it chooses from is never hardcoded here — it is read
+ * from `platform_config` via the injected reader (`PlatformConfig.rewardDefaults`,
+ * story 38), so the Platform can tune it without a code deploy.
  */
 
 type ProgramRow = { zernyatko_threshold: number; reward: unknown };
@@ -23,11 +23,6 @@ export function programFromRow(row: ProgramRow): LoyaltyProgram {
     threshold: row.zernyatko_threshold,
     reward: row.reward,
   });
-}
-
-/** The platform-default Reward set, read from `platform_config` (story 38). */
-export function getRewardDefaults(db: Database): Promise<RewardDefaults> {
-  return readPlatformConfig(db, "reward_defaults", rewardDefaultsSchema, []);
 }
 
 /** Whether a Reward's type is currently offered by the platform-default set. */

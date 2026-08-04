@@ -3,6 +3,7 @@ import { isTombstoned } from "./account-deletion";
 import type { Auth, AuthSession, AuthUser } from "./auth";
 import type { Clock } from "./clock";
 import type { Database } from "./db";
+import type { PlatformConfig } from "./platform-config";
 import type { PushProvider } from "./push";
 import { requireUser } from "./require-user";
 import { registerAnalyticsRoutes } from "./routes/analytics";
@@ -32,6 +33,12 @@ export interface AppDeps {
   qrTokenSecret: string;
   /** The push transport (#24) — Expo in production, a fake under test. */
   pushProvider: PushProvider;
+  /**
+   * The Platform-config reader (#54). Injected rather than imported so its read
+   * cache belongs to this app instance: one in production, a fresh one per test
+   * app, which is what keeps suites from leaking config into each other.
+   */
+  platformConfig: PlatformConfig;
 }
 
 /** A live session: who is calling, and the session row backing them. */
