@@ -1,6 +1,6 @@
 import { createDb } from "../src/db";
-import { loadDotEnv } from "../src/env";
 import { findNegativeBalances } from "../src/purchases";
+import { TEST_DATABASE_URL } from "./helpers/testDb";
 
 /**
  * The ledger invariant as a true cross-suite check (#115, ADR 0010): it runs in
@@ -13,12 +13,6 @@ import { findNegativeBalances } from "../src/purchases";
  * the deterministic proof that the detector fires (its negative control cleans
  * up its forged row so it can't trip this end-of-run assertion).
  */
-
-loadDotEnv();
-
-const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ??
-  "postgres://kavtsya:kavtsya@localhost:5432/kavtsya_test";
 
 export function setup(): void {}
 
