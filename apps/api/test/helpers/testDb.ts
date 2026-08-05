@@ -6,7 +6,8 @@ import { runMigrations } from "../../src/migrate";
 
 loadDotEnv();
 
-const TEST_DATABASE_URL =
+/** The one test database every suite and the global setup files connect to. */
+export const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ??
   "postgres://kavtsya:kavtsya@localhost:5432/kavtsya_test";
 
