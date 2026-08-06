@@ -20,17 +20,16 @@ export function fixedClock(instant: Date): Clock {
 }
 
 /**
- * The business day is the Europe/Kyiv calendar day (not server/UTC): Ukrainian
- * cafés must not see a day roll over mid-evening. Shared by the Ворожка pool
- * (ADR 0009) and the manual-entry ceiling (#21).
+ * The business day is the Europe/Kyiv calendar day, not the server/UTC one:
+ * Ukrainian cafés must not see a day roll over mid-evening (see **Business day**
+ * in `CONTEXT.md`). Shared by the Ворожка pool (ADR 0009) and the manual-entry
+ * ceiling (#21).
  *
- * The rule is encoded twice — in JS below and in SQL further down — because both
- * halves of the API bucket by it; both name the zone from the one
- * {@link KYIV_TIME_ZONE} in `@kavtsya/shared`, which the mobile app reads too,
- * so no encoding anywhere can drift (#112, #177).
+ * The rule is encoded twice — in JS here and in SQL further down — because both
+ * halves of the API bucket by it. Both read `KYIV_TIME_ZONE` from
+ * `@kavtsya/shared`, as does the mobile app, so no encoding can drift (#112,
+ * #177). `en-CA` formats as YYYY-MM-DD, exactly Postgres's `date` literal.
  */
-
-/** `en-CA` formats as YYYY-MM-DD, which is exactly Postgres's `date` literal. */
 const kyivDayFormat = new Intl.DateTimeFormat("en-CA", {
   timeZone: KYIV_TIME_ZONE,
   year: "numeric",

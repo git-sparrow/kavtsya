@@ -11,11 +11,9 @@ import { z } from "zod";
  * labelled today at a time reading like yesterday is the kind of contradiction
  * `CLAUDE.md`'s consistency floor rules out.
  *
- * **A platform-wide constant is the v1 decision, not an oversight.** Kavtsya is
- * a Ukrainian-market app, so every Café keeps the same business day. Making the
- * zone a Café attribute (or a `platform_config` row) would push a `text`
- * parameter through the SQL fragment and buy nothing until the app leaves
- * Ukraine — that is the day to revisit this, and the only one.
+ * That this is a platform-wide constant rather than a per-Café or
+ * Platform-tunable setting is a deliberate v1 decision; the reasoning has one
+ * home, **Business day** in `CONTEXT.md`.
  */
 export const KYIV_TIME_ZONE = "Europe/Kyiv";
 
