@@ -1,4 +1,5 @@
 import type { CafeBalance, Reward } from "@kavtsya/shared";
+import { kyivDaySql } from "./clock";
 import type { Database, Queryable } from "./db";
 import { isUniqueViolation } from "./db";
 import { programFromRow } from "./loyalty";
@@ -117,8 +118,7 @@ export async function issuePurchase(
           where "customer_user_id" = ${customerId}
             and "cafe_id" = ${cafeId}
             and "entry_source" = 'member_code'
-            and ("created_at" at time zone 'Europe/Kyiv')::date
-                  = ${entry.kyivDay}::date
+            and ${kyivDaySql(tx, "created_at")} = ${entry.kyivDay}::date
         `;
         if ((today?.manual_count ?? 0) >= entry.dailyLimit) return true;
         await tx`
