@@ -54,6 +54,10 @@ _Avoid_: Stamp, credit, punch, card
 A Customer buying at least one drink at a Café. Recorded when the CafeOwner scans the Customer's QR code (or, when the QR can't be scanned, enters the Customer's static **member code** — the offline fallback, see `docs/adr/0006`) — this adds one Зернятко to the Customer's balance at that Café and triggers Ворожка. A CafeOwner cannot earn Зернятка at a Café they operate (self-farming guard, `docs/adr/0003`).
 _Avoid_: Order, transaction, visit
 
+**Business day**:
+The Europe/Kyiv calendar day — the unit every "per day" rule in the app counts in: the manual-issuance daily ceiling (`docs/adr/0006`), the daily Ворожка pool (`docs/adr/0009`), the campaign send cap, the analytics buckets, and the Shift board's «today». Never the server/UTC day: a Café closing at 22:00 must not see its day roll over mid-evening. The zone is a **platform-wide constant** (`KYIV_TIME_ZONE` in `@kavtsya/shared`, the single home both the API's JS/SQL encodings and the mobile app read) — deliberately not a per-Café or Platform-tunable setting, since Kavtsya is a Ukrainian-market app and every Café keeps the same day. Revisit only if the app leaves Ukraine.
+_Avoid_: Calendar day, server day, UTC day, today (unqualified, in code)
+
 **Reward**:
 What a Customer redeems after accumulating a threshold number of Зернятка at a Café. Every Café — Free or Pro — chooses its Reward from the **platform-default set**: free drink (any item), free drink (specific item the CafeOwner names), fixed discount (e.g. ₴30 off), or percentage discount (e.g. 10% off). The default set is **Platform-tunable** (a new default can be added without a code deploy). **Custom Rewards** — anything the defaults can't express (combos like "drink + pastry", tiered/escalating, non-menu perks, conditional offers) — are a **Pro** feature, shipping in two flavours: *display-only* first (the app shows the reward text, the barista honours it manually — no POS needed), then *auto-applied* at the register once POS integration lands (`docs/adr/0012`).
 _Avoid_: Prize, benefit, perk, offer

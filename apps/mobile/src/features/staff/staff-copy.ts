@@ -1,3 +1,4 @@
+import { KYIV_TIME_ZONE } from "@kavtsya/shared";
 import { pluralizeUk, SCAN_FORMS } from "@/lib/plural";
 
 /**
@@ -23,12 +24,17 @@ export type StaffConfirm = {
   cancelLabel: string;
 };
 
-/** An instant as the café's wall-clock time (the Kyiv business day, #112). */
+/**
+ * An instant as the café's wall-clock time (the Kyiv business day, #112). The
+ * zone comes from `@kavtsya/shared`, the same constant the API buckets «closed
+ * today» by (#177) — a board that disagreed with the server about which day a
+ * shift ended on would read as a bug, not a rounding difference.
+ */
 export function shiftClock(iso: string): string {
   return new Date(iso).toLocaleTimeString("uk-UA", {
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "Europe/Kyiv",
+    timeZone: KYIV_TIME_ZONE,
   });
 }
 

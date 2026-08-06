@@ -1,3 +1,4 @@
+import { KYIV_TIME_ZONE } from "@kavtsya/shared";
 import type { Queryable, SqlFragment } from "./db";
 
 /**
@@ -24,10 +25,10 @@ export function fixedClock(instant: Date): Clock {
  * (ADR 0009) and the manual-entry ceiling (#21).
  *
  * The rule is encoded twice — in JS below and in SQL further down — because both
- * halves of the app bucket by it; the two encodings name the zone from this one
- * constant so they cannot drift (#112).
+ * halves of the API bucket by it; both name the zone from the one
+ * {@link KYIV_TIME_ZONE} in `@kavtsya/shared`, which the mobile app reads too,
+ * so no encoding anywhere can drift (#112, #177).
  */
-export const KYIV_TIME_ZONE = "Europe/Kyiv";
 
 /** `en-CA` formats as YYYY-MM-DD, which is exactly Postgres's `date` literal. */
 const kyivDayFormat = new Intl.DateTimeFormat("en-CA", {

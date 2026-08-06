@@ -1,6 +1,25 @@
 import { z } from "zod";
 
 /**
+ * The café business day's timezone — the ONE place the app names it (#177).
+ *
+ * Every Kyiv-day rule reads it: the API's JS helpers and SQL fragments (#112,
+ * `apps/api/src/clock.ts`) bucket Purchases, the Ворожка pool and the shift
+ * board by it, and the mobile app renders shift times in it. It lives here, not
+ * in either app, because those two uses must agree: the «Зміна» board pairs a
+ * server-computed «closed today» with a client-rendered «з HH:MM», and a shift
+ * labelled today at a time reading like yesterday is the kind of contradiction
+ * `CLAUDE.md`'s consistency floor rules out.
+ *
+ * **A platform-wide constant is the v1 decision, not an oversight.** Kavtsya is
+ * a Ukrainian-market app, so every Café keeps the same business day. Making the
+ * zone a Café attribute (or a `platform_config` row) would push a `text`
+ * parameter through the SQL fragment and buy nothing until the app leaves
+ * Ukraine — that is the day to revisit this, and the only one.
+ */
+export const KYIV_TIME_ZONE = "Europe/Kyiv";
+
+/**
  * Contract for the `/health` endpoint, shared by the API (which produces it)
  * and the mobile app (which validates it). This is the first link in the
  * client -> API -> DB chain the walking skeleton proves out.
