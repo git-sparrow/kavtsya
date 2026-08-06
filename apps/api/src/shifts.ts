@@ -1,5 +1,5 @@
 import type { LoyaltyProgram } from "@kavtsya/shared";
-import { kyivDayOf } from "./clock";
+import { kyivDayOf, kyivDaySql } from "./clock";
 import type { Database, Queryable } from "./db";
 import { programFromRow } from "./loyalty";
 
@@ -333,7 +333,7 @@ export async function listShiftBoard(
     from cafe_scanner_grants g join "user" u on u."id" = g."user_id"
     where g."cafe_id" = ${cafeId}
       and not (${activeGrant(db, now, "g")})
-      and (coalesce(g."revoked_at", g."expires_at") at time zone 'Europe/Kyiv')::date
+      and ${kyivDaySql(db, db`coalesce(g."revoked_at", g."expires_at")`)}
           = ${kyivDayOf(now)}::date
     order by ended_at desc
   `;

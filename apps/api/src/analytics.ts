@@ -2,7 +2,7 @@ import type { AnalyticsPeriod, AnalyticsSummary } from "@kavtsya/shared";
 import { HOURS_IN_DAY } from "@kavtsya/shared";
 import { planForOwnedCafe } from "./cafes";
 import type { Clock } from "./clock";
-import { kyivWindowStart } from "./clock";
+import { kyivDaySql, kyivLocalTimeSql, kyivWindowStart } from "./clock";
 import type { Database } from "./db";
 
 /**
@@ -53,12 +53,11 @@ async function customerSplit(
 ): Promise<{ active: number; newCustomers: number; repeatCustomers: number }> {
   const [row] = await db<SplitRow[]>`
     with active as (
-      select min(("created_at" at time zone 'Europe/Kyiv')::date) as first_day
+      select min(${kyivDaySql(db, "created_at")}) as first_day
       from purchases
       where "cafe_id" = ${cafeId}
       group by "customer_user_id"
-      having max(("created_at" at time zone 'Europe/Kyiv')::date)
-             >= ${windowStart}::date
+      having max(${kyivDaySql(db, "created_at")}) >= ${windowStart}::date
     )
     select
       count(*)::int as active,
@@ -83,11 +82,11 @@ async function hourlyHistogram(
 ): Promise<number[]> {
   const rows = await db<{ hour: number; count: number }[]>`
     select
-      extract(hour from ("created_at" at time zone 'Europe/Kyiv'))::int as hour,
+      extract(hour from ${kyivLocalTimeSql(db, "created_at")})::int as hour,
       count(*)::int as count
     from purchases
     where "cafe_id" = ${cafeId}
-      and ("created_at" at time zone 'Europe/Kyiv')::date >= ${windowStart}::date
+      and ${kyivDaySql(db, "created_at")} >= ${windowStart}::date
     group by 1
   `;
   const hourly = new Array<number>(HOURS_IN_DAY).fill(0);

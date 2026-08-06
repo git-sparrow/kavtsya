@@ -1,5 +1,5 @@
 import type { Clock } from "./clock";
-import { kyivDayOf, kyivWindowStart } from "./clock";
+import { kyivDayOf, kyivDaySql, kyivWindowStart } from "./clock";
 import type { Database } from "./db";
 import { planForOwnedCafe } from "./cafes";
 import type { PlatformConfig } from "./platform-config";
@@ -86,7 +86,7 @@ export async function sendCampaign(
       const [today] = await tx<{ sent_today: number }[]>`
         select count(*)::int as sent_today from campaigns
         where "cafe_id" = ${cafeId}
-          and ("created_at" at time zone 'Europe/Kyiv')::date = ${kyivDay}::date
+          and ${kyivDaySql(tx, "created_at")} = ${kyivDay}::date
       `;
       if ((today?.sent_today ?? 0) >= dailyLimit) return { limited: true };
 
@@ -105,7 +105,7 @@ export async function sendCampaign(
             select 1 from purchases p
             where p."cafe_id" = m."cafe_id"
               and p."customer_user_id" = u."id"
-              and (p."created_at" at time zone 'Europe/Kyiv')::date
+              and ${kyivDaySql(tx, "created_at", "p")}
                     >= ${oldestActiveDay}::date
           )
       `;
