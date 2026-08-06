@@ -131,6 +131,9 @@ Cons:
 - Deliberate trust-model loosening; needs the same promotion gates as #61.
 - Two flows to design and support (tap + scan), against "simple = fewest
   concepts" — the tap must read as *the same action*, not a second system.
+  If the self-serve trio ever matures (#61 / #179 / #181), earn methods must
+  surface as **one CafeOwner setting** («Як ваші гості отримують Зернятка» —
+  pick what matches your counter), never as three separate features.
 - NFC edge cases: thick cases, disabled NFC, older iPhones — every failure
   needs a designed fallback into the existing path.
 - Key management is new real surface (master key custody, per-tag derivation,
