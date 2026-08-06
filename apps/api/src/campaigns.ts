@@ -105,8 +105,7 @@ export async function sendCampaign(
             select 1 from purchases p
             where p."cafe_id" = m."cafe_id"
               and p."customer_user_id" = u."id"
-              and ${kyivDaySql(tx, "created_at", "p")}
-                    >= ${oldestActiveDay}::date
+              and ${kyivDaySql(tx, tx`p."created_at"`)} >= ${oldestActiveDay}::date
           )
       `;
       const recipients = new Set(audience.map((row) => row.user_id)).size;

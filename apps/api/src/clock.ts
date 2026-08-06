@@ -82,34 +82,31 @@ export function kyivNextMidnight(instant: Date): Date {
 }
 
 /**
- * What a Kyiv-day fragment buckets: a column name — optionally qualified by a
- * table alias — or any timestamp expression already built as a fragment (the
- * shift board's `coalesce(revoked_at, expires_at)`).
+ * What a Kyiv-day fragment buckets: an unqualified column name — the plain case
+ * every ledger query wants — or any timestamp expression the caller built as a
+ * fragment, which covers everything else (`p."created_at"` under a join alias,
+ * the shift board's `coalesce(revoked_at, expires_at)`). Two forms, not three:
+ * an alias parameter would only say what the fragment form already says.
  */
 type SqlInstant = string | SqlFragment;
-
-function instantExpression(
-  sql: Queryable,
-  instant: SqlInstant,
-  alias?: string,
-): SqlFragment {
-  if (typeof instant !== "string") return instant;
-  return alias ? sql`${sql(alias)}.${sql(instant)}` : sql`${sql(instant)}`;
-}
 
 /**
  * An instant as Kyiv wall-clock time — the SQL counterpart of the formatter
  * above, and what analytics's hour-of-day histogram buckets on (an evening
  * Purchase belongs to the hour the barista poured it, not its UTC hour).
- * The zone rides in as a bound parameter, so it is the same {@link
- * KYIV_TIME_ZONE} string the JS side formats with.
+ *
+ * The zone rides in as a bound parameter, so both encodings read the same
+ * {@link KYIV_TIME_ZONE} string; the cost is that this fragment can't appear in
+ * DDL, so a Kyiv-day expression index would have to re-inline the literal.
+ * Nothing needs one — the day is always a filter over a `(cafe_id, created_at)`
+ * index, never the index itself.
  */
 export function kyivLocalTimeSql(
   sql: Queryable,
   instant: SqlInstant,
-  alias?: string,
 ): SqlFragment {
-  return sql`(${instantExpression(sql, instant, alias)} at time zone ${KYIV_TIME_ZONE})`;
+  const expr = typeof instant === "string" ? sql`${sql(instant)}` : instant;
+  return sql`(${expr} at time zone ${KYIV_TIME_ZONE})`;
 }
 
 /**
@@ -124,10 +121,6 @@ export function kyivLocalTimeSql(
  * against a timestamp — comparing a day to an instant is what UTC-midnight bugs
  * are made of.
  */
-export function kyivDaySql(
-  sql: Queryable,
-  instant: SqlInstant,
-  alias?: string,
-): SqlFragment {
-  return sql`${kyivLocalTimeSql(sql, instant, alias)}::date`;
+export function kyivDaySql(sql: Queryable, instant: SqlInstant): SqlFragment {
+  return sql`${kyivLocalTimeSql(sql, instant)}::date`;
 }

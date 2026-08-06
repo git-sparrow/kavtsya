@@ -1,6 +1,6 @@
 import type { LoyaltyProgram } from "@kavtsya/shared";
 import { kyivDayOf, kyivDaySql } from "./clock";
-import type { Database, Queryable } from "./db";
+import type { Database, Queryable, SqlFragment } from "./db";
 import { programFromRow } from "./loyalty";
 
 /**
@@ -40,7 +40,7 @@ export const SHIFT_MAX_DURATION_MS = 16 * 60 * 60 * 1000;
  * with the caller's own executor, so it composes into a `db` query or a `tx`
  * query interchangeably.
  */
-function activeGrant(sql: Queryable, now: Date, alias?: string) {
+function activeGrant(sql: Queryable, now: Date, alias?: string): SqlFragment {
   const col = (name: string) =>
     alias ? sql`${sql(alias)}.${sql(name)}` : sql`${sql(name)}`;
   return sql`${col("revoked_at")} is null and ${col("expires_at")} > ${now}`;

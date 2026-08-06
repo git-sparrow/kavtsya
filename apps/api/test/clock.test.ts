@@ -104,7 +104,7 @@ function instantRow(instant: Date) {
 test("the SQL Kyiv day matches the JS Kyiv day across both DST transitions", async () => {
   for (const instant of BOUNDARY_INSTANTS) {
     const [row] = await db<{ day: string }[]>`
-      select to_char(${kyivDaySql(db, "at", "t")}, 'YYYY-MM-DD') as day
+      select to_char(${kyivDaySql(db, "at")}, 'YYYY-MM-DD') as day
       from ${instantRow(instant)}
     `;
 
@@ -117,7 +117,7 @@ test("the SQL Kyiv local time carries the hour analytics buckets by", async () =
   // `extract(hour ...)` would file under 21 the day before.
   const summerEvening = new Date("2026-07-15T21:30:00.000Z");
   const [row] = await db<{ hour: number }[]>`
-    select extract(hour from ${kyivLocalTimeSql(db, "at", "t")})::int as hour
+    select extract(hour from ${kyivLocalTimeSql(db, "at")})::int as hour
     from ${instantRow(summerEvening)}
   `;
 

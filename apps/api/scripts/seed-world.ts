@@ -268,7 +268,10 @@ async function ensureRostered(
 /**
  * The Pro café's backdated history (idempotent via the unique `qr_jti`).
  * `created_at` is built by interpreting a naive "N Kyiv-days ago at hour H" as
- * Europe/Kyiv (DST-correct) — matching how `analytics.ts` buckets purchases.
+ * Europe/Kyiv (DST-correct) — landing rows in the same buckets `kyivDaySql`
+ * reads them back out of. The trailing `at time zone` is the INVERSE conversion
+ * (Kyiv wall-clock → instant), which no query needs and so has no fragment; it
+ * names the zone from the same constant, so nothing here can drift either.
  */
 async function seedHistory(
   db: Database,
