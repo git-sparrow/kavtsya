@@ -37,7 +37,14 @@ const SPRING_FORWARD_DAY = new Date("2026-03-29T12:00:00Z"); // EEST, post-switc
 const FALL_BACK_EVE = new Date("2026-10-24T12:00:00Z"); // EEST (+03:00)
 const FALL_BACK_DAY = new Date("2026-10-25T12:00:00Z"); // EET, post-switch
 
-/** Kyiv wall-clock time of an instant, `HH:MM`, for asserting «midnight». */
+/**
+ * Kyiv wall-clock time of an instant, `HH:MM`, for asserting «midnight».
+ *
+ * Spells the zone out rather than importing `KYIV_TIME_ZONE` (#177) — on
+ * purpose. This is the independent oracle the DST assertions are checked
+ * against; sharing the constant with the code under test would make it agree
+ * with itself no matter what the constant said. The literal here is the point.
+ */
 const kyivTimeFormat = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/Kyiv",
   hour: "2-digit",

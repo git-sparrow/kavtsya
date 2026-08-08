@@ -13,6 +13,14 @@ describe("shiftClock", () => {
     expect(shiftClock("2026-07-25T05:12:00.000Z")).toBe("08:12");
   });
 
+  it("follows Kyiv across DST, not a fixed offset", () => {
+    // The same UTC hour reads 08:12 in summer (above, EEST +3) but 07:12 in
+    // winter. A hardcoded offset would get one of the two wrong — and the board
+    // would label a shift «today» at a time reading like yesterday, since the
+    // server buckets «closed today» by the Kyiv day.
+    expect(shiftClock("2026-01-15T05:12:00.000Z")).toBe("07:12");
+  });
+
   it("zero-pads to a stable two-digit HH:MM", () => {
     expect(shiftClock("2026-07-25T04:05:00.000Z")).toBe("07:05");
   });

@@ -1,7 +1,8 @@
 import { Pool } from "pg";
+import { KYIV_TIME_ZONE } from "@kavtsya/shared";
 import { createAuth } from "../src/auth";
 import type { Auth } from "../src/auth";
-import { KYIV_TIME_ZONE, kyivDaySql } from "../src/clock";
+import { kyivDaySql } from "../src/clock";
 import { createDb } from "../src/db";
 import type { Database } from "../src/db";
 import { loadDotEnv, loadEnv } from "../src/env";
