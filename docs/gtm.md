@@ -21,3 +21,8 @@ Added 2026-07-07 (second brainstorm):
 12. **Customer referral loop** (#69) — "bring a friend, you both get a Зернятко here", owner-toggled per Café.
 13. **Build in public on DOU.ua** — a "будую кавовий стартап з AI-агентами" series is marketing for Kavtsya _and_ career visibility at once; arguably the highest-ROI artifact even if zero cafés ever pay.
 14. **Ukrainian startup ecosystem freebies** — Diia.Business consultations, Ukrainian Startup Fund, Google for Startups Ukraine: free mentorship, grants, and PR channels built for exactly this kind of project.
+
+Added 2026-08-07 (loyalty-mechanics brainstorm — the session that filed #179–#181, #183–#184):
+
+15. **Time-to-first-scan ≤ 5 minutes, as a hard KPI.** International stamp-card SaaS sells "set up in 5 minutes" as a headline promise — adopt it as a *measured* onboarding number, not a vibe: from CafeOwner signup to the first real Customer scan, on the owner's own phone, in the café. Every onboarding change is judged against this clock; the #58 pilot should record it per founding Café.
+16. **Know the shape of the prize.** At ₴390–490/mo, **100 paying Cafés ≈ ₴40–49k/mo (~$1,000–1,200)** — real, but modest; international incumbents run 4–5× this price point in richer markets and are decade-old lifestyle SaaS businesses, not rockets. Consequences, not conclusions: (a) pricing/expansion conversations start from this math, not from optimism; (b) the build-in-public DOU.ua artifact (item 13) and the learning goals carry positive ROI independent of café count; (c) if the ambition ever exceeds this ceiling, the levers are geography or moving up-market — not squeezing Ukrainian indie cafés harder.
