@@ -44,6 +44,9 @@ android/app/build/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+# Shared editor config, not personal preference: it pins the TypeScript the
+# editor reports errors with to the one CI uses. See the comments in the file.
+!.vscode/settings.json
 *.swp
 Thumbs.db
 
