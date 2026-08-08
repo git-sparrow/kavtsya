@@ -187,6 +187,30 @@ root-only tooling, so it lives in the repo-root `package.json` alongside `eslint
 bumped by hand on the Expo track — `expo install --fix` does not reach outside
 `apps/mobile` and will not realign it for you.
 
+### `react-dom` is Expo-governed by proxy
+
+`react-dom` is a **test-only** devDependency of `apps/mobile` (#53): it renders
+`useApiResource` into jsdom so the hook's loading/error/cancellation contract can be
+asserted, and it is never imported by app code or bundled by Metro. React refuses to run
+when `react` and `react-dom` disagree on the exact version, so it is **pinned exactly**
+(no `^`, no `~`) to whatever `react` the SDK dictates. That makes it Expo-governed by
+proxy: it moves on the Expo track, in the same commit as `react`, or the mobile tests
+fail at import with a version-mismatch error.
+
+It also needs a **`react-dom` override** in `pnpm-workspace.yaml`, which is easy to
+mistake for redundancy and delete. Pinning our own dependency is not enough, because
+`react-dom` arrives twice: `better-auth` declares it as an **optional** peer, and
+`autoInstallPeers` (on by default) fetches a *newer* one to satisfy it. Two versions
+would be harmless on their own — but `expo` ALSO declares `react-dom` as an optional
+peer, so a second copy silently forks `expo` into two peer resolutions, and
+`expo-doctor` fails the whole install as duplicated ("Multiple copies of the same
+version exist for: expo"). The override collapses it to one, and 19.2.3 is not a
+preference — it is the only version `react` will run with.
+
+**When `react` moves on the Expo track, change the override in the same commit.**
+`expo install --fix` will not do it for you: the override lives in
+`pnpm-workspace.yaml`, outside `apps/mobile`.
+
 > **Do not "helpfully" bump an Expo package.** `react-native-qrcode-svg` is `^`-ranged
 > and looks updatable, but it is frozen wholesale with the rest of `react-native-*` for
 > native-peer safety; it is reviewed during the Expo track. Conversely,

@@ -15,6 +15,16 @@ catalog:
   zod: ^3.23.8
   better-auth: ^1.6.19
   "@better-auth/expo": ^1.6.19
+# One `react-dom` in the repo, and it is the one `react` is on. React refuses to
+# run when the two disagree, so this is not a preference — it is the only version
+# that works. Without it there are two: our pinned test-only copy, and a newer one
+# pnpm auto-installs to satisfy better-auth's OPTIONAL `react-dom` peer. `expo`
+# also declares `react-dom` as an optional peer, so a second copy silently forks
+# `expo` itself into two resolutions and `expo-doctor` fails the install as
+# duplicated. Pinned, never ranged: it moves with `react`, on the Expo track.
+# (pnpm 11 reads `overrides` here, not from package.json.)
+overrides:
+  react-dom: 19.2.3
 allowBuilds:
   # @swmansion/argent and its native deps (node-pty, tree-sitter*, webtransport)
   "@fails-components/webtransport-transport-http3-quiche": true

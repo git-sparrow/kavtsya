@@ -49,21 +49,102 @@ import { apiFetch } from "@/lib/auth-client";
 // so the Expo plugin attaches the SecureStore-held session cookie automatically.
 // Responses are validated against the shared schemas — the same type-safe
 // boundary the API enforces on the way out.
+//
+// Every endpoint below is a thin, typed declaration over the one `request`
+// helper: which path, which shared schema, and what to say when it fails. The
+// fetch/throw/parse mechanics live in `request` alone (#53), so an endpoint
+// cannot forget to check the error or skip validation.
+
+/**
+ * Validates one endpoint's response body. Structurally a Zod schema — declared
+ * as the one method we call, so this module needs no direct dependency on zod
+ * (mobile only has it transitively, through the shared package).
+ */
+type Parser<T> = { parse: (data: unknown) => T };
+
+/**
+ * For endpoints whose response body carries nothing worth reading: the call
+ * either succeeds or throws, and there is nothing to validate in between.
+ */
+const NO_BODY: Parser<void> = { parse: () => undefined };
+
+/**
+ * Turns a rejection code the API returned into the error this endpoint should
+ * throw for it, or `undefined` for a code the endpoint doesn't name (which then
+ * falls through to its fallback message).
+ */
+type RejectionMapper = (code: string) => Error | undefined;
+
+type RequestOptions = {
+  method?: string;
+  body?: unknown;
+  /** Thrown when the call fails and no named rejection matched. */
+  fallback: string;
+  /** The rejections this endpoint distinguishes, if any. */
+  rejections?: RejectionMapper;
+};
+
+/**
+ * The one way this app talks to its API: send, fail loudly with a message a
+ * screen can show, or return a body validated against the shared schema. Every
+ * exported endpoint function is a call to this.
+ */
+async function request<T>(
+  path: string,
+  schema: Parser<T>,
+  { method, body, fallback, rejections }: RequestOptions,
+): Promise<T> {
+  // Only the keys that are actually set — better-fetch reads the absence of
+  // `method`/`body` (a plain GET), not an explicit `undefined`.
+  const wire: { method?: string; body?: unknown } = {};
+  if (method) wire.method = method;
+  if (body !== undefined) wire.body = body;
+
+  const { data, error } = await apiFetch(path, wire);
+  if (error) throw toError(error, fallback, rejections);
+  return schema.parse(data);
+}
+
+/**
+ * The error an endpoint throws for a failed call. Our API's failure bodies are
+ * `{ error: "<code>" }`; better-fetch folds the parsed body into the error
+ * object, so a rejection code sits on `error.error` beside its own `message`.
+ */
+function toError(
+  error: { message?: string },
+  fallback: string,
+  rejections?: RejectionMapper,
+): Error {
+  const code = (error as { error?: string }).error;
+  const named = code ? rejections?.(code) : undefined;
+  return named ?? new Error(error.message ?? fallback);
+}
+
+/**
+ * Names the rejections one endpoint distinguishes: a guard from the shared
+ * taxonomy plus this app's copy for every code in it. The `Record` is
+ * exhaustive, so a rejection code added to the taxonomy is a compile error here
+ * until it has screen copy — never a silent fallback message.
+ */
+function mapRejections<C extends string>(
+  isCode: (code: string) => code is C,
+  copy: Record<C, string>,
+): RejectionMapper {
+  return (code) => (isCode(code) ? new Error(copy[code]) : undefined);
+}
 
 export async function fetchMe(): Promise<MeResponse> {
-  const { data, error } = await apiFetch("/api/me");
-  if (error) throw new Error(error.message ?? "Не вдалося завантажити профіль");
-  return meResponseSchema.parse(data);
+  return request("/api/me", meResponseSchema, {
+    fallback: "Не вдалося завантажити профіль",
+  });
 }
 
 export async function registerCafe(name: string): Promise<Cafe> {
-  const { data, error } = await apiFetch("/api/cafes", {
+  return request("/api/cafes", cafeSchema, {
     method: "POST",
     body: { name },
+    fallback: "Не вдалося зареєструвати кав'ярню",
   });
-  if (error)
-    throw new Error(error.message ?? "Не вдалося зареєструвати кав'ярню");
-  return cafeSchema.parse(data);
 }
 
 /**
@@ -71,24 +152,22 @@ export async function registerCafe(name: string): Promise<Cafe> {
  * and refetches before `expiresAt` so the code on screen is always fresh.
  */
 export async function fetchQrToken(): Promise<QrTokenResponse> {
-  const { data, error } = await apiFetch("/api/qr-token");
-  if (error) throw new Error(error.message ?? "Не вдалося оновити QR-код");
-  return qrTokenResponseSchema.parse(data);
+  return request("/api/qr-token", qrTokenResponseSchema, {
+    fallback: "Не вдалося оновити QR-код",
+  });
 }
 
 /** The platform-default Reward set the config screen offers (story 38). */
 export async function fetchRewardDefaults(): Promise<RewardDefaults> {
-  const { data, error } = await apiFetch("/api/reward-defaults");
-  if (error)
-    throw new Error(error.message ?? "Не вдалося завантажити винагороди");
-  return rewardDefaultsSchema.parse(data);
+  return request("/api/reward-defaults", rewardDefaultsSchema, {
+    fallback: "Не вдалося завантажити винагороди",
+  });
 }
 
 export async function fetchProgram(cafeId: string): Promise<LoyaltyProgram> {
-  const { data, error } = await apiFetch(`/api/cafes/${cafeId}/program`);
-  if (error)
-    throw new Error(error.message ?? "Не вдалося завантажити програму");
-  return loyaltyProgramSchema.parse(data);
+  return request(`/api/cafes/${cafeId}/program`, loyaltyProgramSchema, {
+    fallback: "Не вдалося завантажити програму",
+  });
 }
 
 /**
@@ -125,22 +204,20 @@ const SCAN_REJECTIONS: Record<ScanRejection, string> = {
  * One issuance seam, two identifiers (#21): the scanned rotating QR token or
  * the typed member code — the same request, ledger effects, and result either
  * way. Only the wire body differs, so both public functions share this.
+ *
+ * A named rejection arrives as a typed `ScanRejectionError` rather than a plain
+ * message, because the scanner keys its recovery copy off the code itself.
  */
 async function requestPurchase(
   body: { cafeId: string } & ({ qrToken: string } | { memberCode: string }),
 ): Promise<PurchaseResult> {
-  const { data, error } = await apiFetch("/api/purchases", {
+  return request("/api/purchases", purchaseResultSchema, {
     method: "POST",
     body,
+    fallback: "Не вдалося нарахувати зернятко",
+    rejections: (code) =>
+      isScanRejection(code) ? new ScanRejectionError(code) : undefined,
   });
-  if (error) {
-    // Our API's error bodies are { error: "<code>" }; better-fetch folds the
-    // parsed body into the error object, so the code sits on `error.error`.
-    const code = (error as { error?: string }).error;
-    if (code && isScanRejection(code)) throw new ScanRejectionError(code);
-    throw new Error(error.message ?? "Не вдалося нарахувати зернятко");
-  }
-  return purchaseResultSchema.parse(data);
 }
 
 /**
@@ -170,9 +247,12 @@ export function issuePurchaseByMemberCode(
  * device (see `useMemberCode`) so it displays with no connectivity at all.
  */
 export async function fetchMemberCode(): Promise<string> {
-  const { data, error } = await apiFetch("/api/me/member-code");
-  if (error) throw new Error(error.message ?? "Не вдалося отримати код");
-  return memberCodeResponseSchema.parse(data).memberCode;
+  const { memberCode } = await request(
+    "/api/me/member-code",
+    memberCodeResponseSchema,
+    { fallback: "Не вдалося отримати код" },
+  );
+  return memberCode;
 }
 
 /**
@@ -197,25 +277,19 @@ export async function confirmRedemption(
   customerId: string,
   idempotencyKey: string,
 ): Promise<RedemptionResult> {
-  const { data, error } = await apiFetch("/api/redemptions", {
+  return request("/api/redemptions", redemptionResultSchema, {
     method: "POST",
     body: { cafeId, customerId, idempotencyKey },
+    fallback: "Не вдалося видати винагороду",
+    rejections: mapRejections(isRedemptionRejection, REDEMPTION_REJECTIONS),
   });
-  if (error) {
-    const code = (error as { error?: string }).error;
-    if (code && isRedemptionRejection(code)) {
-      throw new Error(REDEMPTION_REJECTIONS[code]);
-    }
-    throw new Error(error.message ?? "Не вдалося видати винагороду");
-  }
-  return redemptionResultSchema.parse(data);
 }
 
 /** The owner's shift board (#98): who is behind the counter right now. */
 export async function fetchShifts(cafeId: string): Promise<ShiftsResponse> {
-  const { data, error } = await apiFetch(`/api/cafes/${cafeId}/shifts`);
-  if (error) throw new Error(error.message ?? "Не вдалося завантажити зміни");
-  return shiftsResponseSchema.parse(data);
+  return request(`/api/cafes/${cafeId}/shifts`, shiftsResponseSchema, {
+    fallback: "Не вдалося завантажити зміни",
+  });
 }
 
 /** Revocation is a tap (#99): the shift ends now instead of at its ~16h cap. */
@@ -223,10 +297,10 @@ export async function revokeShift(
   cafeId: string,
   grantId: string,
 ): Promise<void> {
-  const { error } = await apiFetch(`/api/cafes/${cafeId}/shifts/${grantId}`, {
+  return request(`/api/cafes/${cafeId}/shifts/${grantId}`, NO_BODY, {
     method: "DELETE",
+    fallback: "Не вдалося завершити зміну",
   });
-  if (error) throw new Error(error.message ?? "Не вдалося завершити зміну");
 }
 
 /**
@@ -235,23 +309,25 @@ export async function revokeShift(
  * Mode. Idempotent on the server — a no-op when nothing is active.
  */
 export async function endMyShift(): Promise<void> {
-  const { error } = await apiFetch("/api/me/shift", { method: "DELETE" });
-  if (error) throw new Error(error.message ?? "Не вдалося завершити зміну");
+  return request("/api/me/shift", NO_BODY, {
+    method: "DELETE",
+    fallback: "Не вдалося завершити зміну",
+  });
 }
 
 /** The barista's side (#98): the active shift this account holds, or null. */
 export async function fetchMyShift(): Promise<MyShiftResponse["shift"]> {
-  const { data, error } = await apiFetch("/api/me/shift");
-  if (error) throw new Error(error.message ?? "Не вдалося перевірити зміну");
-  return myShiftResponseSchema.parse(data).shift;
+  const { shift } = await request("/api/me/shift", myShiftResponseSchema, {
+    fallback: "Не вдалося перевірити зміну",
+  });
+  return shift;
 }
 
 /** The Cafés where the Customer holds Зернятка (most recently visited first). */
 export async function fetchBalances(): Promise<CafeBalancesResponse> {
-  const { data, error } = await apiFetch("/api/me/balances");
-  if (error)
-    throw new Error(error.message ?? "Не вдалося завантажити зернятка");
-  return cafeBalancesResponseSchema.parse(data);
+  return request("/api/me/balances", cafeBalancesResponseSchema, {
+    fallback: "Не вдалося завантажити зернятка",
+  });
 }
 
 /**
@@ -261,10 +337,9 @@ export async function fetchBalances(): Promise<CafeBalancesResponse> {
  * them to remember. A pure read — fetching it commits to nothing.
  */
 export async function fetchDeletionPreview(): Promise<DeletionPreview> {
-  const { data, error } = await apiFetch("/api/me/deletion-preview");
-  if (error)
-    throw new Error(error.message ?? "Не вдалося перевірити, що буде видалено");
-  return deletionPreviewSchema.parse(data);
+  return request("/api/me/deletion-preview", deletionPreviewSchema, {
+    fallback: "Не вдалося перевірити, що буде видалено",
+  });
 }
 
 /**
@@ -274,8 +349,10 @@ export async function fetchDeletionPreview(): Promise<DeletionPreview> {
  * session this request travelled on no longer exists.
  */
 export async function deleteAccount(): Promise<void> {
-  const { error } = await apiFetch("/api/me", { method: "DELETE" });
-  if (error) throw new Error(error.message ?? "Не вдалося видалити акаунт");
+  return request("/api/me", NO_BODY, {
+    method: "DELETE",
+    fallback: "Не вдалося видалити акаунт",
+  });
 }
 
 /**
@@ -284,17 +361,17 @@ export async function deleteAccount(): Promise<void> {
  * CafeOwner scans.
  */
 export async function fetchPendingFortune(): Promise<PendingFortuneResponse> {
-  const { data, error } = await apiFetch("/api/me/fortune/pending");
-  if (error) throw new Error(error.message ?? "Не вдалося завантажити ворожку");
-  return pendingFortuneResponseSchema.parse(data);
+  return request("/api/me/fortune/pending", pendingFortuneResponseSchema, {
+    fallback: "Не вдалося завантажити ворожку",
+  });
 }
 
 /** Mark a Ворожка reveal seen (the «Дякую» tap) so it isn't shown again. */
 export async function markFortuneSeen(id: string): Promise<void> {
-  const { error } = await apiFetch(`/api/me/fortune/${id}/seen`, {
+  return request(`/api/me/fortune/${id}/seen`, NO_BODY, {
     method: "POST",
+    fallback: "Не вдалося оновити ворожку",
   });
-  if (error) throw new Error(error.message ?? "Не вдалося оновити ворожку");
 }
 
 /**
@@ -317,18 +394,12 @@ export async function sendCampaign(
   cafeId: string,
   message: string,
 ): Promise<CampaignResult> {
-  const { data, error } = await apiFetch(`/api/cafes/${cafeId}/campaigns`, {
+  return request(`/api/cafes/${cafeId}/campaigns`, campaignResultSchema, {
     method: "POST",
     body: { message },
+    fallback: "Не вдалося надіслати розсилку",
+    rejections: mapRejections(isCampaignRejection, CAMPAIGN_REJECTIONS),
   });
-  if (error) {
-    const code = (error as { error?: string }).error;
-    if (code && isCampaignRejection(code)) {
-      throw new Error(CAMPAIGN_REJECTIONS[code]);
-    }
-    throw new Error(error.message ?? "Не вдалося надіслати розсилку");
-  }
-  return campaignResultSchema.parse(data);
 }
 
 /**
@@ -352,26 +423,23 @@ export async function fetchAnalytics(
   cafeId: string,
   period: AnalyticsPeriod,
 ): Promise<AnalyticsSummary> {
-  const { data, error } = await apiFetch(
+  return request(
     `/api/cafes/${cafeId}/analytics?period=${period}`,
+    analyticsSummarySchema,
+    {
+      fallback: "Не вдалося завантажити аналітику",
+      rejections: mapRejections(isAnalyticsRejection, ANALYTICS_REJECTIONS),
+    },
   );
-  if (error) {
-    const code = (error as { error?: string }).error;
-    if (code && isAnalyticsRejection(code)) {
-      throw new Error(ANALYTICS_REJECTIONS[code]);
-    }
-    throw new Error(error.message ?? "Не вдалося завантажити аналітику");
-  }
-  return analyticsSummarySchema.parse(data);
 }
 
 /** The Customer's explicit café-news opt-in (#24): flip it on the server. */
 export async function updatePushConsent(consent: boolean): Promise<void> {
-  const { error } = await apiFetch("/api/me/push-consent", {
+  return request("/api/me/push-consent", NO_BODY, {
     method: "PUT",
     body: { consent },
+    fallback: "Не вдалося зберегти вибір",
   });
-  if (error) throw new Error(error.message ?? "Не вдалося зберегти вибір");
 }
 
 /** Register/refresh THIS device's Expo push token (#24). */
@@ -379,12 +447,11 @@ export async function registerPushToken(
   token: string,
   deviceId: string,
 ): Promise<void> {
-  const { error } = await apiFetch("/api/me/push-token", {
+  return request("/api/me/push-token", NO_BODY, {
     method: "POST",
     body: { token, deviceId },
+    fallback: "Не вдалося зареєструвати пристрій",
   });
-  if (error)
-    throw new Error(error.message ?? "Не вдалося зареєструвати пристрій");
 }
 
 /**
@@ -400,27 +467,24 @@ export async function scanPoster(
   posterCode: string,
   confirmSwitch?: boolean,
 ): Promise<PosterScanResult> {
-  const { data, error } = await apiFetch("/api/poster-scans", {
+  return request("/api/poster-scans", posterScanResultSchema, {
     method: "POST",
     body: { posterCode, ...(confirmSwitch ? { confirmSwitch } : {}) },
+    fallback: "Не вдалося обробити скан",
+    rejections: (code) =>
+      code === "unknown_poster"
+        ? new Error("Такого коду немає — перевірте код на постері кав'ярні")
+        : undefined,
   });
-  if (error) {
-    const code = (error as { error?: string }).error;
-    if (code === "unknown_poster") {
-      throw new Error("Такого коду немає — перевірте код на постері кав'ярні");
-    }
-    throw new Error(error.message ?? "Не вдалося обробити скан");
-  }
-  return posterScanResultSchema.parse(data);
 }
 
 /** The owner's Roster board (#97): poster code, pending requests, rostered baristas. */
 export async function fetchRoster(
   cafeId: string,
 ): Promise<RosterBoardResponse> {
-  const { data, error } = await apiFetch(`/api/cafes/${cafeId}/roster`);
-  if (error) throw new Error(error.message ?? "Не вдалося завантажити ростер");
-  return rosterBoardResponseSchema.parse(data);
+  return request(`/api/cafes/${cafeId}/roster`, rosterBoardResponseSchema, {
+    fallback: "Не вдалося завантажити ростер",
+  });
 }
 
 /** Approve a pending request → rostered (#97). */
@@ -428,11 +492,10 @@ export async function approveBarista(
   cafeId: string,
   userId: string,
 ): Promise<void> {
-  const { error } = await apiFetch(
-    `/api/cafes/${cafeId}/roster/${userId}/approve`,
-    { method: "POST" },
-  );
-  if (error) throw new Error(error.message ?? "Не вдалося підтвердити бариста");
+  return request(`/api/cafes/${cafeId}/roster/${userId}/approve`, NO_BODY, {
+    method: "POST",
+    fallback: "Не вдалося підтвердити бариста",
+  });
 }
 
 /** Remove a barista (rostered or pending) → none (#97). */
@@ -440,20 +503,19 @@ export async function removeBarista(
   cafeId: string,
   userId: string,
 ): Promise<void> {
-  const { error } = await apiFetch(`/api/cafes/${cafeId}/roster/${userId}`, {
+  return request(`/api/cafes/${cafeId}/roster/${userId}`, NO_BODY, {
     method: "DELETE",
+    fallback: "Не вдалося видалити бариста",
   });
-  if (error) throw new Error(error.message ?? "Не вдалося видалити бариста");
 }
 
 export async function updateProgram(
   cafeId: string,
   program: LoyaltyProgram,
 ): Promise<LoyaltyProgram> {
-  const { data, error } = await apiFetch(`/api/cafes/${cafeId}/program`, {
+  return request(`/api/cafes/${cafeId}/program`, loyaltyProgramSchema, {
     method: "PUT",
     body: program,
+    fallback: "Не вдалося зберегти програму",
   });
-  if (error) throw new Error(error.message ?? "Не вдалося зберегти програму");
-  return loyaltyProgramSchema.parse(data);
 }
