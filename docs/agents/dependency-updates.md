@@ -41,7 +41,7 @@ there is exactly one version and it cannot diverge.
 
 | Dependency | Declared in | Why catalog'd |
 | --- | --- | --- |
-| `typescript` | api, shared, mobile | was drifting (`^5.6.3` vs `~6.0.3`) |
+| `typescript` | root, api, shared, mobile | was drifting (`^5.6.3` vs `~6.0.3`) |
 | `vitest` | api, mobile | was drifting (`^2.1.8` vs `^2.1.9`) |
 | `zod` | api, shared | shared validation schemas |
 | `better-auth` | api, mobile | auth server + client halves |
@@ -50,6 +50,15 @@ there is exactly one version and it cannot diverge.
 `@better-auth/expo` shares the catalog with `better-auth` so the two auth halves can
 never diverge. Both are scoped, `^`-ranged, JS-only packages — **not** Expo-governed,
 despite the `expo` in the name — so they stay automatically updatable.
+
+`typescript` is declared at the **repo root** as well as in the three workspace
+packages, which looks redundant and is not. pnpm's isolated layout links only a
+package's own dependencies, so without the root declaration there is no
+`node_modules/typescript` at the root at all — and `.vscode/settings.json` points
+`js/ts.tsdk.path` there so the editor reports errors with the same compiler as
+`pnpm typecheck` and CI, instead of the older one VS Code bundles. It also makes
+explicit what `typescript-eslint` was already relying on as an auto-installed peer.
+Because all four declarations read `catalog:`, the extra home cannot introduce drift.
 
 **Not catalog'd, on purpose:**
 

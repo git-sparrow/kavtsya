@@ -1,0 +1,21 @@
+{
+  // Report errors with the SAME TypeScript that `pnpm typecheck` and CI use.
+  // Without this the editor falls back to the TypeScript bundled with VS Code,
+  // which is a different (usually older) major than the `typescript` this repo
+  // pins in the pnpm catalog — so the squiggles you see and the gate you have to
+  // pass can legitimately disagree, in either direction.
+  //
+  // The path resolves because `typescript` is declared at the repo root (via
+  // `catalog:`, so it cannot drift from the workspace packages). pnpm's isolated
+  // layout only links a package's OWN dependencies, so without that root
+  // declaration there is no `node_modules/typescript` here at all.
+  //
+  // Key names are the current ones; the older `typescript.tsdk` /
+  // `typescript.enablePromptUseWorkspaceTsdk` spellings are deprecated.
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
+
+  // VS Code will not run a workspace-provided TypeScript without consent (it is
+  // executing code from the repo). This makes it offer the switch on open;
+  // accept once per machine via "Use Workspace Version".
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true
+}
