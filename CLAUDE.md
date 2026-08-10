@@ -77,3 +77,7 @@ The `argent-*` skills + MCP server (Software Mansion's Argent, local devDependen
 ### LLM doc endpoints
 
 For current, version-specific facts about a stack tool, fetch its `llms.txt` rather than relying on training memory (prefer a vendored skill where one exists). Confirmed endpoints + the index-vs-condensed rule live in `docs/agents/llms-resources.md`.
+
+### Verify before claiming
+
+**Never propose a library, version, or third-party API from memory.** Training data is stale in ways that feel certain, so the trigger is what you are about to write — a version, an API name, a size/benchmark figure, an "X requires Y" claim — not how confident you feel. Check it (`npm view <pkg> version peerDependencies deprecated` costs two seconds), **state how and when you checked it inline**, and prefer *running* the thing over reading about it when it is testable here in five minutes. An unchecked claim is allowed only when labelled "unverified" — never unlabelled in an issue, ADR, or code comment, where it will later read as settled fact. Full rule in `docs/agents/llms-resources.md`.

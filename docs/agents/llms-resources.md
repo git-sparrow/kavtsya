@@ -18,6 +18,62 @@ with `WebFetch`; it answers your prompt against the file via a small model, so a
 4. **Memory last**, and only for stable fundamentals — never for version-specific behavior.
 5. **Save durable findings** (to learning notes or memory) so you don't re-fetch the same fact.
 
+## When this rule fires
+
+Rule 4 above is the intent. It fails in practice because it asks the agent to notice it is
+unsure — and the actual failure mode is *feeling certain about something stale*. Training
+data contains plenty of real facts about these libraries, so a wrong version number or a
+renamed API arrives with exactly the same confidence as a right one.
+
+So the trigger is **what you are about to write, not how sure you feel**. Any of these in
+your output must be checked first — no judgement call involved:
+
+- a version number or range (`test-renderer@1.2.0`, "needs vitest >= 4")
+- a third-party API, method, option, or config key (`refetchInterval`, `minimumReleaseAgeExclude`)
+- a size, benchmark, or performance figure ("~13kb", "3× faster")
+- a claim shaped like "X supports Y" / "X requires Y" / "X deprecated Y"
+
+## Show the receipt
+
+**Every checked claim carries how it was checked and when**, inline:
+
+> `test-renderer@1.2.0`, peer `react ^19` only (npm view, 2026-08-11)
+> `expo-doctor` 19/19 with `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK=1` (run locally, 2026-08-11)
+
+This is the part that actually works, because it is the part a human can audit. An
+instruction the agent can silently skip is weak; one whose compliance is visible in the
+output is enforceable.
+
+**An unchecked claim is not forbidden — it is labelled.** "From memory, unverified: React
+Query would probably absorb the polling hooks" is honest and useful. The same sentence
+without the label is the failure this section exists to prevent, and it is worse when it
+lands somewhere durable (an issue, an ADR, a code comment) where it will be read later as
+settled fact.
+
+## Prefer running it to reading about it
+
+When a claim is testable in this repo in under five minutes, **test it** — docs are the
+fallback, not the standard. Install the package and run `pnpm verify`; run `expo-doctor`;
+write the ten-line proof-of-concept; do the install in a throwaway `git worktree`.
+
+This is not a general preference for effort. Documentation has been wrong here twice:
+Dependabot's own options reference disagreed with both its changelog and its live schema
+validator (#191), and a fetched docs page produced a confident YAML example that was not
+on the page. Every experiment, by contrast, gave an unambiguous answer — including one
+(`pnpm install --frozen-lockfile` in a clean worktree) that exposed a broken lockfile a
+warm local install had reported as fine.
+
+**Quick checks, cheapest first:**
+
+```sh
+npm view <pkg> version peerDependencies deprecated   # before proposing ANY library
+npm view <pkg> time.created time.modified            # maturity: is this a 3-month-old project?
+npm view <pkg>@<version> time --json                 # publish date (release-age gate, #191)
+pnpm why <pkg>                                       # what already pulls it in
+```
+
+Then install it and run the gate before recommending it, not after.
+
 ## Confirmed endpoints (checked 2026-06-26)
 
 | Tool | Preferred | Type | Notes |
