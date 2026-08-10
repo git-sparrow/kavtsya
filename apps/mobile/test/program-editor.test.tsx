@@ -1,5 +1,4 @@
-// @vitest-environment jsdom
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "./support/render-hook";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**

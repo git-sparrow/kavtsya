@@ -1,5 +1,4 @@
-// @vitest-environment jsdom
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "./support/render-hook";
 import { useCallback, useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -256,6 +255,10 @@ describe("useApiResource: cancellation", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    await expect(result.current.reload()).resolves.toBeUndefined();
+    // Inside `act` because the reload writes state on its way to resolving; the
+    // assertion is still that it RESOLVES rather than rejects.
+    await act(async () => {
+      await expect(result.current.reload()).resolves.toBeUndefined();
+    });
   });
 });

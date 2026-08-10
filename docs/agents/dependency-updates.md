@@ -187,29 +187,26 @@ root-only tooling, so it lives in the repo-root `package.json` alongside `eslint
 bumped by hand on the Expo track — `expo install --fix` does not reach outside
 `apps/mobile` and will not realign it for you.
 
-### `react-dom` is Expo-governed by proxy
+### Do not add `react-dom` (or a testing library that needs it)
 
-`react-dom` is a **test-only** devDependency of `apps/mobile` (#53): it renders
-`useApiResource` into jsdom so the hook's loading/error/cancellation contract can be
-asserted, and it is never imported by app code or bundled by Metro. React refuses to run
-when `react` and `react-dom` disagree on the exact version, so it is **pinned exactly**
-(no `^`, no `~`) to whatever `react` the SDK dictates. That makes it Expo-governed by
-proxy: it moves on the Expo track, in the same commit as `react`, or the mobile tests
-fail at import with a version-mismatch error.
+Mobile hooks are tested with **`test-renderer`**, which builds an in-memory tree and
+needs no DOM (#53). This is deliberate: the obvious alternative,
+`@testing-library/react`, renders through `react-dom` into jsdom, and `react-dom` is a
+trap here.
 
-It also needs a **`react-dom` override** in `pnpm-workspace.yaml`, which is easy to
-mistake for redundancy and delete. Pinning our own dependency is not enough, because
-`react-dom` arrives twice: `better-auth` declares it as an **optional** peer, and
-`autoInstallPeers` (on by default) fetches a *newer* one to satisfy it. Two versions
-would be harmless on their own — but `expo` ALSO declares `react-dom` as an optional
-peer, so a second copy silently forks `expo` into two peer resolutions, and
-`expo-doctor` fails the whole install as duplicated ("Multiple copies of the same
-version exist for: expo"). The override collapses it to one, and 19.2.3 is not a
-preference — it is the only version `react` will run with.
+React refuses to run unless `react-dom` matches `react` **exactly**, so it would have to
+be pinned to whatever `react` the SDK dictates and moved on the Expo track by hand —
+`expo install --fix` does not manage it. Worse, it would need a `pnpm-workspace.yaml`
+override on top: `better-auth` declares `react-dom` as an *optional* peer and
+`autoInstallPeers` fetches a newer one to satisfy it, and because `expo` **also**
+declares it optionally, that second copy silently forks `expo` into two peer resolutions
+until `expo-doctor` fails the install as duplicated.
 
-**When `react` moves on the Expo track, change the override in the same commit.**
-`expo install --fix` will not do it for you: the override lives in
-`pnpm-workspace.yaml`, outside `apps/mobile`.
+None of that exists today: nothing in the repo declares `react-dom`, so pnpm resolves the
+single auto-installed copy and `expo-doctor` is clean. Adding `@testing-library/react`,
+`jsdom`, or `react-dom` brings the whole chain back. If you need to render React Native
+components (not just hooks), that is a runner decision — see the note on Jest in the ADR,
+not a dependency to add here.
 
 > **Do not "helpfully" bump an Expo package.** `react-native-qrcode-svg` is `^`-ranged
 > and looks updatable, but it is frozen wholesale with the rest of `react-native-*` for

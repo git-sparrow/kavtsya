@@ -47,11 +47,6 @@ updates:
       - dependency-name: "react-native"
       - dependency-name: "react-native-*"
       - dependency-name: "@types/react"
-      # react-dom is test-only (it renders hooks into jsdom, #53) but React
-      # refuses to run unless it matches `react` EXACTLY, so it is pinned to the
-      # SDK's react and must move only with it on the Expo track. None of the
-      # patterns above match it — `react-native-*` does not cover `react-dom`.
-      - dependency-name: "react-dom"
       # eslint-config-expo is SDK-keyed (its major tracks the Expo SDK: 56.x for
       # SDK 56, 57.x for SDK 57) but lives in the repo-root package.json, so none
       # of the patterns above match it. Without this entry Dependabot would bump
