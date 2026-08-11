@@ -1,10 +1,10 @@
 # Dependabot configuration — see docs/agents/dependency-updates.md for the full
 # version-authority policy and the rationale behind every choice here.
 #
-# Cadence is ~biweekly (the 1st and 15th) via a cron schedule; updates arrive as
-# few PRs as possible (one grouped minor/patch PR; each major on its own); and
-# the Expo-governed native surface is never touched — that surface is realigned
-# deliberately on the Expo track, keyed to Expo SDK releases.
+# Cadence is monthly (the 1st); updates arrive as few PRs as possible (one
+# grouped minor/patch PR; each major on its own); and the Expo-governed native
+# surface is never touched — that surface is realigned deliberately on the Expo
+# track, keyed to Expo SDK releases.
 version: 2
 
 updates:
@@ -20,8 +20,12 @@ updates:
       - "/apps/mobile"
       - "/packages/shared"
     schedule:
-      interval: "cron"
-      cron: "0 6 1,15 * *" # 06:00 on the 1st and 15th of each month
+      # A named interval, not `cron`. The previous biweekly cron schedule used a
+      # `cron:` sub-key that is not in the schema at all, so GitHub rejected the
+      # whole file and Dependabot never ran once. `monthly` cannot fail that way
+      # and has no cron-specific failure modes. (#191)
+      interval: "monthly" # the 1st of each month
+      time: "06:00"
       timezone: "Europe/Kyiv"
     open-pull-requests-limit: 10
     labels:
@@ -65,8 +69,8 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "cron"
-      cron: "0 6 1,15 * *"
+      interval: "monthly" # see the note on the npm entry above
+      time: "06:00"
       timezone: "Europe/Kyiv"
     open-pull-requests-limit: 5
     labels:
