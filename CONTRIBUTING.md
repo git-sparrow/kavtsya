@@ -16,6 +16,33 @@ branch protection on GitHub is the real guarantee and switches on once the repo
 is public or on a paid plan; until then the hook plus this convention are what
 we rely on, so please don't route around them.
 
+## The lockfile guard
+
+The same hook also refuses to push a broken `pnpm-lock.yaml`, because it's the
+one tracked file nothing else checks — it's in `.prettierignore`, and unlike a
+`.ts` file, conflict markers in it don't break `tsc`, ESLint, or Prettier. pnpm
+compounds this by *hiding* the damage: it prints `Merge conflict detected in
+pnpm-lock.yaml and successfully merged`, silently picks a side, and lets a
+corrupt lockfile look healthy until CI fails with a confusing version mismatch.
+
+Two things are checked, and both point you at the fix:
+
+1. **Conflict markers**, in every commit you're pushing — not just the tip, so a
+   broken intermediate commit can't slip through and poison `git bisect`.
+2. **Drift** between the lockfile and the `package.json` files
+   (`pnpm install --frozen-lockfile --lockfile-only` — the same check CI runs).
+
+If you hit the first one, don't hand-edit the markers out. Regenerate from a
+clean base and amend the offending commit:
+
+```sh
+git checkout origin/main -- pnpm-lock.yaml
+pnpm install --lockfile-only
+```
+
+`git push --no-verify` overrides both, same as the direct-push guard. Note the
+drift check reads the registry, so an offline push can land there too.
+
 ## Workflow
 
 1. **Branch off `main`.** Name it by intent:

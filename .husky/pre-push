@@ -1,12 +1,19 @@
-# Enforce the PR-only workflow: never push directly to a protected branch.
+# Two local guardrails, both running before anything leaves the machine:
+#   1. the PR-only workflow — never push directly to a protected branch;
+#   2. pnpm-lock.yaml integrity — see the block below for why it needs its own.
 # GitHub-side branch protection isn't available on this repo's plan yet (private
 # + free), so this hook is the local guardrail — see CONTRIBUTING.md. It runs
 # for everyone once `pnpm install` sets husky up. A genuine exception can still
 # push with `git push --no-verify`.
 
 protected_branches="main"
+lockfile="pnpm-lock.yaml"
 
-while read -r _local_ref _local_sha remote_ref _remote_sha; do
+# Git feeds us one line per pushed ref on stdin:
+#   <local_ref> <local_sha> <remote_ref> <remote_sha>
+# stdin is a stream and this loop drains it, so every ref-scoped check has to
+# live inside the loop — a check bolted on afterwards would see nothing.
+while read -r _local_ref local_sha remote_ref remote_sha; do
   branch="${remote_ref#refs/heads/}"
   for protected in $protected_branches; do
     if [ "$branch" = "$protected" ]; then
@@ -20,6 +27,69 @@ while read -r _local_ref _local_sha remote_ref _remote_sha; do
       exit 1
     fi
   done
+
+  # An all-zero sha means "no commit": as local_sha it's a branch deletion
+  # (nothing to inspect), as remote_sha it's a branch that doesn't exist on the
+  # remote yet. Matched by pattern rather than a literal so this keeps working
+  # if the repo ever moves to SHA-256 object names.
+  case "$local_sha" in *[!0]*) ;; *) continue ;; esac
+
+  # Which commits are we actually sending? A brand-new remote branch has no
+  # remote tip to diff against, so bound the range by what origin already has.
+  # `-- $lockfile` narrows it to commits that touched the lockfile: a commit
+  # can only introduce breakage by changing the file, and this keeps the scan
+  # proportional to the push rather than to the branch's length.
+  case "$remote_sha" in
+    *[!0]*) range="$remote_sha..$local_sha" ;;
+    *)      range="$local_sha --not --remotes=origin" ;;
+  esac
+
+  # Why the lockfile gets its own check: conflict markers in any other tracked
+  # file break tsc/ESLint/Prettier instantly, but pnpm-lock.yaml is in
+  # .prettierignore and nothing else reads it. pnpm then *hides* the damage —
+  # it prints "Merge conflict detected in pnpm-lock.yaml and successfully
+  # merged" and silently picks a side, so the push looks fine locally and CI
+  # fails later with a version-mismatch error that points at the wrong thing.
+  # Every commit is scanned, not just the tip, so a broken intermediate commit
+  # can't slip through and poison `git bisect`. (#205)
+  # shellcheck disable=SC2086 # $range is a deliberate multi-word argument list
+  for sha in $(git rev-list --reverse $range -- "$lockfile" 2>/dev/null); do
+    if git show "$sha:$lockfile" 2>/dev/null |
+      grep -qE '^(<<<<<<<|=======|>>>>>>>)'; then
+      echo "" >&2
+      echo "✖ $lockfile has unresolved conflict markers in $(git rev-parse --short "$sha")." >&2
+      echo "    $(git log -1 --format=%s "$sha")" >&2
+      echo "" >&2
+      echo "  Don't hand-edit the markers out — regenerate the file from a clean base:" >&2
+      echo "    git checkout origin/main -- $lockfile" >&2
+      echo "    pnpm install --lockfile-only" >&2
+      echo "  then amend that commit. See CONTRIBUTING.md." >&2
+      echo "" >&2
+      exit 1
+    fi
+  done
 done
+
+# Drift: the lockfile can disagree with package.json without any conflict at
+# all — edit a dependency, forget to re-run install, and CI dies on
+# ERR_PNPM_OUTDATED_LOCKFILE. This is the same check CI runs, and it resolves
+# nothing and downloads no packages, so it costs well under a second.
+#
+# Caveat: unlike the scan above, this inspects the *working tree*, not the
+# commits being pushed. At push time those normally match; if yours don't, this
+# can report on changes you haven't committed.
+if ! pnpm install --frozen-lockfile --lockfile-only >/dev/null 2>&1; then
+  echo "" >&2
+  echo "✖ $lockfile is out of sync with the package.json files." >&2
+  echo "  Re-run the check to see which specifiers disagree:" >&2
+  echo "    pnpm install --frozen-lockfile --lockfile-only" >&2
+  echo "  Usually the fix is just:" >&2
+  echo "    pnpm install   # then commit the updated $lockfile" >&2
+  echo "" >&2
+  echo "  (Offline? This check verifies against the registry, so a dropped" >&2
+  echo "   network can also land here — git push --no-verify to override.)" >&2
+  echo "" >&2
+  exit 1
+fi
 
 exit 0
