@@ -1,10 +1,36 @@
-import type { Reward, RewardType } from "@kavtsya/shared";
-import { useEffect, useState } from "react";
+import type {
+  LoyaltyProgram,
+  Reward,
+  RewardDefaults,
+  RewardType,
+} from "@kavtsya/shared";
+import { useCallback, useState } from "react";
 
 import { fetchProgram, fetchRewardDefaults, updateProgram } from "@/lib/api";
+import { useApiResource } from "@/lib/use-api-resource";
 
 import { clampThreshold } from "./program";
 import { buildReward, REWARD_PARAM, rewardParamValue } from "./reward";
+
+/** Everything the editor needs before it can render a form: read as one resource. */
+type ProgramSetup = LoyaltyProgram & { defaults: RewardDefaults };
+
+/** The editable form, seeded from the server and owned by the CafeOwner after that. */
+type Form = {
+  threshold: string;
+  rewardType: RewardType | null;
+  param: string;
+};
+
+const EMPTY_FORM: Form = { threshold: "10", rewardType: null, param: "" };
+
+function formFor({ threshold, reward }: LoyaltyProgram): Form {
+  return {
+    threshold: String(threshold),
+    rewardType: reward?.type ?? null,
+    param: rewardParamValue(reward),
+  };
+}
 
 /**
  * Drives the loyalty-program editor for one Café (#18): loads the current
@@ -14,85 +40,70 @@ import { buildReward, REWARD_PARAM, rewardParamValue } from "./reward";
  * the "saved" flag so the confirmation never lingers over stale input.
  */
 export function useProgramEditor(cafeId: string) {
-  const [threshold, setThreshold] = useState("10");
-  // null = "no Reward yet"; otherwise one of the platform-default types.
-  const [rewardType, setRewardType] = useState<RewardType | null>(null);
-  const [param, setParam] = useState("");
-  const [defaults, setDefaults] = useState<
-    { type: RewardType; label: string }[]
-  >([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const setup = useApiResource(
+    useCallback(async (): Promise<ProgramSetup> => {
+      const [program, defaults] = await Promise.all([
+        fetchProgram(cafeId),
+        fetchRewardDefaults(),
+      ]);
+      return { ...program, defaults };
+    }, [cafeId]),
+    "Помилка завантаження",
+  );
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const [program, rewardDefaults] = await Promise.all([
-          fetchProgram(cafeId),
-          fetchRewardDefaults(),
-        ]);
-        if (!active) return;
-        setDefaults(rewardDefaults);
-        setThreshold(String(program.threshold));
-        setRewardType(program.reward?.type ?? null);
-        setParam(rewardParamValue(program.reward));
-      } catch (e) {
-        if (active)
-          setError(e instanceof Error ? e.message : "Помилка завантаження");
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [cafeId]);
-
-  // Any edit clears both the lingering "saved" confirmation and a stale
-  // validation error, so neither hangs over input the user has since changed.
-  function clearOutcome() {
-    setSaved(false);
-    setError(null);
+  const [form, setForm] = useState<Form>(EMPTY_FORM);
+  // The form is seeded from the server exactly once per read, then belongs to
+  // the CafeOwner — so this remembers WHICH read seeded it rather than a
+  // boolean, applied during that very render (the sanctioned
+  // adjust-state-on-render pattern, as in `useMemberCode`). Their edits are
+  // never overwritten by a read they have already seen.
+  const [seededFrom, setSeededFrom] = useState<ProgramSetup | null>(null);
+  if (setup.data && setup.data !== seededFrom) {
+    setSeededFrom(setup.data);
+    setForm(formFor(setup.data));
   }
 
-  function editThreshold(value: string) {
-    setThreshold(value);
+  // What went wrong with the CafeOwner's own action — a validation refusal or a
+  // failed write. Separate from `setup.error` (the read that never landed), but
+  // the screen shows one line, so `error` below folds them back together.
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  // A failed read is dismissed by acting on the form, exactly as it was when one
+  // error slot held both. Tracked as a flag rather than copied into local state,
+  // so the message itself still lives in exactly one place.
+  const [readErrorDismissed, setReadErrorDismissed] = useState(false);
+
+  // Any edit clears the lingering "saved" confirmation and every stale error, so
+  // nothing hangs over input the user has since changed.
+  function clearOutcome() {
+    setSaved(false);
+    setActionError(null);
+    setReadErrorDismissed(true);
+  }
+
+  function edit(change: Partial<Form>) {
+    setForm((current) => ({ ...current, ...change }));
     clearOutcome();
   }
 
   /** Nudge the threshold by ±1 from the stepper, clamped to the floor of 1. */
   function stepThreshold(delta: number) {
-    setThreshold(String(clampThreshold(Number(threshold), delta)));
-    clearOutcome();
-  }
-
-  function selectReward(type: RewardType | null) {
-    setRewardType(type);
-    setParam("");
-    clearOutcome();
-  }
-
-  function editParam(value: string) {
-    setParam(value);
-    clearOutcome();
+    edit({ threshold: String(clampThreshold(Number(form.threshold), delta)) });
   }
 
   async function save() {
-    setError(null);
-    setSaved(false);
-    const thresholdNum = Number(threshold);
+    clearOutcome();
+    const thresholdNum = Number(form.threshold);
     if (!Number.isInteger(thresholdNum) || thresholdNum < 1) {
-      setError("Поріг має бути цілим числом від 1");
+      setActionError("Поріг має бути цілим числом від 1");
       return;
     }
     let reward: Reward | null;
     try {
-      reward = buildReward(rewardType, param);
+      reward = buildReward(form.rewardType, form.param);
     } catch {
-      setError("Заповніть деталі винагороди");
+      setActionError("Заповніть деталі винагороди");
       return;
     }
 
@@ -102,33 +113,30 @@ export function useProgramEditor(cafeId: string) {
         threshold: thresholdNum,
         reward,
       });
-      setThreshold(String(written.threshold));
-      setRewardType(written.reward?.type ?? null);
-      setParam(rewardParamValue(written.reward));
+      setForm(formFor(written));
       setSaved(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не вдалося зберегти");
+      setActionError(e instanceof Error ? e.message : "Не вдалося зберегти");
     } finally {
       setSaving(false);
     }
   }
 
-  const paramSpec = rewardType ? REWARD_PARAM[rewardType] : undefined;
-
   return {
-    loading,
-    error,
+    loading: setup.loading,
+    error: actionError ?? (readErrorDismissed ? null : setup.error),
     saving,
     saved,
-    defaults,
-    threshold,
-    editThreshold,
+    defaults: setup.data?.defaults ?? [],
+    threshold: form.threshold,
+    editThreshold: (value: string) => edit({ threshold: value }),
     stepThreshold,
-    rewardType,
-    selectReward,
-    param,
-    editParam,
-    paramSpec,
+    rewardType: form.rewardType,
+    selectReward: (type: RewardType | null) =>
+      edit({ rewardType: type, param: "" }),
+    param: form.param,
+    editParam: (value: string) => edit({ param: value }),
+    paramSpec: form.rewardType ? REWARD_PARAM[form.rewardType] : undefined,
     save,
   };
 }

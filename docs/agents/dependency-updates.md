@@ -187,6 +187,27 @@ root-only tooling, so it lives in the repo-root `package.json` alongside `eslint
 bumped by hand on the Expo track — `expo install --fix` does not reach outside
 `apps/mobile` and will not realign it for you.
 
+### Do not add `react-dom` (or a testing library that needs it)
+
+Mobile hooks are tested with **`test-renderer`**, which builds an in-memory tree and
+needs no DOM (#53). This is deliberate: the obvious alternative,
+`@testing-library/react`, renders through `react-dom` into jsdom, and `react-dom` is a
+trap here.
+
+React refuses to run unless `react-dom` matches `react` **exactly**, so it would have to
+be pinned to whatever `react` the SDK dictates and moved on the Expo track by hand —
+`expo install --fix` does not manage it. Worse, it would need a `pnpm-workspace.yaml`
+override on top: `better-auth` declares `react-dom` as an *optional* peer and
+`autoInstallPeers` fetches a newer one to satisfy it, and because `expo` **also**
+declares it optionally, that second copy silently forks `expo` into two peer resolutions
+until `expo-doctor` fails the install as duplicated.
+
+None of that exists today: nothing in the repo declares `react-dom`, so pnpm resolves the
+single auto-installed copy and `expo-doctor` is clean. Adding `@testing-library/react`,
+`jsdom`, or `react-dom` brings the whole chain back. If you need to render React Native
+components (not just hooks), that is a runner decision — see the note on Jest in the ADR,
+not a dependency to add here.
+
 > **Do not "helpfully" bump an Expo package.** `react-native-qrcode-svg` is `^`-ranged
 > and looks updatable, but it is frozen wholesale with the rest of `react-native-*` for
 > native-peer safety; it is reviewed during the Expo track. Conversely,
