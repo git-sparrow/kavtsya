@@ -56,25 +56,26 @@ Common schemes: `messages://`, `settings://`, `maps://?q=<query>`, `tel://<numbe
 
 ## 4. Choosing the Right Tool
 
-| Action            | Tool               | Notes                                                            |
-| ----------------- | ------------------ | ---------------------------------------------------------------- |
-| Multiple actions  | `run-sequence`     | Batch steps in one call (no intermediate screenshots)            |
-| Open an app       | `launch-app`       | **Always — never tap home-screen icons**                         |
-| Restart an app    | `restart-app`      | Terminate and relaunch by bundle ID                              |
-| Open URL/scheme   | `open-url`         | Web pages, deep links, URL schemes                               |
-| Single tap        | `gesture-tap`      | Buttons, links, checkboxes                                       |
-| Scroll/swipe      | `gesture-swipe`    | Straight-line scroll or swipe                                    |
-| Scroll (Chromium) | `gesture-scroll`   | Wheel-based; deltas are window fractions, positive deltaY = down |
-| Drag (Chromium)   | `gesture-drag`     | Sliders, drag-and-drop, text selection                           |
-| Long press        | `gesture-custom`   | Context menus, drag start                                        |
-| Drag & drop       | `gesture-custom`   | Complex drag interactions                                        |
-| Pinch/zoom        | `gesture-pinch`    | Two-finger pinch with auto-interpolation                         |
-| Rotation          | `gesture-rotate`   | Two-finger rotation with auto-interpolation                      |
-| Custom gesture    | `gesture-custom`   | Arbitrary touch sequences, optional interpolation                |
-| Hardware key      | `button`           | Home, back, power, volume, appSwitch, actionButton               |
-| Type text         | `keyboard`         | iOS+Android. Supports Enter, Escape, arrows                      |
-| Rotate device     | `rotate`           | Orientation changes                                              |
-| Wait for UI       | `await-ui-element` | Block until an element is visible/hidden/exists/contains text    |
+| Action            | Tool                | Notes                                                            |
+| ----------------- | ------------------- | ---------------------------------------------------------------- |
+| Multiple actions  | `run-sequence`      | Batch steps in one call (no intermediate screenshots)            |
+| Open an app       | `launch-app`        | **Always — never tap home-screen icons**                         |
+| Restart an app    | `restart-app`       | Terminate and relaunch by bundle ID                              |
+| Open URL/scheme   | `open-url`          | Web pages, deep links, URL schemes                               |
+| Single tap        | `gesture-tap`       | Buttons, links, checkboxes                                       |
+| Scroll/swipe      | `gesture-swipe`     | Straight-line scroll or swipe                                    |
+| Scroll (Chromium) | `gesture-scroll`    | Wheel-based; deltas are window fractions, positive deltaY = down |
+| Drag (Chromium)   | `gesture-drag`      | Sliders, drag-and-drop, text selection                           |
+| Long press        | `gesture-custom`    | Context menus, drag start                                        |
+| Drag & drop       | `gesture-custom`    | Complex drag interactions                                        |
+| Pinch/zoom        | `gesture-pinch`     | Two-finger pinch with auto-interpolation                         |
+| Rotation          | `gesture-rotate`    | Two-finger rotation with auto-interpolation                      |
+| Custom gesture    | `gesture-custom`    | Arbitrary touch sequences, optional interpolation                |
+| Hardware key      | `button`            | Home, back, power, volume, appSwitch, actionButton               |
+| Type text         | `keyboard`          | Every platform. Supports Enter, Escape, arrows (not on TV)       |
+| Rotate device     | `rotate`            | Orientation changes                                              |
+| Wait for UI       | `await-ui-element`  | Block until an element is visible/hidden/exists/contains text    |
+| Wait for idle     | `await-screen-idle` | Block until a non-empty screen tree stops changing               |
 
 ## 5. Finding Tap Targets
 
@@ -134,7 +135,7 @@ Swipe **up** (`fromY > toY`) = scroll content **down**. Default duration: 300ms.
 { "udid": "<UDID>", "centerX": 0.5, "centerY": 0.5, "startDistance": 0.2, "endDistance": 0.6 }
 ```
 
-All values are normalized 0.0–1.0 (fractions of screen, not pixels) — same as all other gesture tools. `startDistance: 0.2` means fingers start 20% of the screen apart; `endDistance: 0.6` means they end 60% apart. `startDistance < endDistance` = pinch out (zoom in). `startDistance > endDistance` = pinch in (zoom out). Defaults: `angle: 0` (horizontal), `durationMs: 300`. Optional: `"angle": 90` for vertical axis, `"durationMs": 500` for slower pinch.
+All values are normalized 0.0–1.0 (fractions of screen, not pixels) — same as all other gesture tools. `startDistance: 0.2` means fingers start 20% of the screen apart; `endDistance: 0.6` means they end 60% apart. `startDistance < endDistance` = pinch out (zoom in). `startDistance > endDistance` = pinch in (zoom out). Defaults: `angle: 0` (horizontal), `durationMs: 300`. Optional: `"angle": 90` for vertical axis, `"durationMs": 500` for slower pinch, `"endCenterX"`/`"endCenterY"` to let the centroid drift to a new center over the gesture (omitted = fixed center).
 
 ### gesture-rotate — Two-finger rotation
 
@@ -149,7 +150,7 @@ All values are normalized 0.0–1.0 (fractions of screen, not pixels) — same a
 }
 ```
 
-All positions and radius are normalized 0.0–1.0 (fractions of screen, not pixels). `radius: 0.15` means each finger is 15% of the screen away from center. `endAngle > startAngle` = clockwise. Default duration: 300ms. Optional: `"durationMs": 500` for slower rotation.
+All positions and radii are normalized 0.0–1.0 (fractions of screen, not pixels). `radius: 0.15` means each finger is 15% of the screen away from center. `endAngle > startAngle` = clockwise. Default duration: 300ms. Optional: `"durationMs": 500` for slower rotation, and `"radiusX"`/`"radiusY"` (fractions of screen width/height; give both — they override `radius`) with `radiusX·width = radiusY·height` for a physically circular orbit — a single `radius` traces a physical ellipse on a non-square screen, coupling a slight pinch into the turn.
 
 ### gesture-custom — Custom touch sequence
 
@@ -169,7 +170,29 @@ Values: `home`, `back`, `power`, `volumeUp`, `volumeDown`, `appSwitch`, `actionB
 { "udid": "<UDID>", "text": "search query", "key": "enter" }
 ```
 
-Special keys: `enter`, `escape`, `backspace`, `tab`, `space`, `arrow-up`, `arrow-down`, `arrow-left`, `arrow-right`, `f1`–`f12`. Optional: `"delayMs": 100` between keystrokes (default 50ms).
+Special keys: `enter`, `escape`, `backspace`, `tab`, `space`, `arrow-up`, `arrow-down`, `arrow-left`, `arrow-right`, `f1`–`f12`. Optional: `"delayMs": 100` between keystrokes (default 50ms) — applies to the iOS simulator and Chromium; it is ignored on Android phones/tablets (typed via `adb input text`, no per-key cadence), on Vega, and on TV targets.
+
+**Typing secrets.** To enter a credential without its plaintext ever entering your context, transcript, or logs, use a secret placeholder in `text` (works in `keyboard`, `paste`, `run-sequence` keyboard steps, and flow `type` steps):
+
+```json
+{ "udid": "<UDID>", "text": "{{secret:APP_PASSWORD}}", "key": "enter" }
+```
+
+The placeholder is resolved on the machine running the tool-server, from the first of these that defines the name:
+
+| #   | Source                                        | Which keys it exposes                                                |
+| --- | --------------------------------------------- | -------------------------------------------------------------------- |
+| 1   | `ARGENT_SECRET_<NAME>` environment variable   | prefixed vars only — the CI-native path                              |
+| 2   | `<project>/.argent/secrets.env`               | every key (`APP_PASSWORD=…`) — gitignore this file                   |
+| 3   | `<project>/.env.local`, then `<project>/.env` | only `ARGENT_SECRET_`-prefixed keys, so app config stays unreachable |
+| 4   | `~/.argent/secrets.env`                       | every key — per-user, works in any project                           |
+
+Rules:
+
+- The result echoes the placeholder, never the value. An unknown name fails with the list of available secret _names_ and every source it looked in, with paths — read that list before asking the user anything.
+- The auto-screenshot after the call is skipped so the typed value cannot re-enter your context as pixels. Do **not** `describe` or `screenshot` a non-secure field you just filled with a secret — submit or navigate away first, then verify the resulting screen.
+- Nothing outside those sources is reachable; never ask the user to paste a secret value into the conversation. Ask them to put it in a secrets file instead — a file edit applies to the next call, while an exported env var only reaches a tool-server started afterwards.
+- The project sources are found by walking up from the tool-server's working directory. If a project file is not being picked up, the failure's source list shows the paths actually consulted; `~/.argent/secrets.env` needs no project and always applies.
 
 ### rotate — Change orientation
 
@@ -188,13 +211,25 @@ Instead of polling `screenshot`/`describe` in a loop, use `await-ui-element` to 
 ```
 
 - `condition`: `exists`, `visible`, `hidden`, or `text`.
-- `selector`: `{ text?, identifier?, role? }` — every provided field must match (case-insensitive substring). `text` matches the element's label or value; `identifier` matches its accessibility id / resource-id / testID; `role` matches its element role (e.g. `AXButton`, `button`, `TextView`, `StaticText`). The synthetic `ROOT` container `describe` prints is never matched, so a `role` like `AXGroup`/`html` won't trivially "match the screen".
-- Prefer a **specific** selector. A loose substring can match several elements, and the tool may then key off one you didn't mean: `text` reads the **first** match in **reading order** (top-to-bottom, left-to-right — the same order `describe` lists them, so it's the one you saw first), while `visible`/`exists` are satisfied by **any** match. Disambiguate with a longer or more exact string, an `identifier`, or a `role` (e.g. pin to a text role like `StaticText` to skip a same-named button). On a `text` timeout the `note` quotes the matched element's text, so you can see which one it landed on.
+- `selector`: `{ text?, identifier?, role? }` — every provided field must match. `text` matches the element's label or value and `role` its element role (e.g. `AXButton`, `button`, `TextView`, `StaticText`), both as case-insensitive substrings; `identifier` matches its accessibility id / resource-id / testID **exactly** (case-insensitive), also accepting the unqualified Android resource-id name (`submit` matches `com.example.app:id/submit`). The synthetic `ROOT` container `describe` prints is never matched, so a `role` like `AXGroup`/`html` won't trivially "match the screen".
+- Prefer a **specific** selector. A loose substring can match several elements, and the tool may then key off one you didn't mean: `text` reads the first **visible** match in **reading order** (top-to-bottom, left-to-right — the same order `describe` lists them, so it's the one you saw first; when no match is visible, the first match overall), while `visible`/`exists` are satisfied by **any** match. Disambiguate with a longer or more exact string, an `identifier`, or a `role` (e.g. pin to a text role like `StaticText` to skip a same-named button). On a `text` timeout the `note` quotes the matched element's text, so you can see which one it landed on.
 - `text` condition also needs `expectedText` (substring the matched element must contain).
-- `hidden` treats a selector that matches **nothing** as already-hidden, so a typo'd selector returns an instant (false) success. Double-check the selector for `hidden` waits — the result `note` flags when the selector never matched any element. (On iOS, if the accessibility backend is down the tree comes back empty; the tool will **not** report `hidden` success off such a degraded read and the `note` surfaces the boot hint instead.)
+- `hidden` passes when the selector matches nothing. If `note` says it never matched, treat the check as failed and fix the selector. On iOS, a degraded empty tree does not report `hidden` success; the note gives the recovery hint.
 - Optional `timeoutMs` (default 5000) and `pollIntervalMs` (default 400).
 
 Returns `{ success, elapsed }`; on a timeout `success` is `false` and a `note` explains what was seen.
+
+### await-screen-idle — Block until the screen stops changing
+
+Use after launch/navigation and before a raw tap, when an early-painted element may still be moving:
+
+```json
+{ "udid": "<UDID>", "timeoutMs": 3000, "minStableMs": 250 }
+```
+
+On local iOS, Android, and Chromium, the tool waits for a non-empty `describe` tree to stop changing. Continue only when `settled: true`. Pair it with a destination-specific `await-ui-element`; stillness does not identify a screen.
+
+Use it only for live diagnosis. Do not record it or put it in `run-sequence`. Flows use `await: { idle: true }`, which also compares pixels. This live tool can return during a presentation-layer animation.
 
 ---
 
@@ -215,6 +250,8 @@ When using `screenshot` for permission or native modal navigation:
 - Prefer obvious, centered alert buttons such as `Allow`, `OK`, `Don't Allow`, `Not Now`, or `Continue`.
 - Tap one control at a time and inspect the returned auto-screenshot before doing anything else.
 - After the modal is dismissed, return to normal discovery with `describe`, `native-describe-screen`, or `debugger-component-tree`.
+
+> **Prefer the dialog over the Settings tool.** When the app triggers its own permission prompt, answering it here is the real user path — do that. Reach for the `settings-permissions` tool only when you can't get to the change through the app: pre-authorize/deny a permission _before_ the app asks, re-enable one the user already denied (iOS won't re-prompt), or reset it so the prompt reappears. See the `argent-settings-permissions` skill.
 
 Optional rotation parameter: `{ "udid": "<UDID>", "rotation": "LandscapeLeft" }` — rotates the capture without changing simulator orientation.
 

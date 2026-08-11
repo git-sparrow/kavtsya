@@ -287,6 +287,35 @@ and, for a real SDK jump, smoke-test the app in the simulator (see `docs/argent-
 it picks the version the installed SDK blesses. It is **not** an "independent bump", so it
 does not violate the freeze; it is the freeze working as intended.
 
+### Run the track a day after Expo publishes
+
+pnpm 11 quarantines fresh releases: `minimumReleaseAge` defaults to **1440 minutes (24h)**
+(it was `0` before v11), so pnpm refuses to install any version published less than a day
+ago. This collides with the Expo track by construction — the drift monitor fires *because*
+Expo just published, and the natural reflex is to run `expo install --fix` the same day.
+
+When that happens, pnpm offers to write a `minimumReleaseAgeExclude` list into
+`pnpm-workspace.yaml`, pinning each too-fresh version. **Do not commit that block.** It
+waives the supply-chain guard for exactly the packages that reach native code, it is the
+one part of the diff nobody reviews, and the list would grow on every future track run.
+
+The guard is not a merge-gate problem you have to work around — the cutoff is *rolling*,
+recomputed at install time, so it expires on its own:
+
+```bash
+git checkout pnpm-workspace.yaml   # drop the block pnpm appended
+# …once 24h have passed since the release:
+pnpm install --frozen-lockfile     # same lockfile, now passes
+```
+
+The realigned `pnpm-lock.yaml` is already correct and does **not** need re-resolving — only
+the age check has to pass. Note it runs even when resolution is skipped: a lockfile carrying
+a too-fresh entry fails `pnpm install --frozen-lockfile` with
+`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`, so CI catches a committed bypass attempt too.
+
+So: let the drift issue sit for a day, then run the track. If you have already run it, keep
+the lockfile, drop the exclude block, and wait out the remainder of the window.
+
 [12246]: https://github.com/dependabot/dependabot-core/issues/12246
 [14035]: https://github.com/dependabot/dependabot-core/issues/14035
 [14824]: https://github.com/dependabot/dependabot-core/issues/14824
