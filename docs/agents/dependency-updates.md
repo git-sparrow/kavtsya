@@ -124,13 +124,36 @@ Dependabot update between the config landing (`31e1cc4`, the SDK 56 → 57 track
 birth never gets a second look — no red check anywhere, just an automation that quietly
 does not exist. It surfaced only because an unrelated PR happened to edit a nearby line.
 
+Worse, **the config check cannot be used as a gate.** Dependabot posts it as a check run
+named `.github/dependabot.yml`, but only sometimes: it appeared on #185 (failing, on a PR
+that edited an unrelated line) and did **not** appear at all on #153 (which introduced the
+broken file) or on #195 (which fixed it). A red one is proof of breakage; its absence is
+proof of nothing. Never read "no complaint" as "valid".
+
 So, two standing rules for this file:
 
-1. **Any PR touching `.github/dependabot.yml` must show the Dependabot config check
-   green** before merge. That check is the *only* validation signal.
-2. **Confirm a real run, not just a valid file** — _Insights → Dependency graph →
-   Dependabot_ shows "Last checked" per ecosystem, and its "Check for updates" button
-   forces a run immediately instead of waiting for the 1st.
+1. **Validate it yourself, locally, on any change.** Do not wait to be told. The config is
+   plain YAML against a published JSON Schema:
+
+   ```sh
+   curl -sLO https://json.schemastore.org/dependabot-2.0.json   # -L: it redirects
+   npx --yes js-yaml .github/dependabot.yml > /tmp/cfg.json     # ajv reads JSON only
+   npx --yes ajv-cli@5 validate --strict=false -s dependabot-2.0.json -d /tmp/cfg.json
+   ```
+
+   Two footguns in that recipe, both hit while writing it: without `-L` you download an
+   HTML redirect page, and `-d` must be a real file — a `<(…)` process substitution fails,
+   because ajv reads the input twice and a fifo only yields once. `--strict=false` is
+   required because the schema carries an `x-intellij-enum-metadata` keyword.
+
+   A good check confirms **both directions** — that the new config passes *and* that the
+   form you are replacing fails. If a red `.github/dependabot.yml` check also shows up on
+   the PR, treat it as a bonus signal, not the signal.
+
+2. **Confirm a real run, not just a valid file** — a valid config that never fires looks
+   exactly like this bug did. _Insights → Dependency graph → Dependabot_ shows "Last
+   checked" per ecosystem, and its "Check for updates" button forces a run immediately
+   instead of waiting for the 1st. **Do this after merging any schedule change.**
 
 `monthly` was chosen over a corrected `cronjob:` expression on purpose. Cron scheduling
 carries failure modes a named interval simply does not have — runaway job storms
