@@ -87,9 +87,9 @@ App and no paid infrastructure — Dependabot is GitHub-native and config-only.
 
 - **Two ecosystems:** `npm` (the whole pnpm workspace, all four manifests including the
   repo root, which carries the catalog) and `github-actions` (CI tooling).
-- **Cadence: ~biweekly** — a `cron` schedule (`0 6 1,15 * *`, `Europe/Kyiv`) fires on
-  the 1st and 15th. Dependabot's native `interval` values are only daily/weekly/monthly;
-  `cron` is the supported mechanism for a two-week rhythm.
+- **Cadence: monthly** — `interval: "monthly"` at `06:00 Europe/Kyiv` fires on the 1st.
+  This deliberately replaced a biweekly cron schedule that never worked; see
+  [why the schedule is boring](#boring-schedule) before changing it.
 - **Grouping — as few PRs as possible:**
   - All **minor + patch** updates batch into **one** grouped PR.
   - Each **major** update opens its **own** PR for individual scrutiny (majors are left
@@ -102,6 +102,67 @@ App and no paid infrastructure — Dependabot is GitHub-native and config-only.
   prefixed `chore(deps)` / `chore(deps-dev)` / `chore(ci)`.
 - **Catalog support:** Dependabot updates `catalog:` entries in `pnpm-workspace.yaml`
   directly (GA since 2025-02-04), so catalog'd deps stay fresh automatically.
+
+<a id="boring-schedule"></a>
+
+### Why the schedule is boring — and how a broken config stayed silent
+
+The cadence used to be biweekly (the 1st and 15th) via `interval: "cron"`. It never ran
+**once**. The schedule carried a `cron:` sub-key, which is not in Dependabot's schema at
+all — the expression key is `cronjob` — so GitHub rejected the file outright:
+
+```
+The property '#/updates/0/schedule' contains additional properties ["cron"]
+outside of the schema when none are allowed
+```
+
+A rejected config is not a degraded config: nothing runs. That cost this repo every
+Dependabot update between the config landing (`31e1cc4`, the SDK 56 → 57 track) and #191.
+
+**The expensive part was the silence, not the typo.** GitHub validates
+`.github/dependabot.yml` only on a PR that *touches the file*, so a config broken at
+birth never gets a second look — no red check anywhere, just an automation that quietly
+does not exist. It surfaced only because an unrelated PR happened to edit a nearby line.
+
+Worse, **the config check cannot be used as a gate.** Dependabot posts it as a check run
+named `.github/dependabot.yml`, but only sometimes: it appeared on #185 (failing, on a PR
+that edited an unrelated line) and did **not** appear at all on #153 (which introduced the
+broken file) or on #195 (which fixed it). A red one is proof of breakage; its absence is
+proof of nothing. Never read "no complaint" as "valid".
+
+So, two standing rules for this file:
+
+1. **Validate it yourself, locally, on any change.** Do not wait to be told. The config is
+   plain YAML against a published JSON Schema:
+
+   ```sh
+   curl -sLO https://json.schemastore.org/dependabot-2.0.json   # -L: it redirects
+   npx --yes js-yaml .github/dependabot.yml > /tmp/cfg.json     # ajv reads JSON only
+   npx --yes ajv-cli@5 validate --strict=false -s dependabot-2.0.json -d /tmp/cfg.json
+   ```
+
+   Two footguns in that recipe, both hit while writing it: without `-L` you download an
+   HTML redirect page, and `-d` must be a real file — a `<(…)` process substitution fails,
+   because ajv reads the input twice and a fifo only yields once. `--strict=false` is
+   required because the schema carries an `x-intellij-enum-metadata` keyword.
+
+   A good check confirms **both directions** — that the new config passes *and* that the
+   form you are replacing fails. If a red `.github/dependabot.yml` check also shows up on
+   the PR, treat it as a bonus signal, not the signal.
+
+2. **Confirm a real run, not just a valid file** — a valid config that never fires looks
+   exactly like this bug did. _Insights → Dependency graph → Dependabot_ shows "Last
+   checked" per ecosystem, and its "Check for updates" button forces a run immediately
+   instead of waiting for the 1st. **Do this after merging any schedule change.**
+
+`monthly` was chosen over a corrected `cronjob:` expression on purpose. Cron scheduling
+carries failure modes a named interval simply does not have — runaway job storms
+([dependabot-core#14035][14035]), biweekly expressions silently degrading to weekly
+([dependabot-core#12246][12246]), and a day-of-month/day-of-week combination that ORs
+rather than ANDs. Those specific bugs are fixed upstream (checked 2026-08-11), but the
+whole class is avoidable, and given that nothing had run at all, **reliable once a month
+beats elegant twice a month.** The cost is one skipped run per month; the gain is a
+schedule with nothing to get wrong.
 
 ### Why grouping is by update-type, not dependency-type
 
@@ -180,7 +241,7 @@ blinding the Expo track itself. Never silence the packages; move the check.
 
 ## The maintainer's recurring task
 
-1. When the biweekly grouped Dependabot PR arrives, **review it tests-first** (as usual)
+1. When the monthly grouped Dependabot PR arrives, **review it tests-first** (as usual)
    and merge if the gate is green. Majors arrive as their own PRs — merge or hold each
    independently.
 2. **Separately, when the Expo drift issue appears,** run the Expo track below. This is
@@ -226,4 +287,6 @@ and, for a real SDK jump, smoke-test the app in the simulator (see `docs/argent-
 it picks the version the installed SDK blesses. It is **not** an "independent bump", so it
 does not violate the freeze; it is the freeze working as intended.
 
+[12246]: https://github.com/dependabot/dependabot-core/issues/12246
+[14035]: https://github.com/dependabot/dependabot-core/issues/14035
 [14824]: https://github.com/dependabot/dependabot-core/issues/14824

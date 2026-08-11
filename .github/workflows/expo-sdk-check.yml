@@ -22,10 +22,11 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
   schedule:
-    # The Dependabot cadence (1st and 15th). GitHub cron is UTC-only — unlike
-    # .github/dependabot.yml, which takes a timezone — so 04:00 UTC lands at
-    # 06:00/07:00 Europe/Kyiv depending on DST. Close enough for a fortnightly
-    # monitor; do not chase the DST hour.
+    # Fortnightly (1st and 15th) — deliberately twice the Dependabot cadence,
+    # which is monthly (see .github/dependabot.yml). Expo publishes inside an SDK
+    # on its own schedule, so drift is worth catching sooner than dep bumps are.
+    # GitHub cron is UTC-only, so 04:00 UTC lands at 06:00/07:00 Europe/Kyiv
+    # depending on DST. Close enough for a monitor; do not chase the DST hour.
     - cron: "0 4 1,15 * *"
   workflow_dispatch:
 
