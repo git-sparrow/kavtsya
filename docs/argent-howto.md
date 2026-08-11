@@ -15,7 +15,7 @@ things, in priority order:
 Local mode, same philosophy as our vendored skills — everything travels with the repo, no
 per-machine global installs:
 
-- **`@swmansion/argent`** pinned **exactly** (`0.15.0`, pre-1.0 API churn) in the root
+- **`@swmansion/argent`** pinned **exactly** (`0.20.0`, pre-1.0 API churn) in the root
   `devDependencies`. `pnpm install` is the whole setup on a fresh clone.
 - **`.mcp.json`** (committed) registers the MCP server for Claude Code. It runs the project-local
   copy (`node node_modules/@swmansion/argent/dist/cli.js mcp`) — nothing machine-specific in it.
@@ -36,9 +36,44 @@ per-machine global installs:
   won't start.
 
 **Pruned from the wizard's output** (restore any time by re-running
-`./node_modules/.bin/argent init --local`): `argent-tv-interact` (no TV app),
-`argent-android-emulator-setup` (iOS first per #79 — re-add when we take on the Android emulator),
-and `.vscode/mcp.json` (gitignored anyway; nobody drives MCP from VS Code here).
+`./node_modules/.bin/argent init --local`): `argent-tv-interact` (no TV app, and none planned —
+Kavtsya is a phone app) and `.vscode/mcp.json` (gitignored anyway; nobody drives MCP from VS Code
+here). Everything else the wizard ships is vendored.
+
+That prune has to be **re-applied after each bump** — `argent init` restores the full wizard set,
+including skills added since the last run. Prune the directory in `.agents/skills/`, its
+`.claude/skills/` symlink, **and** its `skills-lock.json` entry; leaving the lock entry behind is
+the failure mode that makes the set look tracked when it is not.
+
+Three of the vendored skills are worth calling out, because what they are for is not obvious from
+the name:
+
+- **`argent-android-emulator-setup`** — the stack is iOS **and** Android (see `CLAUDE.md`), so the
+  emulator is a first-class target. It was pruned while #79 kept us iOS-first; that no longer
+  holds.
+- **`argent-settings-permissions`** — the app asks for camera (`expo-camera`, the CafeOwner scan
+  flow) and notifications (`expo-notifications`). This is the only way to pre-authorize, deny, or
+  reset those without walking the system Settings UI — including re-enabling one the user already
+  denied, which iOS never re-prompts for.
+- **`argent-screen-recording`** — mp4 of a flow. The Mari loop judges stills and screenshot diffs,
+  but motion is the thing a still cannot show: the scan-success moment and the Ворожка reveal
+  (#67) are both animations.
+
+### Argent flows vs the Maestro gallery
+
+We now have two flow systems, so keep the seam sharp rather than letting them drift into the same
+job (`docs/flows/README.md` owns the Maestro side):
+
+| | Argent flows (`argent-create-flow`, `argent-qa-flows`) | Maestro (`apps/mobile/.maestro/`) |
+| --- | --- | --- |
+| Driven by | an agent, in-session | `capture.sh` / CI, headless |
+| Good for | authoring and replaying a path while iterating; profiling A/B; regression evidence from acceptance criteria | the committed per-role screenshot gallery and E2E smoke suite |
+| Lives in | `.argent/flows/` | `apps/mobile/.maestro/` |
+
+Rule of thumb: if a human will re-run it on a schedule, it belongs in Maestro. If an agent needs to
+walk the same path twice in one session, record an Argent flow. **Do not port the gallery flows to
+Argent** — duplicated E2E is exactly the "state in two places" debt the product principles rule
+out.
 
 **Telemetry** is enabled (the wizard default; it excludes source code, paths, and tool inputs).
 Opt out with `./node_modules/.bin/argent telemetry disable`.
@@ -108,3 +143,18 @@ Pre-1.0: pin exact, bump deliberately.
 pnpm add -D -w -E @swmansion/argent@<version>
 ./node_modules/.bin/argent init --local   # refreshes skills/rules; re-prune, check skills-lock.json
 ```
+
+**`argent init --local` is not optional.** The 0.15 → 0.16 bump (#104) changed only
+`package.json` + the lockfile, so the vendored skills and `skills-lock.json` stayed pinned at
+`v0.15.0` while the package ran 0.16 — four months of silent drift, caught only during the 0.20
+bump. The package and the skills are one unit; move them together or the lockfile is lying.
+
+After `init`, check the diff for all four surfaces it rewrites: `.agents/skills/argent-*`,
+`.claude/skills/` symlinks, `skills-lock.json`, and `.claude/rules/argent.md` (the always-on rule
+is regenerated, so tool-contract changes land there — e.g. 0.20 made
+`stop-all-simulator-servers` take an explicit `devices: [...]` list, because one tool-server is
+now shared across agents and an unscoped call tears down other sessions' devices). `init` also
+rewrites `.mcp.json` unformatted; `pnpm format` puts it back.
+
+Bumping within 24h of an npm release trips pnpm 11's `minimumReleaseAge` quarantine — same trap
+as the Expo track, and the same fix. See `docs/agents/dependency-updates.md`.
