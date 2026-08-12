@@ -19,6 +19,13 @@ One root script (#118) = `typecheck && lint && format:check && test`
 the same gate as `.github/workflows/ci.yml`. Green gate ≠ verified — go drive
 the surface next.
 
+**Read the gate's own exit code, not the last command's.** `pnpm verify | tail`
+reports `tail`'s status, and appending `; echo "EXIT=$?"` reports the `echo`'s —
+both print `0` over a failed gate. Use `${pipestatus[1]}` (zsh) / `${PIPESTATUS[0]}`
+(bash), or run it bare and read the exit code. This is how a failing suite got
+reported as green in #194; the actual failure was `ECONNREFUSED 127.0.0.1:5432`,
+i.e. `pnpm db:up` had not been run.
+
 ## 2. Bring up the stack
 
 ```sh
