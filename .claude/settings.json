@@ -5,10 +5,17 @@
         "source": "github",
         "repo": "expo/skills"
       }
+    },
+    "mattpocock": {
+      "source": {
+        "source": "directory",
+        "path": "./.agents/plugins/mattpocock-skills"
+      }
     }
   },
   "enabledPlugins": {
-    "expo@expo-plugins": true
+    "expo@expo-plugins": true,
+    "mattpocock-skills@mattpocock": true
   },
   "permissions": {
     "allow": ["mcp__argent"]

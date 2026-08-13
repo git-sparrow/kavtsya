@@ -108,7 +108,7 @@ labels and triage are described under `docs/agents/`.
 
 ## Tests
 
-- Prefer test-first at the seams (there's a vendored `/tdd` workflow skill).
+- Prefer test-first at the seams (there's a `/tdd` workflow skill).
 - API tests run against a **real** Postgres (no mocks) and drive the app through
   the HTTP seam — see `apps/api/test/`.
 - Run a single file while iterating; run the full suite (`pnpm verify`) before

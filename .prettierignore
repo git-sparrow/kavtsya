@@ -15,8 +15,10 @@ skills-lock.json
 # Design tokens: emitted by scripts/build-theme.mjs, never hand-formatted
 apps/mobile/src/theme/theme.generated.ts
 
-# Vendored skills (not our code to format)
+# Vendored skills & plugins (not our code to format — matters for the plugins'
+# non-markdown files, since `*.md` below already covers every doc in the repo)
 .agents/skills
+.agents/plugins
 .claude/skills
 
 # Vendored design handoff — frozen snapshot from KavtsyaCreative, not ours to reformat

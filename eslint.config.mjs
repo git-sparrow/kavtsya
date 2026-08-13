@@ -16,6 +16,7 @@ export default tseslint.config(
       "apps/mobile/ios/**",
       "**/expo-env.d.ts",
       ".agents/skills/**",
+      ".agents/plugins/**",
       ".claude/skills/**",
       "learning/**",
     ],
