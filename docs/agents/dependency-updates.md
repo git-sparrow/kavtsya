@@ -85,8 +85,11 @@ that point rather than duplicating a literal range.
 `.github/dependabot.yml` opens grouped, stable-only update PRs. No third-party GitHub
 App and no paid infrastructure — Dependabot is GitHub-native and config-only.
 
-- **Two ecosystems:** `npm` (the whole pnpm workspace, all four manifests including the
-  repo root, which carries the catalog) and `github-actions` (CI tooling).
+- **Two ecosystems:** `npm` and `github-actions` (CI tooling).
+- **One npm directory, `/`** — the root job already covers the whole pnpm workspace:
+  every member manifest plus the catalog in `pnpm-workspace.yaml`. Listing members as
+  extra `directories:` entries duplicates coverage and opens dead PRs; see
+  [why there is exactly one npm directory](#one-npm-directory) before adding one.
 - **Cadence: monthly** — `interval: "monthly"` at `06:00 Europe/Kyiv` fires on the 1st.
   This deliberately replaced a biweekly cron schedule that never worked; see
   [why the schedule is boring](#boring-schedule) before changing it.
@@ -163,6 +166,37 @@ rather than ANDs. Those specific bugs are fixed upstream (checked 2026-08-11), b
 whole class is avoidable, and given that nothing had run at all, **reliable once a month
 beats elegant twice a month.** The cost is one skipped run per month; the gain is a
 schedule with nothing to get wrong.
+
+<a id="one-npm-directory"></a>
+
+### Why there is exactly one npm directory
+
+The `npm` entry lists a single `directory: "/"`. It used to list four — `/`, `/apps/api`,
+`/apps/mobile`, `/packages/shared` — on the reasonable-sounding theory that each
+workspace member needs its own entry. It does not, and the extra three actively hurt.
+
+A pnpm workspace is **one dependency graph resolved into one root `pnpm-lock.yaml`**. The
+root job walks every member manifest and the catalog, and regenerates that lockfile. A
+per-member job is scoped to its own directory, so it edits that `package.json` and
+**cannot** touch the root lockfile, which sits outside its scope. The PR it opens is dead
+on arrival — CI's `pnpm install --frozen-lockfile` fails with `ERR_PNPM_OUTDATED_LOCKFILE`
+before a single real check runs.
+
+The result was a matched pair of PRs for every `apps/api` bump: one correct from `/`, one
+permanently red from `/apps/api`.
+
+| Bump                         | From `/`                   | From `/apps/api`          |
+| ---------------------------- | -------------------------- | ------------------------- |
+| `@hono/node-server` 1.19→2.1 | #198 — manifest + lockfile | #202 — manifest only, red |
+| `@types/node` 24→26          | #200 — manifest + lockfile | #203 — manifest only, red |
+
+Note the failure mode: the config was **schema-valid the whole time**, so neither local
+`ajv` validation nor GitHub's own config check could have caught it. The only signal was
+duplicate PRs where one of each pair never went green. When reviewing this file, read it
+for meaning, not just validity.
+
+**Add a directory here only for a package outside the pnpm workspace that carries a
+lockfile of its own. Never for a workspace member.**
 
 ### Why grouping is by update-type, not dependency-type
 

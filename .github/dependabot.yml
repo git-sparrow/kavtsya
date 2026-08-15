@@ -9,16 +9,21 @@ version: 2
 
 updates:
   # ── JavaScript / TypeScript: the pnpm workspace ─────────────────────────────
-  # One npm entry covers every manifest, including the repo root which carries
-  # the pnpm catalog (pnpm-workspace.yaml). Dependabot's pnpm catalog support is
-  # GA, so catalog'd deps (typescript, vitest, zod, better-auth, @better-auth/expo)
-  # are kept fresh here too.
+  # ONE directory, deliberately: "/". A pnpm workspace is a single dependency
+  # graph resolved into a single root pnpm-lock.yaml, so the root job already
+  # covers every member manifest (apps/api, apps/mobile, packages/shared), the
+  # catalog in pnpm-workspace.yaml, and root-only tooling (eslint, husky, …).
+  #
+  # Listing members as extra `directories:` entries does not widen coverage — it
+  # duplicates it. A per-member job cannot regenerate the root lockfile (outside
+  # that job's scope), so its PR is dead on arrival: CI fails with
+  # ERR_PNPM_OUTDATED_LOCKFILE before any real check runs. That produced a matched
+  # pair of PRs for every apps/api bump (#198 vs #202, #200 vs #203).
+  #
+  # Add a directory here only for a package OUTSIDE the pnpm workspace carrying a
+  # lockfile of its own — never for a workspace member.
   - package-ecosystem: "npm"
-    directories:
-      - "/" # repo root — pnpm catalog + root-only tooling (eslint, prettier, husky, …)
-      - "/apps/api"
-      - "/apps/mobile"
-      - "/packages/shared"
+    directory: "/"
     schedule:
       # A named interval, not `cron`. The previous biweekly cron schedule used a
       # `cron:` sub-key that is not in the schema at all, so GitHub rejected the
