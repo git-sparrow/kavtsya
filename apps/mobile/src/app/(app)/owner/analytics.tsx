@@ -47,7 +47,11 @@ function ProAnalytics({ cafeId }: { cafeId: string }) {
         onChange={setPeriod}
       />
 
-      {error ? (
+      {/* A refresh that failed costs the reader the update, not the numbers they
+          were already reading (#190) — so the strip sits ABOVE the chart rather
+          than in place of it. The skeleton is only for genuinely knowing
+          nothing: still waiting, with nothing to say yet. */}
+      {error && (
         <View style={{ alignSelf: "stretch", gap: t.space[3] }}>
           <StatusStrip
             testID="analytics.error"
@@ -61,9 +65,10 @@ function ProAnalytics({ cafeId }: { cafeId: string }) {
             onPress={() => void reload()}
           />
         </View>
-      ) : summary ? (
+      )}
+      {summary ? (
         <AnalyticsView summary={summary} />
-      ) : (
+      ) : error ? null : (
         <AnalyticsSkeleton />
       )}
     </View>

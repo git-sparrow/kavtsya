@@ -1,5 +1,5 @@
 import type { ShiftGrant, ShiftsResponse } from "@kavtsya/shared";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 
@@ -24,6 +24,8 @@ import {
   shiftClock,
 } from "@/features/staff/staff-copy";
 import { fetchShifts, revokeShift } from "@/lib/api";
+import { useFocusedApiResource } from "@/lib/use-api-resource";
+import { useScreenAction } from "@/lib/use-screen-action";
 import { fontFamily, useTheme } from "@/theme";
 
 /**
@@ -42,40 +44,23 @@ export default function OwnerShifts() {
   const { me } = useMe();
   const cafeName = me?.cafes.find((cafe) => cafe.id === cafeId)?.name ?? "";
 
-  const [board, setBoard] = useState<ShiftsResponse | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Self-refreshing on focus — no manual refresh button — and again after every
+  // action, so the list is never older than the owner's last tap.
+  const { data: board, ...read } = useFocusedApiResource<ShiftsResponse>(
+    useCallback(() => fetchShifts(cafeId), [cafeId]),
+    "Не вдалося завантажити зміни",
+  );
+  const { error, busy, run } = useScreenAction(read);
   // The shift awaiting the owner's confirmation to end (6d) — ending it closes
   // the scanner on the barista's device mid-service, so it is never a one-tap action.
   const [ending, setEnding] = useState<ShiftGrant | null>(null);
 
-  const reload = useCallback(async () => {
-    try {
-      setBoard(await fetchShifts(cafeId));
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Не вдалося завантажити зміни");
-    }
-  }, [cafeId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void reload();
-    }, [reload]),
-  );
-
   async function endShift(grantId: string) {
-    setBusy(true);
-    try {
+    await run(async () => {
       await revokeShift(cafeId, grantId);
-      setError(null);
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Не вдалося завершити зміну");
-    } finally {
-      setBusy(false);
-      setEnding(null);
-    }
+      await read.reload();
+    }, "Не вдалося завершити зміну");
+    setEnding(null);
   }
 
   const header = (
@@ -91,11 +76,16 @@ export default function OwnerShifts() {
     />
   );
 
+  // Nothing to show yet: a spinner while the first read is out, and only the
+  // message once it has come back empty — a spinner that keeps turning under an
+  // error is telling the owner to wait for something that is not coming.
   if (board === null) {
     return (
       <Screen header={header}>
         <View style={{ flex: 1, justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={t.c.foreground} />
+          {read.loading && (
+            <ActivityIndicator size="large" color={t.c.foreground} />
+          )}
         </View>
         {error && <StatusStrip intent="danger" title={error} />}
       </Screen>
