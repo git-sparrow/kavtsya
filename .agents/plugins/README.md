@@ -39,14 +39,46 @@ makes a single fresh `-p` invocation look like the config is broken when it isn'
 A local `directory` marketplace never gets an `installed_plugins.json` entry: registration alone is
 what makes its plugin load. That is why there is nothing to `claude plugin install` here.
 
-⚠️ **Ephemeral environments get no skills.** A fresh container or CI runner has neither the trust
-flag nor a populated registry, and gets exactly one run — so it never reaches the second session
-where skills appear. Pre-populate `~/.claude/plugins` via `CLAUDE_CODE_PLUGIN_SEED_DIR` (it mirrors
-that directory's layout) and set the trust flag if you need these skills in CI.
-
 ⚠️ Run `claude plugin marketplace remove` **from outside this repo**, if at all: it also strips the
 matching entry from the project's `.claude/settings.json`, and removing a marketplace uninstalls the
 plugins that came from it.
+
+## CI and containers get no skills — by decision
+
+**`@claude` runs in `.github/workflows/claude.yml` execute without these skills. Deliberately.**
+`/tdd`, `/triage`, `/to-tickets`, `/to-spec`, `/domain-modeling` and the rest are a *local* authoring
+tool here; nothing in CI is written to depend on them, and we chose not to spend workflow complexity
+on carrying them onto a runner ([#208](https://github.com/git-sparrow/kavtsya/issues/208)). Anything
+that must hold in CI belongs in the workflow itself, not in a skill. Treat a skill-less `@claude` as
+the expected behaviour — not a regression to re-report.
+
+Why it happens, verified against Claude Code 2.1.233 on 2026-08-16 with a throwaway `HOME` +
+`CLAUDE_CONFIG_DIR` over a clean `git archive HEAD` checkout — a runner's exact state:
+
+- The workspace is **untrusted**, so the declared-marketplace collector never runs.
+  `claude plugin marketplace list` prints _"No marketplaces configured"_ and
+  `known_marketplaces.json` is never created at all — across three consecutive invocations. This is
+  a harder stop than the one-run lag above: in CI there is no second session to reach, because
+  nothing registers in the first.
+- `anthropics/claude-code-action` does not set the flag for us. At `d721746` its only
+  `.claude.json` reference is the PR-base config restore; it contains no `hasTrustDialogAccepted`
+  write. Its own trust model is about *reading* `.claude/` from cwd, which is a separate question
+  from the per-user marketplace registry.
+
+### If a future change does need them in CI
+
+The supported lever is `CLAUDE_CODE_PLUGIN_SEED_DIR` — a `PATH`-delimited list of directories the
+CLI merges into the user registry at startup (`autoUpdate: false`), read straight from the 2.1.233
+binary. Each seed dir must look like:
+
+```
+<seed>/known_marketplaces.json      # { "mattpocock": { "source": { … }, "lastUpdated": "…" } }
+<seed>/marketplaces/mattpocock/     # the marketplace dir itself, or a `mattpocock.json` beside it
+```
+
+A name whose `marketplaces/` entry is missing is skipped with a warning, so the two halves must
+agree. Building that in a workflow step ahead of the action removes the lag entirely — it is
+unimplemented because we decided against it, not because it does not work.
 
 ## `mattpocock-skills`
 
