@@ -180,6 +180,142 @@ describe("useFocusedApiResource", () => {
 });
 
 /**
+ * A refresh and a switch to a different resource are the same fetch and opposite
+ * promises: one must not cost the reader what is already on screen, the other
+ * must not leave it there. `load`'s identity is what tells them apart (#190).
+ */
+describe("useApiResource: a different resource", () => {
+  /** Renders with a swappable loader — a café, or an analytics period. */
+  function renderSwitchable(load: () => Promise<string>) {
+    return renderHook(
+      ({ load: current }: { load: () => Promise<string> }) =>
+        useApiResource(current, FALLBACK),
+      { initialProps: { load } },
+    );
+  }
+
+  it("clears the previous resource's answer in the render that notices", () => {
+    const { result, rerender } = renderSwitchable(() =>
+      Promise.resolve("7 днів"),
+    );
+    // Not `waitFor`: the point is that nothing stale survives the switch even
+    // for one frame, so the state is read the instant the new loader arrives.
+    rerender({ load: () => deferred<string>().promise });
+
+    expect(result.current).toMatchObject({
+      data: null,
+      error: null,
+      loading: true,
+    });
+  });
+
+  it("clears the previous resource's error too", async () => {
+    const { result, rerender } = renderSwitchable(() =>
+      Promise.reject(new Error("Немає мережі")),
+    );
+    await waitFor(() => expect(result.current.error).toBe("Немає мережі"));
+
+    rerender({ load: () => deferred<string>().promise });
+
+    expect(result.current.error).toBeNull();
+  });
+
+  it("cannot paint an earlier resource's answer over a later one", async () => {
+    // The analytics toggle, tapped twice quickly (#190): both reads are in
+    // flight and the FIRST one lands last. Whatever the screen shows must be the
+    // period whose label it is showing.
+    const sevenDays = deferred<string>();
+    const thirtyDays = deferred<string>();
+    const { result, rerender } = renderSwitchable(() => sevenDays.promise);
+
+    rerender({ load: () => thirtyDays.promise });
+    await act(async () => {
+      thirtyDays.resolve("30 днів");
+      sevenDays.resolve("7 днів");
+      await sevenDays.promise;
+      await thirtyDays.promise;
+    });
+
+    expect(result.current.data).toBe("30 днів");
+  });
+
+  it("ignores a reload held over from the resource before it", async () => {
+    // Every action on the owner boards has the shape `await work(); await
+    // reload()`, so a `reload` can outlive the resource it came from. Calling it
+    // must be inert — if it cancelled the read that replaced it, nothing would
+    // start another one and the screen would wait forever on a blank board.
+    const { result, rerender } = renderSwitchable(() =>
+      Promise.resolve("перша кав'ярня"),
+    );
+    await waitFor(() => expect(result.current.data).toBe("перша кав'ярня"));
+    const staleReload = result.current.reload;
+
+    const arriving = deferred<string>();
+    rerender({ load: () => arriving.promise });
+    await act(() => staleReload());
+    await act(async () => {
+      arriving.resolve("друга кав'ярня");
+      await arriving.promise;
+    });
+
+    expect(result.current).toMatchObject({
+      data: "друга кав'ярня",
+      loading: false,
+    });
+  });
+
+  it("warns that an unstable `load` is a refetch loop, not a switch", async () => {
+    // The one way to hold this hook wrong: no `useCallback`, so every render
+    // looks like a different resource. Nothing goes wrong until the first
+    // response lands — that state update is what starts the loop — and then
+    // React's own re-render limit stops it dead. Two things worth pinning:
+    // our warning gets in first and names the actual fix, and the loop costs
+    // exactly ONE request, not the unbounded stream of them it used to.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const load = vi.fn(() => Promise.resolve("ok"));
+    renderHook(() => useApiResource(() => load(), FALLBACK));
+
+    let stopped: unknown;
+    try {
+      await act(async () => {
+        await new Promise((settle) => setTimeout(settle, 50));
+      });
+    } catch (e) {
+      stopped = e;
+    }
+
+    expect(stopped).toBeInstanceOf(Error);
+    expect((stopped as Error).message).toMatch(/Too many re-renders/);
+    // Warned on the crossing, not on every change — React may replay the render
+    // pass it abandoned, so what matters is that the console gets a line or two
+    // naming the fix, never one per iteration.
+    expect(warn).toHaveBeenCalled();
+    expect(warn.mock.calls.length).toBeLessThan(5);
+    for (const [message] of warn.mock.calls) {
+      expect(message).toContain("useCallback");
+    }
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays quiet when the resource changes at human speed", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { result, rerender } = renderSwitchable(() =>
+      Promise.resolve("7 днів"),
+    );
+
+    // A CafeOwner flipping the period back and forth — far more times than
+    // anyone would, but each read gets to land, which is what tells a real
+    // switch apart from a render loop no matter how many there are.
+    for (let i = 0; i < 20; i++) {
+      rerender({ load: () => Promise.resolve(String(i)) });
+      await waitFor(() => expect(result.current.data).toBe(String(i)));
+    }
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+/**
  * All three ways a response can be obsolete when it lands run through one
  * generation counter, so these tests exercise a single mechanism from three
  * angles. Note React 19 silently discards a state update aimed at an unmounted

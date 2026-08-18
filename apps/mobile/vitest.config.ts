@@ -16,6 +16,13 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  // `__DEV__` is not a variable at runtime — the bundler substitutes it, `true`
+  // in a dev bundle and `false` in a release one, and Node defines nothing. Code
+  // guarding developer-only diagnostics behind it (`warnOnRunawayReloads` in
+  // `use-api-resource.ts`) would throw a ReferenceError here without this, so
+  // tests run the same substitution a dev bundle does — which is where those
+  // diagnostics are meant to fire.
+  define: { __DEV__: "true" },
   test: {
     environment: "node",
     server: {

@@ -1,6 +1,6 @@
 import type { RosterBoardResponse, RosterMemberEntry } from "@kavtsya/shared";
 import { formatMemberCode } from "@kavtsya/shared";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
@@ -22,7 +22,12 @@ import { Muted, SectionLabel } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
 import { removeFromRosterConfirm } from "@/features/staff/staff-copy";
 import { approveBarista, fetchRoster, removeBarista } from "@/lib/api";
+import { useFocusedApiResource } from "@/lib/use-api-resource";
+import { useScreenAction } from "@/lib/use-screen-action";
 import { fontFamily, useTheme } from "@/theme";
+
+/** The board as this screen reads it: what the API returned, and when. */
+type Board = RosterBoardResponse & { loadedAt: number };
 
 /** «запит N хв тому» — how long a pending request has waited, in café language. */
 function requestedAgo(iso: string, now: number): string {
@@ -48,48 +53,30 @@ export default function OwnerRoster() {
   const { me } = useMe();
   const cafeName = me?.cafes.find((cafe) => cafe.id === cafeId)?.name ?? "";
 
-  const [board, setBoard] = useState<RosterBoardResponse | null>(null);
-  // The instant the board was loaded — the reference «N хв тому» is measured
-  // against. Captured at load (not in render, which must stay pure) and
-  // refreshed on every focus reload.
-  const [loadedAt, setLoadedAt] = useState(() => Date.now());
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Self-refresh: reload whenever the board comes into focus (no refresh button),
+  // and again after every action.
+  const { data: board, ...read } = useFocusedApiResource<Board>(
+    useCallback(async () => {
+      // The instant the board was loaded travels WITH the board, so the
+      // reference «N хв тому» is measured against can never be a different
+      // read's — and it is captured here rather than in render, which must stay
+      // pure. Every reload brings a fresh one.
+      const entries = await fetchRoster(cafeId);
+      return { ...entries, loadedAt: Date.now() };
+    }, [cafeId]),
+    "Не вдалося завантажити ростер",
+  );
+  const { error, busy, run } = useScreenAction(read);
   // The barista whose removal is awaiting confirmation (6c) — removal is only
   // reversible through a fresh poster request, so it is never a one-tap action.
   const [removing, setRemoving] = useState<RosterMemberEntry | null>(null);
 
-  const reload = useCallback(async () => {
-    try {
-      const next = await fetchRoster(cafeId);
-      setBoard(next);
-      setLoadedAt(Date.now());
-      setError(null);
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Не вдалося завантажити ростер",
-      );
-    }
-  }, [cafeId]);
-
-  // Self-refresh: reload whenever the board comes into focus (no refresh button).
-  useFocusEffect(
-    useCallback(() => {
-      void reload();
-    }, [reload]),
-  );
-
-  async function act(run: () => Promise<void>, fallback: string) {
-    setBusy(true);
-    try {
-      await run();
-      setError(null);
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : fallback);
-    } finally {
-      setBusy(false);
-    }
+  /** One of the owner's roster actions, followed by a re-read of the board. */
+  function act(work: () => Promise<void>, fallback: string) {
+    return run(async () => {
+      await work();
+      await read.reload();
+    }, fallback);
   }
 
   async function confirmRemoval(barista: RosterMemberEntry) {
@@ -113,11 +100,16 @@ export default function OwnerRoster() {
     />
   );
 
+  // Nothing to show yet: a spinner while the first read is out, and only the
+  // message once it has come back empty — a spinner that keeps turning under an
+  // error is telling the owner to wait for something that is not coming.
   if (board === null) {
     return (
       <Screen header={header}>
         <View style={{ flex: 1, justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={t.c.foreground} />
+          {read.loading && (
+            <ActivityIndicator size="large" color={t.c.foreground} />
+          )}
         </View>
         {error && <StatusStrip intent="danger" title={error} />}
       </Screen>
@@ -164,7 +156,7 @@ export default function OwnerRoster() {
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={staffName(t)}>{request.name}</Text>
                   <Text style={staffMeta(t)}>
-                    {requestedAgo(request.requestedAt, loadedAt)}
+                    {requestedAgo(request.requestedAt, board.loadedAt)}
                   </Text>
                 </View>
               </View>

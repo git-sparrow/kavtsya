@@ -51,36 +51,42 @@ const ModeContext = createContext<ModeContextValue | null>(null);
  */
 export function ModeProvider({ children }: { children: ReactNode }) {
   const { me } = useMe();
-  const { shift, reload: reloadShift } = useMyShift();
+  const { shift, loading: checkingShift, reload: reloadShift } = useMyShift();
   const [override, setOverride] = useState<Mode | null>(null);
 
   const roles = me?.roles ?? [];
   const hasActiveShift = shift != null;
-  // `shift === undefined` is "still checking" — distinct from null, "off duty".
-  const loading = me == null || shift === undefined;
+  // A null shift means "off duty" only once the check has settled; until then it
+  // is simply not known, which is what `checkingShift` says. A check that
+  // settles by FAILING derives the default Mode rather than holding the app on a
+  // spinner forever, as the old tri-state did: it can only ever take Scanner
+  // Mode away, never hand it out, so the server stays the authority (ADR 0015).
+  const loading = me == null || checkingShift;
   const mode = effectiveMode(roles, hasActiveShift, override);
 
   const clearExcursion = useCallback(() => setOverride(null), []);
 
   // A shift going from present to null — ended by the barista, the owner, or the
   // auto-expire cap — leaves a brief notice as the app re-derives to its default
-  // Mode (#99). Only a real active→null transition triggers it; the initial
-  // undefined→null "checked, off duty" load does not.
+  // Mode (#99). Only a real active→null transition triggers it, which is why
+  // nothing is judged until the first check settles: before that, null is "we
+  // haven't asked yet", not "the shift ended".
   const [endedNotice, setEndedNotice] = useState<string | null>(null);
-  const prevShift = useRef<MyShiftResponse["shift"] | undefined>(undefined);
+  const prevShift = useRef<MyShiftResponse["shift"]>(null);
   useEffect(() => {
+    if (checkingShift) return;
     if (prevShift.current && shift === null) {
       setEndedNotice(prevShift.current.cafeName);
     }
-    if (shift !== undefined) prevShift.current = shift;
-  }, [shift]);
+    prevShift.current = shift;
+  }, [checkingShift, shift]);
   const dismissEndedNotice = useCallback(() => setEndedNotice(null), []);
 
   const value = useMemo<ModeContextValue>(
     () => ({
       mode,
       loading,
-      shift: shift ?? null,
+      shift,
       switchTo: setOverride,
       clearExcursion,
       reloadShift,

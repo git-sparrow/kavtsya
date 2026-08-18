@@ -8,6 +8,7 @@ import { useCallback, useState } from "react";
 
 import { fetchProgram, fetchRewardDefaults, updateProgram } from "@/lib/api";
 import { useApiResource } from "@/lib/use-api-resource";
+import { useScreenAction } from "@/lib/use-screen-action";
 
 import { clampThreshold } from "./program";
 import { buildReward, REWARD_PARAM, rewardParamValue } from "./reward";
@@ -63,23 +64,17 @@ export function useProgramEditor(cafeId: string) {
     setForm(formFor(setup.data));
   }
 
-  // What went wrong with the CafeOwner's own action — a validation refusal or a
-  // failed write. Separate from `setup.error` (the read that never landed), but
-  // the screen shows one line, so `error` below folds them back together.
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  // The CafeOwner's own doing — a validation refusal or a failed write — folded
+  // with the read that never landed into the one line the screen shows.
+  const action = useScreenAction(setup);
   const [saved, setSaved] = useState(false);
-  // A failed read is dismissed by acting on the form, exactly as it was when one
-  // error slot held both. Tracked as a flag rather than copied into local state,
-  // so the message itself still lives in exactly one place.
-  const [readErrorDismissed, setReadErrorDismissed] = useState(false);
 
   // Any edit clears the lingering "saved" confirmation and every stale error, so
-  // nothing hangs over input the user has since changed.
+  // nothing hangs over input the user has since changed. The read happens once
+  // here, so a failed one is genuinely behind them by the time they type.
   function clearOutcome() {
     setSaved(false);
-    setActionError(null);
-    setReadErrorDismissed(true);
+    action.clear();
   }
 
   function edit(change: Partial<Form>) {
@@ -96,36 +91,31 @@ export function useProgramEditor(cafeId: string) {
     clearOutcome();
     const thresholdNum = Number(form.threshold);
     if (!Number.isInteger(thresholdNum) || thresholdNum < 1) {
-      setActionError("Поріг має бути цілим числом від 1");
+      action.refuse("Поріг має бути цілим числом від 1");
       return;
     }
     let reward: Reward | null;
     try {
       reward = buildReward(form.rewardType, form.param);
     } catch {
-      setActionError("Заповніть деталі винагороди");
+      action.refuse("Заповніть деталі винагороди");
       return;
     }
 
-    setSaving(true);
-    try {
+    await action.run(async () => {
       const written = await updateProgram(cafeId, {
         threshold: thresholdNum,
         reward,
       });
       setForm(formFor(written));
       setSaved(true);
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Не вдалося зберегти");
-    } finally {
-      setSaving(false);
-    }
+    }, "Не вдалося зберегти");
   }
 
   return {
     loading: setup.loading,
-    error: actionError ?? (readErrorDismissed ? null : setup.error),
-    saving,
+    error: action.error,
+    saving: action.busy,
     saved,
     defaults: setup.data?.defaults ?? [],
     threshold: form.threshold,
