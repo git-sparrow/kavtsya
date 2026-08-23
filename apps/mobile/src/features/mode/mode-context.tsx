@@ -22,6 +22,13 @@ type ModeContextValue = {
   loading: boolean;
   /** The active shift (Scanner Mode's scope + banner), or null when off duty. */
   shift: MyShiftResponse["shift"];
+  /**
+   * Why the last shift check failed, or null (#187). Non-null with a null
+   * `shift` is the one case the pair cannot express on its own: the Mode below
+   * was derived WITHOUT an answer, so "off duty" is an assumption rather than a
+   * fact, and the app owes the barista a way to ask again.
+   */
+  shiftError: string | null;
   /** Enter a non-persisted Mode excursion (owner ⇄ customer); resets on cold launch. */
   switchTo: (mode: Mode) => void;
   /** Drop any excursion and fall back to the derived landing. */
@@ -51,7 +58,12 @@ const ModeContext = createContext<ModeContextValue | null>(null);
  */
 export function ModeProvider({ children }: { children: ReactNode }) {
   const { me } = useMe();
-  const { shift, loading: checkingShift, reload: reloadShift } = useMyShift();
+  const {
+    shift,
+    error: shiftError,
+    loading: checkingShift,
+    reload: reloadShift,
+  } = useMyShift();
   const [override, setOverride] = useState<Mode | null>(null);
 
   const roles = me?.roles ?? [];
@@ -61,6 +73,9 @@ export function ModeProvider({ children }: { children: ReactNode }) {
   // settles by FAILING derives the default Mode rather than holding the app on a
   // spinner forever, as the old tri-state did: it can only ever take Scanner
   // Mode away, never hand it out, so the server stays the authority (ADR 0015).
+  // What that costs is a barista whose check failed sitting in Customer Mode
+  // with no idea their scanner is missing — which is why the failure travels out
+  // as `shiftError` for the dispatcher to say so and offer the retry (#187).
   const loading = me == null || checkingShift;
   const mode = effectiveMode(roles, hasActiveShift, override);
 
@@ -87,6 +102,7 @@ export function ModeProvider({ children }: { children: ReactNode }) {
       mode,
       loading,
       shift,
+      shiftError,
       switchTo: setOverride,
       clearExcursion,
       reloadShift,
@@ -97,6 +113,7 @@ export function ModeProvider({ children }: { children: ReactNode }) {
       mode,
       loading,
       shift,
+      shiftError,
       clearExcursion,
       reloadShift,
       endedNotice,

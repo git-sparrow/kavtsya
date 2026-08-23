@@ -1,4 +1,10 @@
-import { act, type ReactElement } from "react";
+import {
+  act,
+  Fragment,
+  type ComponentType,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { createRoot, type Root } from "test-renderer";
 
 /**
@@ -47,10 +53,17 @@ export type RenderHookResult<T, P> = {
  *
  * `initialProps` feeds the hook's argument, so a test can change what identifies
  * the resource between renders — the case `useApiResource` cares most about.
+ *
+ * `wrapper` mounts the hook inside a tree, which is how a hook that reads
+ * context is tested at all: it is rendered as a component, not called, so a
+ * provider's own hooks and state work exactly as they do in the app.
  */
 export function renderHook<T, P = void>(
   useHook: (props: P) => T,
-  options?: { initialProps?: P },
+  options?: {
+    initialProps?: P;
+    wrapper?: ComponentType<{ children: ReactNode }>;
+  },
 ): RenderHookResult<T, P> {
   const result = { current: undefined as T };
   let props = options?.initialProps as P;
@@ -60,10 +73,17 @@ export function renderHook<T, P = void>(
     return null;
   }
 
+  const Wrapper = options?.wrapper ?? Fragment;
+  const tree = () => (
+    <Wrapper>
+      <Probe />
+    </Wrapper>
+  );
+
   const root = createRoot();
   mounted.add(root);
   act(() => {
-    root.render(<Probe />);
+    root.render(tree());
   });
 
   return {
@@ -71,7 +91,7 @@ export function renderHook<T, P = void>(
     rerender: (next?: P) => {
       if (next !== undefined) props = next;
       act(() => {
-        root.render(<Probe />);
+        root.render(tree());
       });
     },
     unmount: () => {
