@@ -13,8 +13,8 @@ catalog:
   typescript: ~6.0.3
   vitest: ^2.1.9
   zod: ^4.4.3
-  better-auth: ^1.6.19
-  "@better-auth/expo": ^1.6.19
+  better-auth: ^1.7.1
+  "@better-auth/expo": ^1.7.1
 allowBuilds:
   # @swmansion/argent and its native deps (node-pty, tree-sitter*, webtransport)
   "@fails-components/webtransport-transport-http3-quiche": true
