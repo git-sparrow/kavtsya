@@ -57,6 +57,15 @@ updates:
       # of the patterns above match it. Without this entry Dependabot would bump
       # it independently and lint the app against a different SDK's rules.
       - dependency-name: "eslint-config-expo"
+      # @swmansion/argent is version-coupled to files Dependabot cannot produce.
+      # Its skills are hand-vendored into .agents/skills/ with .claude/skills/
+      # symlinks, and skills-lock.json pins every one to a `ref` (v0.20.0) plus a
+      # content hash. Only `argent init --local` re-vendors them. A bump here
+      # would move the MCP server while the skills documenting it stay behind —
+      # and on a 0.x package `minor` is the breaking slot, so it would arrive in
+      # the low-risk grouped PR. Move it deliberately, in its own PR, alongside
+      # the re-vendored skills. Same reasoning as eslint-config-expo above.
+      - dependency-name: "@swmansion/argent"
     groups:
       # All minor + patch bumps batch into a single PR. Majors are deliberately
       # left ungrouped so each higher-risk bump opens its own PR for individual
