@@ -290,6 +290,53 @@ So the split is:
 Both jobs also set `EXPO_DOCTOR_WARN_ON_NETWORK_ERRORS=1`: several checks call Expo's
 API, and a network blip is not a broken PR.
 
+### Pin the gate's expo-doctor; leave the monitor's floating
+
+Moving the SDK version check off the gate fixed *a* check that read external state. It
+left the **tool itself** reading external state: `npx expo-doctor` resolves `latest` at
+run time, so the gate's definition of pass/fail changes on Expo's release schedule.
+
+That bit on 2026-08-28. Identical lockfile, two verdicts:
+
+| When | expo-doctor | Result |
+| --- | --- | --- |
+| 2026-08-26, `main` | 1.20.3 | 20/20 — green |
+| 2026-08-28, #224 (only `.github/dependabot.yml` changed) | 1.20.4 | 19/20 — `✖ Check for overridden dependencies` |
+
+1.20.4 flags `@expo/dom-webview@56.0.5` where `expo` wants `~57.0.1` — **a real defect**,
+sitting on `main` unnoticed. That is the point: the new check was right, and it still must
+not arrive by surprise on an unrelated PR. A gate that reddens on someone else's release
+teaches the team to merge through red, which is what cost this repo `main` for two weeks.
+
+So `ci.yml` pins an exact version and `expo-sdk-check.yml` does not:
+
+- **Gate → pinned.** Deterministic, a function of the diff. New checks arrive in one
+  deliberate PR where the findings can be read and fixed together.
+- **Monitor → floating.** Its job is to notice drift against the outside world; running
+  the newest checks is the feature.
+
+**Bump the pin by hand, on the Expo track.** Dependabot cannot see a version inside an
+`npx` string, and moving `expo-doctor` into `apps/mobile` devDependencies would not help
+— it matches the `expo-*` ignore pattern and is frozen for automation like every other
+Expo-governed package. Its dist-tags are SDK-keyed (`sdk-56` → 1.19.12), the same signal.
+
+### Transitive Expo packages float through the freeze
+
+The `ignore` list stops Dependabot editing a **manifest**. It does not stop a full lockfile
+re-resolution floating an Expo-governed package that arrives **transitively** — and
+`expo install --fix` will not realign one either, because it only touches declared
+packages. Three instances in one month, all surfacing as an `expo-doctor` duplicate- or
+overridden-dependency failure:
+
+| PR | Package | Fork |
+| --- | --- | --- |
+| #212 | `expo-constants` | 57.0.10 vs 57.0.11 |
+| #223 | `@types/react` | 19.2.17 vs 19.2.18 → forks `react-native` → forks `expo` |
+| `main` | `@expo/dom-webview` | 56.0.5 installed, `expo` wants `~57.0.1` |
+
+When one appears, it is a **lockfile** fix, not a manifest bump — and never a hand-edit of
+`pnpm-lock.yaml` (see `CONTRIBUTING.md`).
+
 Note this is *not* a job for `expo.install.exclude` (which `expo-doctor`'s own advice
 suggests). That key would also hide those packages from `expo install --check`,
 blinding the Expo track itself. Never silence the packages; move the check.
