@@ -315,6 +315,13 @@ So `ci.yml` pins an exact version and `expo-sdk-check.yml` does not:
 - **Monitor → floating.** Its job is to notice drift against the outside world; running
   the newest checks is the feature.
 
+**The pin went in at 1.20.3, not 1.20.4** — the last version `main` was verified green
+on. Introducing the pin and adopting a newer check are two separate changes, and the PR
+that introduced the mechanism did only the first. 1.20.4 is a correct upgrade and its
+finding is real; it moves in its own PR alongside the fix. Pinning to the newest release
+in the same commit would have made the mechanism's first act the very thing it exists to
+prevent — a gate reddening on a finding nobody had scheduled time to fix.
+
 **Bump the pin by hand, on the Expo track.** Dependabot cannot see a version inside an
 `npx` string, and moving `expo-doctor` into `apps/mobile` devDependencies would not help
 — it matches the `expo-*` ignore pattern and is frozen for automation like every other
@@ -334,8 +341,22 @@ overridden-dependency failure:
 | #223 | `@types/react` | 19.2.17 vs 19.2.18 → forks `react-native` → forks `expo` |
 | `main` | `@expo/dom-webview` | 56.0.5 installed, `expo` wants `~57.0.1` |
 
-When one appears, it is a **lockfile** fix, not a manifest bump — and never a hand-edit of
-`pnpm-lock.yaml` (see `CONTRIBUTING.md`).
+When one appears it is a **resolution** problem, not a manifest bump — but do not assume a
+narrow lockfile-only fix exists. Measured against `@expo/dom-webview@56.0.5` on
+2026-08-30, pnpm 11.7.0, every contained option failed:
+
+| Attempt | Outcome |
+| --- | --- |
+| `pnpm install --resolution-only` | No-op. pnpm treats the stale resolution as settled. |
+| `overrides:` in `pnpm-workspace.yaml` | Recorded in the lockfile, **peer unchanged at 56.0.5** — overrides do not reach auto-installed peer edges. Re-resolution also spread `react-dom@19.2.7` from 34 lockfile occurrences to 74, against `react@19.2.3`. |
+| Delete the stale entries, `pnpm install --fix-lockfile` | pnpm short-circuits on "Already up to date" and never re-reads the lockfile. |
+| `pnpm update -r <pkg>` | Fixes the package, but the name matches no importer, so pnpm falls back to a general update: `@expo/cli` 57.0.18 → 57.0.20, plus `@expo/metro-config`, `@expo/ui`, `@expo/log-box`. Floats the native surface — forbidden. |
+
+So the honest options are a full deliberate Expo-track re-resolution, or declaring the
+package in `apps/mobile/package.json` via `expo install` so the SDK version map owns it
+(at the cost of a declared dependency the app does not otherwise use). Either way it is a
+reviewed decision on the Expo track — and never a hand-edit of `pnpm-lock.yaml` (see
+`CONTRIBUTING.md`).
 
 Note this is *not* a job for `expo.install.exclude` (which `expo-doctor`'s own advice
 suggests). That key would also hide those packages from `expo install --check`,
