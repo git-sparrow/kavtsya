@@ -284,11 +284,38 @@ So the split is:
 | Where | What runs | Role |
 | --- | --- | --- |
 | `ci.yml`, every PR | `expo-doctor` with `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK=1` | **gate** — blocks merge |
-| `expo-sdk-check.yml`, PRs touching `apps/mobile/package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml` | full `expo-doctor` | **gate** — the strict version match, where a dependency change makes it meaningful |
 | `expo-sdk-check.yml`, fortnightly + `workflow_dispatch` | full `expo-doctor` | **monitor** — opens a drift issue, see below |
 
 Both jobs also set `EXPO_DOCTOR_WARN_ON_NETWORK_ERRORS=1`: several checks call Expo's
 API, and a network blip is not a broken PR.
+
+**The monitor does not gate pull requests** (#232). It used to fail PRs touching the
+mobile manifests or the lockfile, on the reasoning that a dependency change is exactly
+where alignment must hold. The cadence does not allow it. `expo` shipped 20 stable
+releases inside SDK 57 at a **median 3 days** apart, and #222 realigned everything on
+2026-08-26 only for `expo install --check` to report 10 packages behind by 08-30. The
+aligned window is ~2–3 days, so the gate was red by default — a toll booth paid in
+either an unrelated realign or an override.
+
+It also never earned its keep. Every real dependency defect this repo has hit —
+`expo-constants` (#212), `@types/react` (#223), `@expo/dom-webview` (#224/#226) — was
+caught by a **duplicate-** or **overridden-dependency** check, and all of those gate on
+every PR through `ci.yml`. The version match caught none of them; it only blocked. Expo
+treats it as advisory too: *"There may be circumstances where you want to use a version
+of a package that is different from the version recommended by `npx expo install`"*
+([expo.fyi/dependency-validation](https://expo.fyi/dependency-validation)).
+
+### Patch drift inside an SDK is not a defect
+
+The contract is the **major** — SDK 57. Being a few patches behind inside it is the
+normal resting state of any project that is not realigned daily, and `expo install`
+picks the SDK's known-good set whenever it runs.
+
+So realign on the fortnightly drift issue, or when a fix actually needs a newer patch.
+**Never realign to make a check green** — that inverts the tool into the thing it was
+supposed to serve, and drags unrelated native bumps (`react-native`, `react-native-*`)
+into whatever PR happened to be open. If a realign moves the native surface, it is its
+own PR on the Expo track, with a dev-build rebuild and a smoke test.
 
 ### Pin the gate's expo-doctor; leave the monitor's floating
 

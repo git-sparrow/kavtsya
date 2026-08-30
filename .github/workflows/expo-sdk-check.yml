@@ -3,24 +3,31 @@ name: Expo SDK check
 # The FULL `expo-doctor`, including "Check that packages match versions required
 # by installed Expo SDK". That one check resolves the expected set from Expo's
 # live version map, so it can fail a commit that changed nothing the moment Expo
-# publishes a patch — it is a monitor, not a merge gate. The other 20 checks are
-# a function of the diff and run on every PR in ci.yml.
+# publishes a patch. The other 20 checks are a function of the diff and run on
+# every PR in ci.yml.
 #
-# Two triggers, one job:
-#   - pull_request touching the mobile manifests / lockfile — a dependency change
-#     is exactly where the strict version match must gate, so there it fails the
-#     build like any other check.
-#   - schedule (+ manual) — drift detection. On failure it opens a tracking issue,
-#     which is the trigger for the human-run Expo track in
-#     docs/agents/dependency-updates.md. Before this existed, drift was found by
-#     accident, via an unrelated PR going red.
+# So this workflow is a MONITOR ONLY. It runs on a schedule (+ manual) and turns
+# a failure into a tracking issue, the trigger for the human-run Expo track in
+# docs/agents/dependency-updates.md. Before this existed, drift was found by
+# accident, via an unrelated PR going red.
+#
+# It deliberately does NOT gate pull requests (#232). It used to fail dependency
+# PRs on the strict version match, on the reasoning that a dependency change is
+# where alignment must hold. The cadence does not allow it: `expo` shipped 20
+# stable releases in SDK 57 at a median 3 days apart, and #222 realigned
+# everything on 2026-08-26 only for 10 packages to be behind again by 08-30. The
+# aligned window is ~2-3 days, so the gate was red by default — a toll booth paid
+# in either an unrelated realign or an override, and this repo already knows
+# where merging through red leads (red `main`, 2026-07-29 to #167).
+#
+# It also never earned its keep: every real dependency defect here (#212, #223,
+# #224/#226) was caught by a duplicate- or overridden-dependency check, all of
+# which gate on every PR via ci.yml. Expo itself treats the version match as
+# advisory ("There may be circumstances where you want to use a version of a
+# package that is different from the version recommended by `npx expo install`"
+# — https://expo.fyi/dependency-validation).
 
 on:
-  pull_request:
-    paths:
-      - "apps/mobile/package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
   schedule:
     # Fortnightly (1st and 15th) — deliberately twice the Dependabot cadence,
     # which is monthly (see .github/dependabot.yml). Expo publishes inside an SDK
@@ -54,8 +61,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # continue-on-error so the schedule run can turn a failure into an issue
-      # instead of just a red X nobody is watching.
+      # continue-on-error so a failure becomes a tracking issue instead of just a
+      # red X nobody is watching. Nothing downstream fails the run.
       #
       # Deliberately NOT pinned, unlike the copy in ci.yml. That one is a merge
       # gate and must be a function of the diff; this one is a monitor whose whole
@@ -71,14 +78,8 @@ jobs:
           set -o pipefail
           npx expo-doctor 2>&1 | tee "$RUNNER_TEMP/doctor.log"
 
-      - name: Fail the gate (dependency PRs only)
-        if: steps.doctor.outcome == 'failure' && github.event_name == 'pull_request'
-        run: |
-          echo "::error::expo-doctor failed on a PR that changes mobile dependencies."
-          exit 1
-
-      - name: Open a drift issue (scheduled runs)
-        if: steps.doctor.outcome == 'failure' && github.event_name != 'pull_request'
+      - name: Open a drift issue
+        if: steps.doctor.outcome == 'failure'
         env:
           GH_TOKEN: ${{ github.token }}
           TITLE: "Expo SDK drift: mobile packages are behind the installed SDK"
