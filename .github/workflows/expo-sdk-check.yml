@@ -56,6 +56,11 @@ jobs:
 
       # continue-on-error so the schedule run can turn a failure into an issue
       # instead of just a red X nobody is watching.
+      #
+      # Deliberately NOT pinned, unlike the copy in ci.yml. That one is a merge
+      # gate and must be a function of the diff; this one is a monitor whose whole
+      # job is to notice drift against the outside world, so it should run the
+      # newest checks. A new check finding real drift here is the feature.
       - name: Expo Doctor (full, incl. SDK version match)
         id: doctor
         continue-on-error: true

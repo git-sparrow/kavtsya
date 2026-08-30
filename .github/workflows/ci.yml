@@ -53,8 +53,29 @@ jobs:
       # map, so it reddens a commit that changed nothing as soon as Expo ships a
       # patch. That is a monitor, not a merge gate — expo-sdk-check.yml owns it,
       # on a schedule and on dependency PRs. See docs/agents/dependency-updates.md.
+      #
+      # PINNED, deliberately. `npx expo-doctor` resolves `latest` at run time, so
+      # the gate redefines pass/fail on Expo's release schedule rather than on the
+      # diff: identical lockfile, 1.20.3 green (main, 2026-08-26) and 1.20.4 red
+      # (#224, 2026-08-28, a PR touching only .github/dependabot.yml). Same class
+      # of bug as the SDK version check below — external state deciding a merge
+      # gate — so it gets the same treatment.
+      #
+      # Bump it BY HAND, on the Expo track. Dependabot does not see a version
+      # inside an `npx` string (it reads manifests and `uses:` refs), and moving
+      # expo-doctor into apps/mobile devDependencies would not help: `expo-doctor`
+      # matches the `expo-*` ignore pattern, so it is frozen for automation like
+      # every other Expo-governed package. Its dist-tags are SDK-keyed too
+      # (sdk-56 -> 1.19.12), which is the same signal.
+      #
+      # Pinned at 1.20.3: the last version `main` was verified green on. Introducing
+      # the pin and adopting a newer check are two different changes, and this
+      # commit is only the first. 1.20.4 is a correct upgrade that finds a real
+      # defect (@expo/dom-webview stale at 56.0.5; expo wants ~57.0.1) — it lands
+      # in its own PR, with the finding fixed alongside it. That is exactly the
+      # workflow this pin exists to make possible.
       - name: Expo Doctor (project health, excl. SDK version match)
-        run: npx expo-doctor
+        run: npx expo-doctor@1.20.3
         working-directory: apps/mobile
         env:
           EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: "1"
