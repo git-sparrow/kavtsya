@@ -344,10 +344,13 @@ So `ci.yml` pins an exact version and `expo-sdk-check.yml` does not:
 
 **The pin went in at 1.20.3, not 1.20.4** — the last version `main` was verified green
 on. Introducing the pin and adopting a newer check are two separate changes, and the PR
-that introduced the mechanism did only the first. 1.20.4 is a correct upgrade and its
-finding is real; it moves in its own PR alongside the fix. Pinning to the newest release
-in the same commit would have made the mechanism's first act the very thing it exists to
+that introduced the mechanism (#225) did only the first. Pinning to the newest release in
+the same commit would have made the mechanism's first act the very thing it exists to
 prevent — a gate reddening on a finding nobody had scheduled time to fix.
+
+#226 then bumped it to 1.20.4 **together with the fix for what 1.20.4 found**. That is the
+shape every future bump should take: read the new findings, fix them, move the pin, one PR.
+A bump that needs the findings deferred is a bump that is not ready.
 
 **Bump the pin by hand, on the Expo track.** Dependabot cannot see a version inside an
 `npx` string, and moving `expo-doctor` into `apps/mobile` devDependencies would not help
@@ -379,11 +382,30 @@ narrow lockfile-only fix exists. Measured against `@expo/dom-webview@56.0.5` on
 | Delete the stale entries, `pnpm install --fix-lockfile` | pnpm short-circuits on "Already up to date" and never re-reads the lockfile. |
 | `pnpm update -r <pkg>` | Fixes the package, but the name matches no importer, so pnpm falls back to a general update: `@expo/cli` 57.0.18 → 57.0.20, plus `@expo/metro-config`, `@expo/ui`, `@expo/log-box`. Floats the native surface — forbidden. |
 
-So the honest options are a full deliberate Expo-track re-resolution, or declaring the
-package in `apps/mobile/package.json` via `expo install` so the SDK version map owns it
-(at the cost of a declared dependency the app does not otherwise use). Either way it is a
-reviewed decision on the Expo track — and never a hand-edit of `pnpm-lock.yaml` (see
+**What works: declare it, and let the SDK version map own the version.** In #226,
+`expo install @expo/dom-webview` from `apps/mobile` resolved it against the SDK 57 map
+(`~57.0.1` — it reported "Installing 1 SDK 57.0.0 compatible native module"), which
+promotes the package from an auto-installed peer edge that pnpm will not revisit to a
+declared dependency pnpm must satisfy. The result was the narrowest possible fix:
+
+- one manifest line in `apps/mobile/package.json`;
+- `@expo/dom-webview` 56.0.5 → 57.0.1 in the lockfile and **nothing else moved** —
+  `@expo/cli` stayed 57.0.18, `@expo/log-box` 57.0.3, `react` 19.2.3, `react-native`
+  0.86.2;
+- `pnpm-workspace.yaml` untouched (no `minimumReleaseAgeExclude` block appended).
+
+The cost is a declared dependency the app does not import directly. That is acceptable
+precisely because the SDK map has an opinion about it: the entry is a faithful mirror like
+every other line in that manifest, and `expo install --fix` maintains it from now on
+rather than it becoming a hand-held pin. Prefer this to a full re-resolution whenever the
+forked package is in the SDK map — and never hand-edit `pnpm-lock.yaml` (see
 `CONTRIBUTING.md`).
+
+One thing to check rather than assume: promoting a peer to a declared dependency widens
+peer-resolution suffixes elsewhere in the lockfile. Here `react-dom@19.2.7` went from 34
+occurrences to 74 without a second copy being installed or `expo-doctor` complaining —
+but `react-dom` is the package this repo is most exposed to (see "Do not add `react-dom`"
+above), so read that part of the diff rather than skimming it.
 
 Note this is *not* a job for `expo.install.exclude` (which `expo-doctor`'s own advice
 suggests). That key would also hide those packages from `expo install --check`,

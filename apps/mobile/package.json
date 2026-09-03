@@ -16,6 +16,7 @@
     "@better-auth/expo": "catalog:",
     "@expo-google-fonts/cormorant-garamond": "^0.4.1",
     "@expo-google-fonts/manrope": "^0.4.2",
+    "@expo/dom-webview": "~57.0.1",
     "@expo/metro-runtime": "~57.0.13",
     "@kavtsya/shared": "workspace:*",
     "better-auth": "catalog:",

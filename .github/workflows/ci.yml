@@ -68,14 +68,13 @@ jobs:
       # every other Expo-governed package. Its dist-tags are SDK-keyed too
       # (sdk-56 -> 1.19.12), which is the same signal.
       #
-      # Pinned at 1.20.3: the last version `main` was verified green on. Introducing
-      # the pin and adopting a newer check are two different changes, and this
-      # commit is only the first. 1.20.4 is a correct upgrade that finds a real
-      # defect (@expo/dom-webview stale at 56.0.5; expo wants ~57.0.1) — it lands
-      # in its own PR, with the finding fixed alongside it. That is exactly the
-      # workflow this pin exists to make possible.
+      # Bumped 1.20.3 -> 1.20.4 in the same PR that fixed what 1.20.4 found
+      # (@expo/dom-webview was stale at 56.0.5; expo wants ~57.0.1). That is the
+      # workflow this pin exists to make possible: a new check arrives in a PR
+      # where someone has scheduled time to read its findings, never by surprise
+      # on an unrelated diff.
       - name: Expo Doctor (project health, excl. SDK version match)
-        run: npx expo-doctor@1.20.3
+        run: npx expo-doctor@1.20.4
         working-directory: apps/mobile
         env:
           EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: "1"
