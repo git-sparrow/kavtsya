@@ -5,30 +5,42 @@
 # `clearState` (that only wipes the data container). So a launched app is normally
 # still signed in — we sign out *through the UI* (Settings → Вийти) rather than
 # relying on clearState. clearState is still used to reset navigation/app state so
-# we always relaunch at the mode home (which carries the Settings gear).
+# we always relaunch at a mode home.
 appId: ${APP_ID}
 ---
 - launchApp:
     clearState: true
-# Wait for paint: the "Кавця" wordmark shows on both the auth screen and every
-# mode home, so this settles regardless of which one we land on (dev-mode Metro
-# reload can take a few seconds).
+# A keychain prompt stranded by an interrupted run would hide the whole app from
+# Maestro (it only sees the frontmost system window), so clear one if present.
+- runFlow: dismiss-save-password.yaml
+# Wait for paint. There is no single element common to every landing surface —
+# the redesign's RoleHeader replaced the "Кавця" wordmark on the mode homes, so
+# that old anchor now matches the auth screen ONLY. Wait for whichever surface we
+# actually landed on instead; `id` is regex-based, so one alternation covers all.
 - extendedWaitUntil:
-    visible: "Кавця"
+    visible:
+      id: '(sign-in\.submit|home-settings|owner-settings)'
     timeout: 30000
-# If signed in, the Settings gear is present — sign out. On the auth screen the
-# gear is absent, so this block is skipped. (Scanner Mode has no gear, but
-# capture.sh ends any lingering Зміна before the flows, so a reset never opens
-# into the kiosk.)
+    label: "Wait for the auth screen or a mode home to paint"
+# If signed in, a mode home is up and its header gear is present — sign out. The
+# two Modes id their gear differently (`home-settings` in Customer, `owner-settings`
+# in CafeOwner), so match both. On the auth screen no gear exists and the block is
+# skipped. (Scanner Mode has no gear, but capture.sh ends any lingering Зміна
+# before the flows, so a reset never opens into the kiosk.)
 - runFlow:
     when:
-      visible: "Налаштування"
+      visible:
+        id: "(home|owner)-settings"
     commands:
-      - tapOn: "Налаштування"
+      - tapOn:
+          id: "(home|owner)-settings"
       - extendedWaitUntil:
-          visible: "Вийти"
+          visible:
+            id: "settings.sign-out"
           timeout: 10000
-      - tapOn: "Вийти"
+      - tapOn:
+          id: "settings.sign-out"
 - extendedWaitUntil:
-    visible: "Увійти"
+    visible:
+      id: "sign-in.submit"
     timeout: 30000

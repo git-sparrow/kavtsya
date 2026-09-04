@@ -3,18 +3,21 @@
 # The caller asserts its own role landing afterwards (Customer/Owner/Scanner),
 # since each Mode paints a different first screen (ADR 0015).
 #
-# Selectors are the on-screen Ukrainian placeholders/labels from sign-in.tsx.
-# Adding accessibilityIdentifier/testID to those fields would harden this against
-# copy changes — a good follow-up, not required today.
+# Selectors are the `sign-in.*` testIDs rather than the Ukrainian placeholders:
+# copy churns with every redesign turn, ids don't (Maestro maps testID → id).
 appId: ${APP_ID}
 ---
-- assertVisible: "Увійти"
-- tapOn: "Email"
+- assertVisible:
+    id: "sign-in.submit"
+- tapOn:
+    id: "sign-in.email"
 - inputText: ${EMAIL}
-- tapOn: "Пароль"
+- tapOn:
+    id: "sign-in.password"
 # Read DEMO_PASSWORD straight from the global env (capture.sh --env) rather than
 # a per-caller PASSWORD relay — the nested relay mis-typed the password.
 - inputText: ${DEMO_PASSWORD}
 # Tap the wordmark to dismiss the keyboard (iOS sim ignores hideKeyboard here).
 - tapOn: "Кавця"
-- tapOn: "Увійти"
+- tapOn:
+    id: "sign-in.submit"

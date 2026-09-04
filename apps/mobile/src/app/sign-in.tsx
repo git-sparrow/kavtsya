@@ -43,6 +43,7 @@ export default function SignIn() {
       <Card>
         {isSignup && (
           <TextField
+            testID="sign-in.name"
             placeholder="Ім'я"
             autoCapitalize="words"
             value={name}
@@ -50,6 +51,7 @@ export default function SignIn() {
           />
         )}
         <TextField
+          testID="sign-in.email"
           placeholder="Email"
           autoCapitalize="none"
           autoCorrect={false}
@@ -58,21 +60,25 @@ export default function SignIn() {
           onChangeText={setEmail}
         />
         <TextField
+          testID="sign-in.password"
           placeholder="Пароль"
           secureTextEntry
           value={password}
           onChangeText={setPassword}
         />
 
-        {error && <ErrorText>{error}</ErrorText>}
+        {error && <ErrorText testID="sign-in.error">{error}</ErrorText>}
 
         <Button
+          testID="sign-in.submit"
           title={isSignup ? "Зареєструватися" : "Увійти"}
           onPress={submit}
           busy={busy}
         />
 
         <Pressable
+          testID="sign-in.toggle-mode"
+          accessibilityRole="button"
           onPress={() => {
             setError(null);
             setMode(isSignup ? "signin" : "signup");

@@ -43,6 +43,7 @@ const LABELS = {
   "/owner/roster": "Ростер бариста<br/>(owner/roster)",
   "/owner/campaigns": "Розсилки<br/>(owner/campaigns)",
   "/owner/analytics": "Аналітика<br/>(owner/analytics)",
+  "/cafe/register": "Реєстрація кав'ярні<br/>(cafe/register)",
 };
 const SIGN_IN = { id: "signin", label: "Вхід / Реєстрація<br/>(sign-in)" };
 
@@ -73,10 +74,21 @@ export function routeOf(relPath) {
 }
 
 /**
- * Pull every navigation target out of a source file: `router.push/replace/
- * navigate("…")`, the `{ pathname: "…" }` object form, and `<Link href="…">`.
- * These literal route strings are the app's real edges — derived from the code
- * that actually moves the user, so the map stays honest as navigation changes.
+ * Pull every navigation target out of a source file. Two tiers, because the app
+ * navigates two ways:
+ *
+ * 1. **Direct call-sites** — `router.push/replace/navigate("…")`, the
+ *    `{ pathname: "…" }` object form, and `<Link href="…">`.
+ * 2. **Indirect** — a typed helper that takes the route as a parameter, the
+ *    shape the redesign moved to: `owner-mode.tsx` declares
+ *    `go(pathname: "/owner/scan" | …)` and calls `go("/owner/scan")`, so the
+ *    literal never sits inside a `router.*` call and tier 1 alone sees nothing.
+ *    Tier 2 therefore harvests every route-shaped string literal in the file.
+ *
+ * Tier 2 is deliberately loose; `buildGraph` intersects the result with the real
+ * route set, so a non-route string (`"/api/me"`, a URL, a CSS value) is dropped.
+ * The cost of being loose is a stray edge if a screen names a route it doesn't
+ * navigate to; the cost of being strict was six missing CafeOwner edges.
  */
 export function extractTargets(source) {
   const targets = new Set();
@@ -84,6 +96,8 @@ export function extractTargets(source) {
     /router\.(?:push|replace|navigate)\(\s*["'`]([^"'`]+)["'`]/g,
     /pathname:\s*["'`]([^"'`]+)["'`]/g,
     /href=\{?\s*["'`]([^"'`]+)["'`]/g,
+    // Tier 2: any `"/route/like[this]"` literal, including a bare `"/"`.
+    /["'`](\/(?:[\w[\]().-]+(?:\/[\w[\]().-]+)*)?)["'`]/g,
   ];
   for (const re of patterns) {
     let m;
@@ -104,9 +118,8 @@ function labelOf(route) {
 
 /**
  * Build the directed flow graph. Nodes come from the router tree; edges come
- * from three sources: the constant auth guard + Mode dispatch, the scanned
- * navigation call-sites of every screen and Mode surface, and the shared
- * `<Screen settings>` chrome (the gear that opens Settings from a Mode).
+ * from two sources: the constant auth guard + Mode dispatch, and the scanned
+ * navigation call-sites of every screen and Mode surface.
  */
 export function buildGraph({ appFiles, readFile }) {
   const nodes = new Map(); // id -> { id, label, kind }
@@ -145,14 +158,18 @@ export function buildGraph({ appFiles, readFile }) {
   const scan = (sourceId, rel) => {
     const src = readFile(rel);
     if (src === null) return;
+    // Settings is reachable only through the header gear, whose control both
+    // Modes label "Налаштування" for assistive tech. When this file renders that
+    // control, its Settings edge is that gear — worth showing as ⚙ on the map.
+    // (Before the redesign the tell was a `<Screen settings>` prop; that prop is
+    // gone, and matching it now false-positived on `testID="settings.back"`.)
+    const hasGear = /(?:accessibilityLabel=|label:\s*)"Налаштування"/.test(src);
     for (const target of extractTargets(src)) {
       if (target === "/") continue; // `router.replace("/")` = "back to dispatcher"
       if (!routes.has(target)) continue; // ignore non-route strings
-      addEdge(sourceId, nodeId(target), undefined, "nav");
+      const gear = target === "/settings" && hasGear;
+      addEdge(sourceId, nodeId(target), gear ? "⚙" : undefined, "nav");
     }
-    // The shared chrome: `<Screen settings>` renders the gear → Settings.
-    if (/<Screen[^>]*\bsettings\b/.test(src) && routes.has("/settings"))
-      addEdge(sourceId, "settings", "⚙", "nav");
     // Sign-out ("Вийти") drops back to the auth screen.
     if (/signOut\(/.test(src)) addEdge(sourceId, SIGN_IN.id, "вихід", "guard");
   };

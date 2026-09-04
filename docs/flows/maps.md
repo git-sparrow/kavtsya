@@ -12,7 +12,9 @@ CafeOwner → CafeOwner, else Customer.
 
 ```mermaid
 flowchart TD
+  cafe_register["Реєстрація кав'ярні<br/>(cafe/register)"]:::screen
   root["Home<br/>(Mode dispatcher)"]:::screen
+  owner_cafeId["Програма кав'ярні<br/>(owner/[cafeId])"]:::screen
   settings["Settings<br/>(Налаштування)"]:::screen
   shift_request["Стати баристою<br/>(shift/request)"]:::screen
   signin["Вхід / Реєстрація<br/>(sign-in)"]:::auth
@@ -20,7 +22,9 @@ flowchart TD
   signin -- "вхід / реєстрація" --> root
   root -- "інакше" --> customer
   root -- "вихід" --> signin
+  settings --> cafe_register
   settings --> shift_request
+  settings --> owner_cafeId
   settings -- "вихід" --> signin
   customer -- "⚙" --> settings
   classDef auth fill:#fde68a,stroke:#b45309,color:#1c1917;
@@ -32,6 +36,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
+  cafe_register["Реєстрація кав'ярні<br/>(cafe/register)"]:::screen
   root["Home<br/>(Mode dispatcher)"]:::screen
   owner_cafeId["Програма кав'ярні<br/>(owner/[cafeId])"]:::screen
   owner_analytics["Аналітика<br/>(owner/analytics)"]:::screen
@@ -46,15 +51,17 @@ flowchart TD
   signin -- "вхід / реєстрація" --> root
   root -- "власник кав'ярні" --> owner
   root -- "вихід" --> signin
+  settings --> cafe_register
   settings --> shift_request
+  settings --> owner_cafeId
   settings -- "вихід" --> signin
+  owner -- "⚙" --> settings
   owner --> owner_scan
   owner --> owner_cafeId
   owner --> owner_shifts
   owner --> owner_roster
   owner --> owner_campaigns
   owner --> owner_analytics
-  owner -- "⚙" --> settings
   classDef auth fill:#fde68a,stroke:#b45309,color:#1c1917;
   classDef mode fill:#c7d2fe,stroke:#4338ca,color:#1c1917;
   classDef screen fill:#e7e5e4,stroke:#78716c,color:#1c1917;
@@ -79,6 +86,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
+  cafe_register["Реєстрація кав'ярні<br/>(cafe/register)"]:::screen
   root["Home<br/>(Mode dispatcher)"]:::screen
   owner_cafeId["Програма кав'ярні<br/>(owner/[cafeId])"]:::screen
   owner_analytics["Аналітика<br/>(owner/analytics)"]:::screen
@@ -97,16 +105,18 @@ flowchart TD
   root -- "власник кав'ярні" --> owner
   root -- "інакше" --> customer
   root -- "вихід" --> signin
+  settings --> cafe_register
   settings --> shift_request
+  settings --> owner_cafeId
   settings -- "вихід" --> signin
   customer -- "⚙" --> settings
+  owner -- "⚙" --> settings
   owner --> owner_scan
   owner --> owner_cafeId
   owner --> owner_shifts
   owner --> owner_roster
   owner --> owner_campaigns
   owner --> owner_analytics
-  owner -- "⚙" --> settings
   classDef auth fill:#fde68a,stroke:#b45309,color:#1c1917;
   classDef mode fill:#c7d2fe,stroke:#4338ca,color:#1c1917;
   classDef screen fill:#e7e5e4,stroke:#78716c,color:#1c1917;

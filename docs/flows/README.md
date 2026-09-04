@@ -66,9 +66,25 @@ apps/mobile/.maestro/capture.sh
 
 Flows sign in as the seeded accounts (universal password `demo-password-1`):
 `demo.customer@kavtsya.test` (Customer), `demo.owner@kavtsya.test` (CafeOwner),
-`barista@kavtsya.test` (Scanner). Screenshots land in `shots/<role>/` — git-ignored
-because they're a regenerable local artifact; the committed map is the durable
-reference.
+`barista@kavtsya.test` (Scanner), and `new.customer@kavtsya.test` (the empty-state
+account the on-ramp lens needs — it owns no café and sits on no roster, so Settings
+offers it both «Стати Кавоваром» and «Приєднатися до кав'ярні»). Screenshots land in
+`shots/<role>/` — git-ignored because they're a regenerable local artifact; the
+committed map is the durable reference.
+
+### The lenses
+
+| Flow | Covers |
+| --- | --- |
+| `10-customer-signup` | Sign-up → Customer Mode landing (the one flow that creates an account) |
+| `20-customer-core` | QR identity, balances, Settings, the ВИГЛЯД theme switch, the delete-account confirm |
+| `30-owner` | CafeOwner home + all six operator subscreens, incl. both Pro gates, and Settings |
+| `40-owner-onboarding` | The two Settings on-ramps: register a Café, join one as Barista |
+| `50-scanner` | The Зміна kiosk + its member-code fallback (needs `CAPTURE_SCANNER=1`) |
+
+Nothing in `40` is submitted and the delete confirm in `20` is always cancelled, so
+the suite is re-runnable against one seed without creating a café or losing an
+account per run.
 
 `capture.sh` defaults `APP_ID=com.kavtsya.app` (`app.json` bundle id); verify the
 installed id before a run with `xcrun simctl listapps booted | grep -i kavtsya`.
@@ -97,16 +113,38 @@ kiosk has no sign-out, so a prior scanner run's active shift would otherwise
 strand the next run's opening reset. `demo-shift end` clears it so the reset
 opens on a normal mode home.
 
+### Writing flows against this app
+
+Four things cost real debugging time here; they are worth knowing before editing a
+flow. (Checked against Maestro 2.6.1 / iOS 26.5, 2026-09-04.)
+
+- **Target `testID`s, not copy.** The flows now select by `id:` throughout — the app
+  carries a `testID` on essentially every control, so a redesign turn that rewrites
+  Ukrainian copy no longer breaks the gallery. `id` is *regex-based and unanchored*,
+  so anchor any id that is a prefix of another (`^settings\.delete-account$` would
+  otherwise also match `settings.delete-account.dialog.cancel`), and single-quote it
+  in YAML so `\.` survives.
+- **Dismiss the iOS keychain prompt *before* asserting a landing.** While the
+  "Save Password?" system dialog is up, Maestro sees **only** that dialog's window —
+  no app element is visible to it, by id or by text. `subflows/dismiss-save-password`
+  therefore runs immediately after any credential submit, ahead of the role-landing
+  wait, and both its steps are `optional: true` because the prompt is not guaranteed.
+- **Settle before tapping.** Subscreens animate in, and a tap fired mid-push lands
+  where the control *was*, reports `COMPLETED`, and does nothing. Put
+  `waitForAnimationToEnd` before a back tap, and prefer `extendedWaitUntil` over a
+  bare `assertVisible` after one — several screens refetch on focus.
+- **`back` is Android/Web only.** It is silently a no-op on iOS, so navigate with the
+  screen's own `*.back` control instead.
+
 ### Known follow-ups
 
-- **Selector hardening** — the flows match on visible Ukrainian text today. Adding
-  React Native `testID` props to the key controls (sign-in fields, the mode
-  buttons) would let flows target stable ids instead — Maestro's recommended,
-  copy-change-proof approach (it maps `testID` to a unique `id`).
 - **iOS touch reliability** — React Native can swallow taps in deeply nested views
   (per Maestro's RN notes); if a tap doesn't register, toggling `accessible` (off
-  on the outer container, on for the target) exposes it. Relevant to the
-  mode-transition tap flakiness seen while hardening the reset.
+  on the outer container, on for the target) exposes it.
+- **Ворожка + Redemption lenses** — still uncaptured. Both need the Customer at or
+  past the threshold, which the seed deliberately does not give (`demo.customer`
+  sits below it), so they need either a cross-role scan flow or a state-setup script
+  alongside `demo-shift`.
 
 ## Beyond the gallery
 

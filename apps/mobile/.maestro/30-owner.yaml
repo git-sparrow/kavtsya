@@ -1,7 +1,13 @@
 # CafeOwner — core operator surface, as seeded demo.owner@kavtsya.test (Free
-# café «Кавярня «Демо»»). Anchored on the one verified label in owner-mode.tsx;
-# deeper sub-screens (analytics pitch, campaigns, roster, shifts, café program)
-# have their selectors filled during the first live capture pass — see the TODO.
+# café «Кавярня «Демо»»). Every control is targeted by its `owner-*` / `*.back`
+# testID; the only text left in a selector is the keyboard-dismiss tap.
+#
+# Two patterns this flow leans on, both learned from real flakes:
+#   - `waitForAnimationToEnd` before every back tap. The subscreens animate in,
+#     and a tap fired mid-push lands where the control *was*, reports COMPLETED,
+#     and does nothing.
+#   - `extendedWaitUntil` (never a bare `assertVisible`) after every back. The
+#     CafeOwner home refetches on focus, so it can repaint a beat later.
 appId: ${APP_ID}
 tags:
   - gallery
@@ -11,34 +17,127 @@ tags:
     file: subflows/sign-in.yaml
     env:
       EMAIL: "demo.owner@kavtsya.test"
-- extendedWaitUntil:
-    visible: "Налаштування"
-    timeout: 20000
 - runFlow: subflows/dismiss-save-password.yaml
+# A CafeOwner with no active Зміна must land in CafeOwner Mode, not Customer
+# Mode — `owner-settings` is the gear only that Mode renders, so this asserts the
+# dispatch (ADR 0015) rather than merely that something painted.
+- extendedWaitUntil:
+    visible:
+      id: "owner-settings"
+    timeout: 20000
 - takeScreenshot: ${SHOTS}/owner/20-home
-# Each operator entry: open it, capture, swipe back to the café home.
-- tapOn: "Сканувати QR клієнта"
+# Each operator entry: open it, capture, come back to the café home. Each
+# subscreen's own back control is its `*.back` id — the shared "Назад"
+# accessibility label matched every one of them at once.
+- tapOn:
+    id: "owner-scan"
+- extendedWaitUntil:
+    visible:
+      id: "scan-viewfinder"
+    timeout: 20000
 - takeScreenshot: ${SHOTS}/owner/21-scan
-- tapOn: "Назад"
-- assertVisible: "Налаштування"
-- tapOn: "Програма лояльності"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "scan.back"
+- extendedWaitUntil:
+    visible:
+      id: "owner-settings"
+    timeout: 20000
+- tapOn:
+    id: "owner-program"
+- extendedWaitUntil:
+    visible:
+      id: "program-threshold"
+    timeout: 20000
 - takeScreenshot: ${SHOTS}/owner/22-program
-- tapOn: "Назад"
-- assertVisible: "Налаштування"
-- tapOn: "Зміни"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "program-back"
+- extendedWaitUntil:
+    visible:
+      id: "owner-settings"
+    timeout: 20000
+- tapOn:
+    id: "owner-shifts"
+- extendedWaitUntil:
+    visible:
+      id: "shifts.back"
+    timeout: 20000
 - takeScreenshot: ${SHOTS}/owner/23-shifts
-- tapOn: "Назад"
-- assertVisible: "Налаштування"
-- tapOn: "Ростер бариста"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "shifts.back"
+- extendedWaitUntil:
+    visible:
+      id: "owner-settings"
+    timeout: 20000
+- tapOn:
+    id: "owner-roster"
+# The printed poster join-code (ADR 0013) is the roster's whole point — assert it
+# rendered before the screenshot claims to show it.
+- extendedWaitUntil:
+    visible:
+      id: "roster.poster-code"
+    timeout: 20000
 - takeScreenshot: ${SHOTS}/owner/24-roster
-- tapOn: "Назад"
-- assertVisible: "Налаштування"
-# Free café → these two hit the Pro gate (pro_required pitch — ADR 0011).
-- tapOn: "Розсилка"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "roster.back"
+- extendedWaitUntil:
+    visible:
+      id: "owner-settings"
+    timeout: 20000
+# Free café → these two hit the Pro gate (pro_required pitch — ADR 0011). The
+# pitch OfferCard renders only on Free, so its id is the gate assertion; the word
+# "PRO" is not — that sits in the header kicker on both plans.
+- tapOn:
+    id: "owner-campaigns"
+- extendedWaitUntil:
+    visible:
+      id: "campaigns.offer"
+    timeout: 20000
 - takeScreenshot: ${SHOTS}/owner/25-campaigns-pro-pitch
-- tapOn: "Назад"
-- assertVisible: "Налаштування"
-- tapOn: "Аналітика"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "campaigns.back"
+- extendedWaitUntil:
+    visible:
+      id: "owner-settings"
+    timeout: 20000
+- tapOn:
+    id: "owner-analytics"
+- extendedWaitUntil:
+    visible:
+      id: "analytics.offer"
+    timeout: 20000
 - takeScreenshot: ${SHOTS}/owner/26-analytics-pro-pitch
-- tapOn: "Назад"
-- assertVisible: "Налаштування"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "analytics.back"
+- extendedWaitUntil:
+    visible:
+      id: "owner-settings"
+    timeout: 20000
+# Settings from the CafeOwner side: the same screen, a different Ролі section
+# (ADR 0015 — each Mode speaks its own role's language).
+- tapOn:
+    id: "owner-settings"
+- extendedWaitUntil:
+    visible:
+      id: "settings.appearance.system"
+    timeout: 20000
+- takeScreenshot: ${SHOTS}/owner/27-settings
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "settings.back"
+- extendedWaitUntil:
+    visible:
+      id: "owner-settings"
+    timeout: 20000

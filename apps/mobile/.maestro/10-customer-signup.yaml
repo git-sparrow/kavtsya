@@ -7,23 +7,32 @@ tags:
 ---
 - runFlow: subflows/reset-to-signed-out.yaml
 - takeScreenshot: ${SHOTS}/customer/01-signin
-- tapOn: "Немає акаунта? Зареєструватися"
+- tapOn:
+    id: "sign-in.toggle-mode"
+# The submit button carries the copy that tells the two modes apart, so this one
+# assertion is deliberately on text: it is the thing being verified.
 - assertVisible: "Зареєструватися"
-- tapOn: "Ім'я"
+- tapOn:
+    id: "sign-in.name"
 - inputText: "Олена"
-- tapOn: "Email"
+- tapOn:
+    id: "sign-in.email"
 - inputText: ${SIGNUP_EMAIL}
-- tapOn: "Пароль"
+- tapOn:
+    id: "sign-in.password"
 - inputText: ${DEMO_PASSWORD}
 # Tap the wordmark to dismiss the keyboard (iOS sim ignores hideKeyboard here).
 - tapOn: "Кавця"
 - takeScreenshot: ${SHOTS}/customer/02-signup-filled
-- tapOn: "Зареєструватися"
-# Lands in Customer Mode. Anchor on the Settings gear — it appears exactly when a
-# mode home finishes loading and Maestro matches it reliably (heading StaticText
-# like "Вітаємо…" it does not). Screenshots still capture the full home.
-- extendedWaitUntil:
-    visible: "Налаштування"
-    timeout: 30000
+- tapOn:
+    id: "sign-in.submit"
+# A brand-new account owns no café, so the dispatcher must land in Customer Mode
+# (ADR 0015). Anchoring on `home-settings` — the Customer gear — asserts exactly
+# that; the old shared "Налаштування" text anchor also matched CafeOwner Mode and
+# so could not tell a mis-dispatch from a correct one.
 - runFlow: subflows/dismiss-save-password.yaml
+- extendedWaitUntil:
+    visible:
+      id: "home-settings"
+    timeout: 30000
 - takeScreenshot: ${SHOTS}/customer/03-home
