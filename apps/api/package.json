@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@better-auth/expo": "catalog:",
-    "@hono/node-server": "^1.13.7",
+    "@hono/node-server": "^2.1.1",
     "@kavtsya/shared": "workspace:*",
     "better-auth": "catalog:",
     "hono": "^4.6.13",
