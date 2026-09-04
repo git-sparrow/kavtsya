@@ -1,0 +1,73 @@
+# CafeOwner — the two Settings excursions a Customer takes to *become* staff,
+# neither of which the gallery covered before: registering a Café (ADR 0015's
+# "Стати Кавоваром" path) and asking to join one as a Barista (ADR 0013).
+#
+# Runs as the seeded new.customer@kavtsya.test — an account with no café and no
+# roster membership, so both entries are offered. Nothing is submitted: each
+# screen is captured at its filled-in state and backed out of, so the flow stays
+# re-runnable against the same seed without creating a café per run.
+appId: ${APP_ID}
+tags:
+  - gallery
+---
+- runFlow: subflows/reset-to-signed-out.yaml
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      EMAIL: "new.customer@kavtsya.test"
+- runFlow: subflows/dismiss-save-password.yaml
+- extendedWaitUntil:
+    visible:
+      id: "home-settings"
+    timeout: 30000
+- tapOn:
+    id: "home-settings"
+- extendedWaitUntil:
+    visible:
+      id: "settings.become-owner"
+    timeout: 20000
+- takeScreenshot: ${SHOTS}/owner/40-settings-roles
+# 1. Register a Café — the CafeOwner on-ramp.
+- tapOn:
+    id: "settings.become-owner"
+- extendedWaitUntil:
+    visible:
+      id: "register-cafe.name"
+    timeout: 20000
+- takeScreenshot: ${SHOTS}/owner/41-register-cafe
+- tapOn:
+    id: "register-cafe.name"
+# Dismiss the keyboard by tapping the screen's own heading — the "Кавця" wordmark
+# trick only works on the auth screen, since every other surface replaced the
+# wordmark with a BackHeader/RoleHeader title.
+- inputText: "Кавярня «Проба»"
+- tapOn: "Стати Кавоваром"
+- takeScreenshot: ${SHOTS}/owner/42-register-cafe-filled
+# Backed out, not submitted — see the header note.
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "register-cafe.back"
+- extendedWaitUntil:
+    visible:
+      id: "settings.become-owner"
+    timeout: 20000
+# 2. Join a Café as Barista — the printed-poster join code (ADR 0013).
+- tapOn:
+    id: "settings.join-cafe"
+- extendedWaitUntil:
+    visible:
+      id: "request-manual"
+    timeout: 20000
+- takeScreenshot: ${SHOTS}/owner/43-shift-request
+- tapOn:
+    id: "request-manual"
+- takeScreenshot: ${SHOTS}/owner/44-shift-request-manual-code
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "request.back"
+- extendedWaitUntil:
+    visible:
+      id: "settings.join-cafe"
+    timeout: 20000

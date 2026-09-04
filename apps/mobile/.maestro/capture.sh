@@ -42,6 +42,7 @@ pnpm --filter @kavtsya/api demo-shift end
 run 10-customer-signup.yaml
 run 20-customer-core.yaml
 run 30-owner.yaml
+run 40-owner-onboarding.yaml
 if [[ "${CAPTURE_SCANNER:-0}" == "1" ]]; then
   # Scanner Mode only exists during an active Зміна — grant one for the barista
   # (idempotent) before signing in as them. Run scanner LAST: it ends signed in

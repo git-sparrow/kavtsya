@@ -200,7 +200,11 @@ export default function ScanPosterScreen() {
   // Terminal: the owner scanned their own poster — informational, not a wait.
   if (terminal?.kind === "owner_cafe") {
     return (
-      <Screen header={<BackHeader title="Приєднатися до кав'ярні" />}>
+      <Screen
+        header={
+          <BackHeader title="Приєднатися до кав'ярні" testID="request.back" />
+        }
+      >
         <StatusStrip
           testID="request-owner-cafe"
           intent="info"
@@ -251,7 +255,11 @@ export default function ScanPosterScreen() {
 
   if (!permission) {
     return (
-      <Screen header={<BackHeader title="Приєднатися до кав'ярні" />}>
+      <Screen
+        header={
+          <BackHeader title="Приєднатися до кав'ярні" testID="request.back" />
+        }
+      >
         <View style={{ flex: 1, justifyContent: "center" }}>
           <ActivityIndicator size="large" color={t.c.foreground} />
         </View>
@@ -260,7 +268,11 @@ export default function ScanPosterScreen() {
   }
 
   return (
-    <Screen header={<BackHeader title="Приєднатися до кав'ярні" />}>
+    <Screen
+      header={
+        <BackHeader title="Приєднатися до кав'ярні" testID="request.back" />
+      }
+    >
       <Muted style={{ textAlign: "left" }}>
         Бариста? Скануй постер Кавці біля каси своєї кав&apos;ярні.
       </Muted>

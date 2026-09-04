@@ -9,10 +9,76 @@ tags:
     file: subflows/sign-in.yaml
     env:
       EMAIL: "demo.customer@kavtsya.test"
-- extendedWaitUntil:
-    visible: "Налаштування"
-    timeout: 30000
 - runFlow: subflows/dismiss-save-password.yaml
+- extendedWaitUntil:
+    visible:
+      id: "home-settings"
+    timeout: 30000
+# The QR plate is the Customer's identity — assert it actually rendered rather
+# than trusting that the home painted.
+- assertVisible:
+    id: "member-code"
 - takeScreenshot: ${SHOTS}/customer/10-home-qr
 - scroll
 - takeScreenshot: ${SHOTS}/customer/11-balances
+# Settings, reached the way a Customer reaches it: the header gear.
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "home-settings"
+- extendedWaitUntil:
+    visible:
+      id: "settings.appearance.system"
+    timeout: 20000
+- takeScreenshot: ${SHOTS}/customer/12-settings
+# ВИГЛЯД (#162) applies on tap, so the screen repaints as its own live preview.
+- tapOn:
+    id: "settings.appearance.dark"
+- takeScreenshot: ${SHOTS}/customer/13-settings-dark
+- tapOn:
+    id: "settings.appearance.system"
+# The permanent exit (#81, #143) only *opens* the question here — the confirm is
+# captured and dismissed, never answered, so the seeded account survives the run.
+# `id` is regex-based and unanchored, so a bare "settings.delete-account" would
+# also match the dialog ids nested under it — anchor it. Single-quoted so YAML
+# leaves the regex backslashes alone.
+# The АКАУНТ section sits below the fold on a 6.1" screen, so scroll it into
+# view. `centerElement` keeps the row clear of the bottom edge (where the
+# scroll-indicator overlay sits), and the settle wait lets scroll momentum finish
+# — tapping into a still-decelerating list hits whatever slides under the finger.
+- scrollUntilVisible:
+    element:
+      id: '^settings\.delete-account$'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: '^settings\.delete-account$'
+# Wait on the dialog's cancel BUTTON, not its container: `ConfirmDialog` puts the
+# testID on a wrapper View, which RN does not surface as an identified element —
+# only the derived `.confirm` / `.cancel` buttons reach the accessibility tree.
+- extendedWaitUntil:
+    visible:
+      id: 'settings\.delete-account\.dialog\.cancel$'
+    timeout: 20000
+- takeScreenshot: ${SHOTS}/customer/14-delete-account-confirm
+# The dialog derives its button ids from its own testID. Cancel, never confirm:
+# the seeded account has to survive the run. (Its visible label is «Залишитися»
+# for a Customer and «Скасувати» for a CafeOwner — another reason to use the id.)
+- tapOn:
+    id: 'settings\.delete-account\.dialog\.cancel$'
+# The header scrolls with the content, so after reaching the АКАУНТ section the
+# back control sits off-screen — come back up before reaching for it.
+- scrollUntilVisible:
+    element:
+      id: "settings.back"
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "settings.back"
+- extendedWaitUntil:
+    visible:
+      id: "home-settings"
+    timeout: 20000

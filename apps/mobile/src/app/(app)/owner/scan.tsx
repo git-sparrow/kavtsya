@@ -24,6 +24,7 @@ export default function ScanPurchase() {
       header={<ScanRoleHeader cafeName={cafeName} />}
       exit={
         <Button
+          testID="scan.back"
           title="Назад"
           variant="secondary"
           onPress={() => router.back()}

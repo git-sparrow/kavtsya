@@ -15,9 +15,16 @@ tags:
     file: subflows/sign-in.yaml
     env:
       EMAIL: "barista@kavtsya.test"
-# With an active shift the app pins straight into the kiosk.
-- extendedWaitUntil:
-    visible: "Завершити зміну"
-    timeout: 20000
+# With an active shift the app pins straight into the kiosk — the viewfinder is
+# the Mode's own surface, so it doubles as the dispatch assertion.
 - runFlow: subflows/dismiss-save-password.yaml
+- extendedWaitUntil:
+    visible:
+      id: "scan-viewfinder"
+    timeout: 20000
 - takeScreenshot: ${SHOTS}/scanner/30-workstation
+# The offline fallback (#21): a Зернятко can still be issued from a typed member
+# code when the camera can't read the QR.
+- tapOn:
+    id: "scan-member-code"
+- takeScreenshot: ${SHOTS}/scanner/31-manual-code
