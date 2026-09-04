@@ -11,7 +11,7 @@ packages:
 # Expo SDK via `expo install` and managed on the deliberate Expo track.
 catalog:
   typescript: ~6.0.3
-  vitest: ^2.1.9
+  vitest: ^4.1.11
   zod: ^4.4.3
   better-auth: ^1.6.19
   "@better-auth/expo": ^1.6.19
