@@ -58,7 +58,7 @@ function ScanHeroButton({ onPress }: { onPress: () => void }) {
   const title = "Сканувати QR клієнта";
   return (
     <Pressable
-      testID="owner-scan"
+      testID="owner-home.scan"
       accessibilityRole="button"
       accessibilityLabel={title}
       onPress={onPress}
@@ -128,19 +128,19 @@ function OwnerCafeHome({
       <ScanHeroButton onPress={() => go("/owner/scan")} />
       <ListGroup>
         <ListRow
-          testID="owner-program"
+          testID="owner-home.program"
           icon="settings"
           title="Програма лояльності"
           onPress={() => go("/owner/[cafeId]")}
         />
         <ListRow
-          testID="owner-shifts"
+          testID="owner-home.shifts"
           icon="clock"
           title="Зміни"
           onPress={() => go("/owner/shifts")}
         />
         <ListRow
-          testID="owner-roster"
+          testID="owner-home.roster"
           icon="people"
           title="Ростер бариста"
           onPress={() => go("/owner/roster")}
@@ -148,14 +148,14 @@ function OwnerCafeHome({
       </ListGroup>
       <ListGroup>
         <ListRow
-          testID="owner-campaigns"
+          testID="owner-home.campaigns"
           icon="megaphone"
           title="Розсилка"
           badge="PRO"
           onPress={() => go("/owner/campaigns")}
         />
         <ListRow
-          testID="owner-analytics"
+          testID="owner-home.analytics"
           icon="chart"
           title="Аналітика"
           badge="PRO"
@@ -191,7 +191,7 @@ export function OwnerMode() {
           action={{
             icon: "settings",
             label: "Налаштування",
-            testID: "owner-settings",
+            testID: "owner-home.settings",
             onPress: () => router.push("/settings"),
           }}
         />

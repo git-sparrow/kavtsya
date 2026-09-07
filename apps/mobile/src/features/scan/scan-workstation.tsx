@@ -142,7 +142,7 @@ export function ScanWorkstation({
           {/* The offline fallback (#21): a failed scan never dead-ends the
               sale — type the member code from beneath the Customer's QR. */}
           <TextField
-            testID="scan-member-code"
+            testID="scan.member-code-input"
             value={typedCode}
             onChangeText={setTypedCode}
             placeholder="Або введи код клієнта"
@@ -156,7 +156,7 @@ export function ScanWorkstation({
             <Button
               title="Нарахувати за кодом"
               variant="secondary"
-              testID="scan-accrue-by-code"
+              testID="scan.accrue-by-code"
               onPress={submitTypedCode}
             />
           )}
@@ -187,7 +187,7 @@ export function ScanWorkstation({
 
       {state.phase === "rejected" && (
         <StatusStrip
-          testID="scan-rejected"
+          testID="scan.rejected"
           intent="danger"
           {...rejectionCopy(state.code, state.message)}
         />
@@ -206,7 +206,7 @@ export function ScanWorkstation({
           // primary confirm (2d reward-ready, or a banked re-offer) — one screen,
           // one primary CTA. Otherwise (2c/2e/2f) it is the primary action.
           variant={hasInCardConfirm(state) ? "secondary" : "primary"}
-          testID="scan-next"
+          testID="scan.next"
           onPress={scanNext}
         />
       ) : null}
@@ -300,7 +300,7 @@ function Viewfinder({
     t.themeName === "dark" ? t.color.secondary[950] : t.c.secondary;
   return (
     <View
-      testID="scan-viewfinder"
+      testID="scan.viewfinder"
       style={{
         alignSelf: "stretch",
         aspectRatio: 1,
@@ -389,7 +389,7 @@ function IssuedOutcome({
   return (
     <>
       <StatusStrip
-        testID="scan-issued"
+        testID="scan.issued"
         intent="success"
         title={
           ready
@@ -461,7 +461,7 @@ function RewardConfirmCard({
   const saved = result.balance - result.threshold;
   return (
     <View
-      testID="scan-reward-ready"
+      testID="scan.reward-ready"
       style={[
         {
           alignSelf: "stretch",
@@ -494,7 +494,7 @@ function RewardConfirmCard({
       </Text>
       <Button
         title="Видати Винагороду"
-        testID="scan-confirm-redemption"
+        testID="scan.confirm-redemption"
         onPress={onConfirm}
       />
       {confirmError && <ErrorText>{confirmError}</ErrorText>}
@@ -524,7 +524,7 @@ function RedeemedOutcome({
   return (
     <>
       <View
-        testID="scan-redeemed"
+        testID="scan.redeemed"
         accessible
         accessibilityLiveRegion="polite"
         style={{
@@ -568,7 +568,7 @@ function RedeemedOutcome({
       {canRedeem(result) && (
         <Button
           title="Видати ще одну"
-          testID="scan-confirm-redemption-again"
+          testID="scan.confirm-redemption-again"
           onPress={onConfirmAgain}
         />
       )}

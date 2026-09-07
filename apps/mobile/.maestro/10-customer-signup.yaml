@@ -27,12 +27,12 @@ tags:
 - tapOn:
     id: "sign-in.submit"
 # A brand-new account owns no café, so the dispatcher must land in Customer Mode
-# (ADR 0015). Anchoring on `home-settings` — the Customer gear — asserts exactly
-# that; the old shared "Налаштування" text anchor also matched CafeOwner Mode and
-# so could not tell a mis-dispatch from a correct one.
+# (ADR 0015). Anchoring on `customer-home.settings` — the Customer gear —
+# asserts exactly that; the old shared "Налаштування" text anchor also matched
+# CafeOwner Mode and so could not tell a mis-dispatch from a correct one.
 - runFlow: subflows/dismiss-save-password.yaml
 - extendedWaitUntil:
     visible:
-      id: "home-settings"
+      id: "customer-home.settings"
     timeout: 30000
 - takeScreenshot: ${SHOTS}/customer/03-home

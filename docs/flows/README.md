@@ -124,6 +124,17 @@ flow. (Checked against Maestro 2.6.1 / iOS 26.5, 2026-09-04.)
   so anchor any id that is a prefix of another (`^settings\.delete-account$` would
   otherwise also match `settings.delete-account.dialog.cancel`), and single-quote it
   in YAML so `\.` survives.
+- **The id vocabulary is `<screen>.<element>`,** kebab-case in each segment (#125) —
+  `customer-home.settings`, `sign-in.submit`, `program-config.save`,
+  `scan.member-code-input`, `scanner.end-shift`. The *screen* segment comes from the
+  route or mode surface the control lives on (a shared component that renders on
+  several screens uses its own name instead — `qr-plate.member-code`); the *element*
+  segment comes from the control's role, **never from its visible copy** — a
+  Ukrainian rewrite must not be able to reach a selector. Repeated rows carry a
+  stable domain id, never a list index: `customer-home.cafes.<cafeId>.redeem`,
+  `roster.baristas.<userId>.remove`, `shifts.active.<shiftId>.end`. Dialogs derive
+  `<id>.confirm` / `<id>.cancel` / `<id>.scrim` from the `ConfirmDialog` testID, and
+  `Stepper` derives `<id>-minus` / `<id>-plus`.
 - **Dismiss the iOS keychain prompt *before* asserting a landing.** While the
   "Save Password?" system dialog is up, Maestro sees **only** that dialog's window —
   no app element is visible to it, by id or by text. `subflows/dismiss-save-password`

@@ -19,21 +19,21 @@ tags:
       EMAIL: "demo.owner@kavtsya.test"
 - runFlow: subflows/dismiss-save-password.yaml
 # A CafeOwner with no active Зміна must land in CafeOwner Mode, not Customer
-# Mode — `owner-settings` is the gear only that Mode renders, so this asserts the
-# dispatch (ADR 0015) rather than merely that something painted.
+# Mode — `owner-home.settings` is the gear only that Mode renders, so this
+# asserts the dispatch (ADR 0015) rather than merely that something painted.
 - extendedWaitUntil:
     visible:
-      id: "owner-settings"
+      id: "owner-home.settings"
     timeout: 20000
 - takeScreenshot: ${SHOTS}/owner/20-home
 # Each operator entry: open it, capture, come back to the café home. Each
 # subscreen's own back control is its `*.back` id — the shared "Назад"
 # accessibility label matched every one of them at once.
 - tapOn:
-    id: "owner-scan"
+    id: "owner-home.scan"
 - extendedWaitUntil:
     visible:
-      id: "scan-viewfinder"
+      id: "scan.viewfinder"
     timeout: 20000
 - takeScreenshot: ${SHOTS}/owner/21-scan
 - waitForAnimationToEnd:
@@ -42,25 +42,25 @@ tags:
     id: "scan.back"
 - extendedWaitUntil:
     visible:
-      id: "owner-settings"
+      id: "owner-home.settings"
     timeout: 20000
 - tapOn:
-    id: "owner-program"
+    id: "owner-home.program"
 - extendedWaitUntil:
     visible:
-      id: "program-threshold"
+      id: "program-config.threshold"
     timeout: 20000
 - takeScreenshot: ${SHOTS}/owner/22-program
 - waitForAnimationToEnd:
     timeout: 5000
 - tapOn:
-    id: "program-back"
+    id: "program-config.back"
 - extendedWaitUntil:
     visible:
-      id: "owner-settings"
+      id: "owner-home.settings"
     timeout: 20000
 - tapOn:
-    id: "owner-shifts"
+    id: "owner-home.shifts"
 - extendedWaitUntil:
     visible:
       id: "shifts.back"
@@ -72,10 +72,10 @@ tags:
     id: "shifts.back"
 - extendedWaitUntil:
     visible:
-      id: "owner-settings"
+      id: "owner-home.settings"
     timeout: 20000
 - tapOn:
-    id: "owner-roster"
+    id: "owner-home.roster"
 # The printed poster join-code (ADR 0013) is the roster's whole point — assert it
 # rendered before the screenshot claims to show it.
 - extendedWaitUntil:
@@ -89,13 +89,13 @@ tags:
     id: "roster.back"
 - extendedWaitUntil:
     visible:
-      id: "owner-settings"
+      id: "owner-home.settings"
     timeout: 20000
 # Free café → these two hit the Pro gate (pro_required pitch — ADR 0011). The
 # pitch OfferCard renders only on Free, so its id is the gate assertion; the word
 # "PRO" is not — that sits in the header kicker on both plans.
 - tapOn:
-    id: "owner-campaigns"
+    id: "owner-home.campaigns"
 - extendedWaitUntil:
     visible:
       id: "campaigns.offer"
@@ -107,10 +107,10 @@ tags:
     id: "campaigns.back"
 - extendedWaitUntil:
     visible:
-      id: "owner-settings"
+      id: "owner-home.settings"
     timeout: 20000
 - tapOn:
-    id: "owner-analytics"
+    id: "owner-home.analytics"
 - extendedWaitUntil:
     visible:
       id: "analytics.offer"
@@ -122,12 +122,12 @@ tags:
     id: "analytics.back"
 - extendedWaitUntil:
     visible:
-      id: "owner-settings"
+      id: "owner-home.settings"
     timeout: 20000
 # Settings from the CafeOwner side: the same screen, a different Ролі section
 # (ADR 0015 — each Mode speaks its own role's language).
 - tapOn:
-    id: "owner-settings"
+    id: "owner-home.settings"
 - extendedWaitUntil:
     visible:
       id: "settings.appearance.system"
@@ -139,5 +139,5 @@ tags:
     id: "settings.back"
 - extendedWaitUntil:
     visible:
-      id: "owner-settings"
+      id: "owner-home.settings"
     timeout: 20000

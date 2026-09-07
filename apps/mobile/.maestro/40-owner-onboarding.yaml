@@ -18,10 +18,10 @@ tags:
 - runFlow: subflows/dismiss-save-password.yaml
 - extendedWaitUntil:
     visible:
-      id: "home-settings"
+      id: "customer-home.settings"
     timeout: 30000
 - tapOn:
-    id: "home-settings"
+    id: "customer-home.settings"
 - extendedWaitUntil:
     visible:
       id: "settings.become-owner"
@@ -57,11 +57,11 @@ tags:
     id: "settings.join-cafe"
 - extendedWaitUntil:
     visible:
-      id: "request-manual"
+      id: "request.manual"
     timeout: 20000
 - takeScreenshot: ${SHOTS}/owner/43-shift-request
 - tapOn:
-    id: "request-manual"
+    id: "request.manual"
 - takeScreenshot: ${SHOTS}/owner/44-shift-request-manual-code
 - waitForAnimationToEnd:
     timeout: 5000

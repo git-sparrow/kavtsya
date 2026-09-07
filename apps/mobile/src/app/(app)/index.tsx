@@ -179,7 +179,7 @@ function ShiftCheckFailedBanner({
 
   return (
     <View
-      testID="shift-check-failed"
+      testID="home.shift-check-failed"
       accessibilityRole="alert"
       style={{
         position: "absolute",
@@ -212,6 +212,7 @@ function ShiftCheckFailedBanner({
           </Muted>
         </View>
         <Pressable
+          testID="home.shift-check-failed.dismiss"
           accessibilityRole="button"
           accessibilityLabel="Сховати"
           hitSlop={12}
@@ -227,6 +228,7 @@ function ShiftCheckFailedBanner({
       <Button
         title="Спробувати знову"
         variant="secondary"
+        testID="home.shift-check-failed.retry"
         busy={busy}
         onPress={onRetry}
       />

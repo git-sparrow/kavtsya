@@ -261,7 +261,11 @@ function RewardReadyCard({
         {pluralizeUk(cafe.threshold, BEAN_FORMS)} зібрано
       </Text>
       <BeanRow balance={cafe.balance} threshold={cafe.threshold} />
-      <Button title="Як отримати" testID="cafe-redeem" onPress={onRedeem} />
+      <Button
+        title="Як отримати"
+        testID={`customer-home.cafes.${cafe.cafeId}.redeem`}
+        onPress={onRedeem}
+      />
     </Surface>
   );
 }

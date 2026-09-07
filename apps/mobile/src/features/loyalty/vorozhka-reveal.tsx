@@ -133,7 +133,7 @@ function RevealBody({
             <>
               <Button
                 title="Отримати Винагороду"
-                testID="vorozhka-redeem"
+                testID="vorozhka.redeem"
                 onPress={() =>
                   setRedeeming({
                     cafeId: fortune.cafeId,
@@ -147,12 +147,17 @@ function RevealBody({
                   })
                 }
               />
-              <Button title="Пізніше" variant="quiet" onPress={onDismiss} />
+              <Button
+                title="Пізніше"
+                variant="quiet"
+                testID="vorozhka.later"
+                onPress={onDismiss}
+              />
             </>
           ) : (
             <Button
               title="Дякую"
-              testID="vorozhka-thanks"
+              testID="vorozhka.thanks"
               onPress={onDismiss}
             />
           )}

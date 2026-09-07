@@ -184,12 +184,12 @@ export default function ScanPosterScreen() {
         header={<View accessibilityElementsHidden style={{ height: 0 }} />}
       >
         <WaitingState
-          testID="request-sent"
+          testID="request.sent"
           title="Запит надіслано"
           body={terminal.message}
           primaryAction={{
             label: "Добре",
-            testID: "request-sent-done",
+            testID: "request.sent-done",
             onPress: () => router.back(),
           }}
         />
@@ -206,7 +206,7 @@ export default function ScanPosterScreen() {
         }
       >
         <StatusStrip
-          testID="request-owner-cafe"
+          testID="request.owner-cafe"
           intent="info"
           title="Це твоя кав'ярня"
           detail={terminal.message}
@@ -239,7 +239,7 @@ export default function ScanPosterScreen() {
         <View style={{ flex: 1 }} />
         <Button
           title={`Перейти в «${switchTo.cafeName}»`}
-          testID="request-switch-confirm"
+          testID="request.switch-confirm"
           busy={sending}
           onPress={() => void submit(switchTo.posterCode, true)}
         />
@@ -334,7 +334,7 @@ export default function ScanPosterScreen() {
       {manual ? (
         <View style={{ gap: t.space[2] }}>
           <TextField
-            testID="request-code"
+            testID="request.code"
             value={typedCode}
             onChangeText={setTypedCode}
             placeholder="Код з постера, напр. K7Q4-M2ZX"
@@ -345,7 +345,7 @@ export default function ScanPosterScreen() {
           />
           <Button
             title="Продовжити за кодом"
-            testID="request-code-submit"
+            testID="request.code-submit"
             disabled={typedCode.length === 0}
             onPress={submitTypedCode}
           />
@@ -360,7 +360,7 @@ export default function ScanPosterScreen() {
           <Button
             title="Ввести код вручну"
             variant="secondary"
-            testID="request-manual"
+            testID="request.manual"
             onPress={() => setManual(true)}
           />
         </>

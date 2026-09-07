@@ -20,11 +20,11 @@ tags:
 - runFlow: subflows/dismiss-save-password.yaml
 - extendedWaitUntil:
     visible:
-      id: "scan-viewfinder"
+      id: "scan.viewfinder"
     timeout: 20000
 - takeScreenshot: ${SHOTS}/scanner/30-workstation
 # The offline fallback (#21): a Зернятко can still be issued from a typed member
 # code when the camera can't read the QR.
 - tapOn:
-    id: "scan-member-code"
+    id: "scan.member-code-input"
 - takeScreenshot: ${SHOTS}/scanner/31-manual-code

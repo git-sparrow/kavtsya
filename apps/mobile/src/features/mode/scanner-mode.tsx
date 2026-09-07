@@ -102,10 +102,11 @@ export function ScannerMode() {
           <Button
             title="Завершити зміну"
             variant="secondary"
+            testID="scanner.end-shift"
             busy={ending}
             onPress={() => void endShift()}
           />
-          {error && <ErrorText>{error}</ErrorText>}
+          {error && <ErrorText testID="scanner.error">{error}</ErrorText>}
         </>
       }
     />

@@ -12,20 +12,28 @@ tags:
 - runFlow: subflows/dismiss-save-password.yaml
 - extendedWaitUntil:
     visible:
-      id: "home-settings"
+      id: "customer-home.settings"
     timeout: 30000
 # The QR plate is the Customer's identity — assert it actually rendered rather
 # than trusting that the home painted.
 - assertVisible:
-    id: "member-code"
+    id: "qr-plate.member-code"
 - takeScreenshot: ${SHOTS}/customer/10-home-qr
 - scroll
 - takeScreenshot: ${SHOTS}/customer/11-balances
-# Settings, reached the way a Customer reaches it: the header gear.
+# Settings, reached the way a Customer reaches it: the header gear. The home
+# header scrolls with the content (#165), so the balances scroll above can push
+# the gear off the top — how far depends on how tall the page happens to be (the
+# #24 consent card is there only until it's answered). Scroll back to the gear
+# instead of assuming it survived the scroll.
+- scrollUntilVisible:
+    element:
+      id: "customer-home.settings"
+    direction: UP
 - waitForAnimationToEnd:
     timeout: 5000
 - tapOn:
-    id: "home-settings"
+    id: "customer-home.settings"
 - extendedWaitUntil:
     visible:
       id: "settings.appearance.system"
@@ -53,8 +61,13 @@ tags:
     centerElement: true
 - waitForAnimationToEnd:
     timeout: 5000
+# `waitForAnimationToEnd` can return while the list is still decelerating (it
+# compares frames, and a slow glide reads as two identical ones), and the tap
+# then lands on whatever slid under it — the confirm never opens. The pre-tap
+# settle window is the deterministic version of the same wait.
 - tapOn:
     id: '^settings\.delete-account$'
+    waitToSettleTimeoutMs: 2000
 # Wait on the dialog's cancel BUTTON, not its container: `ConfirmDialog` puts the
 # testID on a wrapper View, which RN does not surface as an identified element —
 # only the derived `.confirm` / `.cancel` buttons reach the accessibility tree.
@@ -80,5 +93,5 @@ tags:
     id: "settings.back"
 - extendedWaitUntil:
     visible:
-      id: "home-settings"
+      id: "customer-home.settings"
     timeout: 20000
