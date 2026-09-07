@@ -38,8 +38,35 @@ tags:
 - takeScreenshot: ${SHOTS}/owner/21-scan
 - waitForAnimationToEnd:
     timeout: 5000
-- tapOn:
-    id: "scan.back"
+# Tap inside a `repeat … while`, not as a bare `tapOn` (#249). A bare tap here
+# misses most of the time: measured on one simulator, back to back, 5 of 6 bare
+# taps left the app on the scan screen while 8 of 8 through this loop left it.
+# On a miss the app never sees the touch at all — an instrumented build counted
+# `onTouchStart` 0, so nothing cancelled it, it was simply never delivered. It is
+# not the id, the push animation, the camera, or `delaysContentTouches` (each
+# re-checked; the first two are excluded by `onTouchStart` 0 outright), and
+# Argent's HID tap at the identical point on the identical screen navigates every
+# time.
+#
+# What actually fixes it is the `while` guard, not the retry: evaluating it costs
+# the driver a fresh view-hierarchy read right before the tap, and that is enough
+# for the tap to land — all 8 passing runs needed exactly one tap, the retry never
+# fired. `waitForAnimationToEnd` above does not substitute; it returns in ~0.3s.
+# The retry is kept as the backstop, bounded by `times` so a genuinely stuck
+# screen fails the run rather than spinning.
+- repeat:
+    times: 3
+    while:
+      visible:
+        id: "scan.back"
+    commands:
+      - tapOn:
+          id: "scan.back"
+      - extendedWaitUntil:
+          visible:
+            id: "owner-home.settings"
+          timeout: 6000
+          optional: true
 - extendedWaitUntil:
     visible:
       id: "owner-home.settings"
