@@ -146,6 +146,12 @@ flow. (Checked against Maestro 2.6.1 / iOS 26.5, 2026-09-04.)
   bare `assertVisible` after one — several screens refetch on focus.
 - **`back` is Android/Web only.** It is silently a no-op on iOS, so navigate with the
   screen's own `*.back` control instead.
+- **`hideKeyboard` works on some screens and not others.** It dismisses the keyboard
+  fine on the register-café subscreen, but fails outright on the auth screen
+  (`Couldn't hide the keyboard`), where the flows tap the «Кавця» wordmark instead.
+  Prefer it where it works — the fallback puts a visible string in a selector, and
+  the wordmark is only safe there because a brand mark is not product copy. Test it
+  on the specific screen rather than assuming either way.
 
 ### Known follow-ups
 
