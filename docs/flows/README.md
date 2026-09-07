@@ -152,6 +152,11 @@ flow. (Checked against Maestro 2.6.1 / iOS 26.5, 2026-09-04.)
 - **iOS touch reliability** — React Native can swallow taps in deeply nested views
   (per Maestro's RN notes); if a tap doesn't register, toggling `accessible` (off
   on the outer container, on for the target) exposes it.
+- **`30-owner` can't tap out of the scan screen** (#249) — `scan.back` resolves and
+  Maestro reports the tap `COMPLETED`, but the app stays put, so the lens aborts the
+  suite before `40`/`50` (both pass standalone). Not the id, not a mid-push tap, not
+  `delaysContentTouches`, not the stray scroll indicator over the button — all four
+  ruled out in the issue.
 - **Ворожка + Redemption lenses** — still uncaptured. Both need the Customer at or
   past the threshold, which the seed deliberately does not give (`demo.customer`
   sits below it), so they need either a cross-role scan flow or a state-setup script
