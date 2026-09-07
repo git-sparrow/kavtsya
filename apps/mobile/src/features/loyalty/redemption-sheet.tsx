@@ -124,7 +124,7 @@ export function RedemptionSheet({
             <Button
               title="Пізніше"
               variant="secondary"
-              testID="redemption-later"
+              testID="redemption.later"
               onPress={onClose}
             />
           </View>
@@ -177,7 +177,7 @@ function RedemptionSuccess({
         </Text>
         <BeanRow balance={remaining} threshold={cafe.threshold} />
       </View>
-      <Button title="Готово" testID="redemption-done" onPress={onClose} />
+      <Button title="Готово" testID="redemption.done" onPress={onClose} />
     </View>
   );
 }

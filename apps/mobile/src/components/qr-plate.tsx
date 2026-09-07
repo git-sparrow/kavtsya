@@ -152,7 +152,7 @@ export function QRPlate({
         <>
           <Text
             selectable
-            testID="member-code"
+            testID="qr-plate.member-code"
             style={{
               fontSize: t.font.size["2xl"] - 4,
               fontVariant: ["tabular-nums"],

@@ -158,12 +158,17 @@ export function buildGraph({ appFiles, readFile }) {
   const scan = (sourceId, rel) => {
     const src = readFile(rel);
     if (src === null) return;
-    // Settings is reachable only through the header gear, whose control both
-    // Modes label "Налаштування" for assistive tech. When this file renders that
-    // control, its Settings edge is that gear — worth showing as ⚙ on the map.
-    // (Before the redesign the tell was a `<Screen settings>` prop; that prop is
-    // gone, and matching it now false-positived on `testID="settings.back"`.)
-    const hasGear = /(?:accessibilityLabel=|label:\s*)"Налаштування"/.test(src);
+    // Settings is reachable only through the header gear, which each Mode ids
+    // after its own home. When this file renders that control, its Settings edge
+    // is that gear — worth showing as ⚙ on the map.
+    // (The tell was a `<Screen settings>` prop before the redesign, then the
+    // "Налаштування" accessibility label — but keying the map off Ukrainian copy
+    // is the brittleness #125 set out to remove, and a bare `settings` id regex
+    // false-positived on `testID="settings.back"`. The #125 ids are anchored
+    // enough to match the two Mode homes and nothing else.)
+    const hasGear = /testID[=:]\s*"(?:customer|owner)-home\.settings"/.test(
+      src,
+    );
     for (const target of extractTargets(src)) {
       if (target === "/") continue; // `router.replace("/")` = "back to dispatcher"
       if (!routes.has(target)) continue; // ignore non-route strings

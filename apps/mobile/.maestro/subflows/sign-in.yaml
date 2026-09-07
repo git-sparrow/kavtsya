@@ -17,7 +17,10 @@ appId: ${APP_ID}
 # Read DEMO_PASSWORD straight from the global env (capture.sh --env) rather than
 # a per-caller PASSWORD relay — the nested relay mis-typed the password.
 - inputText: ${DEMO_PASSWORD}
-# Tap the wordmark to dismiss the keyboard (iOS sim ignores hideKeyboard here).
+# Tap the wordmark to dismiss the keyboard: `hideKeyboard` fails outright on
+# the auth screen ("Couldn't hide the keyboard"), though it works elsewhere —
+# see 40-owner-onboarding. The wordmark is a brand mark, not product copy, so
+# it is not the kind of string a redesign turn rewrites.
 - tapOn: "Кавця"
 - tapOn:
     id: "sign-in.submit"

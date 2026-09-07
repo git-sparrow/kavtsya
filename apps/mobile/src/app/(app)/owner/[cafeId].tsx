@@ -43,7 +43,7 @@ export default function CafeProgram() {
       action={{
         icon: "chevron-left",
         label: "Назад",
-        testID: "program-back",
+        testID: "program-config.back",
         onPress: () => router.back(),
       }}
     />
@@ -72,7 +72,7 @@ export default function CafeProgram() {
     return (
       <Screen header={header}>
         <StatusStrip
-          testID="program-saved"
+          testID="program-config.saved"
           intent="success"
           solid
           title="Збережено"
@@ -103,7 +103,7 @@ export default function CafeProgram() {
         <View style={{ flex: 1 }} />
         <Button
           title="Готово"
-          testID="program-done"
+          testID="program-config.done"
           onPress={() => router.back()}
         />
       </Screen>
@@ -124,7 +124,7 @@ export default function CafeProgram() {
           Скільки зернят до Винагороди
         </Title>
         <Stepper
-          testID="program-threshold"
+          testID="program-config.threshold"
           value={thresholdNum}
           label="Скільки зернят до Винагороди"
           onStep={editor.stepThreshold}
@@ -146,7 +146,7 @@ export default function CafeProgram() {
       </Text>
       <RadioGroup label="Винагорода">
         <RadioCard
-          testID="program-reward-none"
+          testID="program-config.reward.none"
           label="Без винагороди"
           selected={editor.rewardType === null}
           onPress={() => editor.selectReward(null)}
@@ -154,7 +154,7 @@ export default function CafeProgram() {
         {editor.defaults.map((d) => (
           <RadioCard
             key={d.type}
-            testID={`program-reward-${d.type}`}
+            testID={`program-config.reward.${d.type}`}
             label={d.label}
             trailing={rewardUnit(d.type)}
             selected={editor.rewardType === d.type}
@@ -167,7 +167,7 @@ export default function CafeProgram() {
         <View style={{ alignSelf: "stretch", gap: t.space[2] }}>
           <Muted style={{ textAlign: "left" }}>{editor.paramSpec.label}</Muted>
           <TextField
-            testID="program-reward-param"
+            testID="program-config.reward-param"
             placeholder={editor.paramSpec.placeholder}
             keyboardType={editor.paramSpec.numeric ? "number-pad" : "default"}
             value={editor.param}
@@ -178,7 +178,7 @@ export default function CafeProgram() {
 
       {editor.error && (
         <StatusStrip
-          testID="program-error"
+          testID="program-config.error"
           intent="danger"
           title={editor.error}
         />
@@ -187,7 +187,7 @@ export default function CafeProgram() {
       <View style={{ flex: 1 }} />
       <Button
         title="Зберегти"
-        testID="program-save"
+        testID="program-config.save"
         onPress={editor.save}
         busy={editor.saving}
       />

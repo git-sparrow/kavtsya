@@ -124,6 +124,17 @@ flow. (Checked against Maestro 2.6.1 / iOS 26.5, 2026-09-04.)
   so anchor any id that is a prefix of another (`^settings\.delete-account$` would
   otherwise also match `settings.delete-account.dialog.cancel`), and single-quote it
   in YAML so `\.` survives.
+- **The id vocabulary is `<screen>.<element>`,** kebab-case in each segment (#125) —
+  `customer-home.settings`, `sign-in.submit`, `program-config.save`,
+  `scan.member-code-input`, `scanner.end-shift`. The *screen* segment comes from the
+  route or mode surface the control lives on (a shared component that renders on
+  several screens uses its own name instead — `qr-plate.member-code`); the *element*
+  segment comes from the control's role, **never from its visible copy** — a
+  Ukrainian rewrite must not be able to reach a selector. Repeated rows carry a
+  stable domain id, never a list index: `customer-home.cafes.<cafeId>.redeem`,
+  `roster.baristas.<userId>.remove`, `shifts.active.<shiftId>.end`. Dialogs derive
+  `<id>.confirm` / `<id>.cancel` / `<id>.scrim` from the `ConfirmDialog` testID, and
+  `Stepper` derives `<id>-minus` / `<id>-plus`.
 - **Dismiss the iOS keychain prompt *before* asserting a landing.** While the
   "Save Password?" system dialog is up, Maestro sees **only** that dialog's window —
   no app element is visible to it, by id or by text. `subflows/dismiss-save-password`
@@ -135,12 +146,23 @@ flow. (Checked against Maestro 2.6.1 / iOS 26.5, 2026-09-04.)
   bare `assertVisible` after one — several screens refetch on focus.
 - **`back` is Android/Web only.** It is silently a no-op on iOS, so navigate with the
   screen's own `*.back` control instead.
+- **`hideKeyboard` works on some screens and not others.** It dismisses the keyboard
+  fine on the register-café subscreen, but fails outright on the auth screen
+  (`Couldn't hide the keyboard`), where the flows tap the «Кавця» wordmark instead.
+  Prefer it where it works — the fallback puts a visible string in a selector, and
+  the wordmark is only safe there because a brand mark is not product copy. Test it
+  on the specific screen rather than assuming either way.
 
 ### Known follow-ups
 
 - **iOS touch reliability** — React Native can swallow taps in deeply nested views
   (per Maestro's RN notes); if a tap doesn't register, toggling `accessible` (off
   on the outer container, on for the target) exposes it.
+- **`30-owner` can't tap out of the scan screen** (#249) — `scan.back` resolves and
+  Maestro reports the tap `COMPLETED`, but the app stays put, so the lens aborts the
+  suite before `40`/`50` (both pass standalone). Not the id, not a mid-push tap, not
+  `delaysContentTouches`, not the stray scroll indicator over the button — all four
+  ruled out in the issue.
 - **Ворожка + Redemption lenses** — still uncaptured. Both need the Customer at or
   past the threshold, which the seed deliberately does not give (`demo.customer`
   sits below it), so they need either a cross-role scan flow or a state-setup script

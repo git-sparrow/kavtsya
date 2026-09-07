@@ -18,10 +18,10 @@ tags:
 - runFlow: subflows/dismiss-save-password.yaml
 - extendedWaitUntil:
     visible:
-      id: "home-settings"
+      id: "customer-home.settings"
     timeout: 30000
 - tapOn:
-    id: "home-settings"
+    id: "customer-home.settings"
 - extendedWaitUntil:
     visible:
       id: "settings.become-owner"
@@ -37,11 +37,13 @@ tags:
 - takeScreenshot: ${SHOTS}/owner/41-register-cafe
 - tapOn:
     id: "register-cafe.name"
-# Dismiss the keyboard by tapping the screen's own heading — the "Кавця" wordmark
-# trick only works on the auth screen, since every other surface replaced the
-# wordmark with a BackHeader/RoleHeader title.
 - inputText: "Кавярня «Проба»"
-- tapOn: "Стати Кавоваром"
+# `hideKeyboard` DOES work on this screen (Maestro 2.6.1 / iOS 26.5) — the old
+# trick here was tapping the screen's own heading, which put a Ukrainian product
+# string in a selector, exactly what #125 removes. It is not a blanket
+# replacement: on the sign-up screen the same command fails outright ("Couldn't
+# hide the keyboard"), which is why the auth flows still tap the wordmark.
+- hideKeyboard
 - takeScreenshot: ${SHOTS}/owner/42-register-cafe-filled
 # Backed out, not submitted — see the header note.
 - waitForAnimationToEnd:
@@ -57,11 +59,11 @@ tags:
     id: "settings.join-cafe"
 - extendedWaitUntil:
     visible:
-      id: "request-manual"
+      id: "request.manual"
     timeout: 20000
 - takeScreenshot: ${SHOTS}/owner/43-shift-request
 - tapOn:
-    id: "request-manual"
+    id: "request.manual"
 - takeScreenshot: ${SHOTS}/owner/44-shift-request-manual-code
 - waitForAnimationToEnd:
     timeout: 5000

@@ -69,8 +69,8 @@ test("buildGraph folds constants, nav edges, the gear, and sign-out", () => {
     "src/app/(app)/settings.tsx": `router.push("/shift/request"); signOut();`,
     "src/app/(app)/shift/request.tsx": `router.replace("/")`,
     "src/app/(app)/owner/scan.tsx": "",
-    "src/features/mode/owner-mode.tsx": `const go = (pathname: "/owner/scan") => router.push({ pathname });\ngo("/owner/scan");\naction={{ label: "Налаштування", onPress: () => router.push("/settings") }}`,
-    "src/features/mode/customer-mode.tsx": `<Pressable accessibilityLabel="Налаштування" onPress={() => router.push("/settings")} />`,
+    "src/features/mode/owner-mode.tsx": `const go = (pathname: "/owner/scan") => router.push({ pathname });\ngo("/owner/scan");\naction={{ testID: "owner-home.settings", onPress: () => router.push("/settings") }}`,
+    "src/features/mode/customer-mode.tsx": `<Pressable testID="customer-home.settings" onPress={() => router.push("/settings")} />`,
     "src/features/mode/scanner-mode.tsx": "endMyShift();",
   };
   const appFiles = [
@@ -102,9 +102,11 @@ test("buildGraph folds constants, nav edges, the gear, and sign-out", () => {
   expect(has("customer", "settings")).toBe(true);
   expect(has("settings", "signin")).toBe(true); // sign-out
   // Settings opens from the gear, so that edge carries ⚙ — but only from a file
-  // that renders the gear. Settings itself must never self-edge (its back
-  // control is `testID="settings.back"`, which the old chrome regex mistook for
-  // the gear prop).
+  // that renders the gear. The tell is each Mode home's own gear id (#125), not
+  // the "Налаштування" label it used to be — keying the map off Ukrainian copy
+  // was the brittleness #125 removed. Settings itself must never self-edge: its
+  // back control is `testID="settings.back"`, which a bare `settings` id regex
+  // mistook for the gear.
   const gear = (from: string) =>
     edges.find(
       (e: { from: string; to: string; label?: string }) =>
