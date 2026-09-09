@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import {
@@ -445,6 +446,34 @@ test("a Customer who received a campaign push can still delete their account", a
   // A Purchase puts them in the campaign audience (recency window, #24).
   const scan = await earn(cafeId, owner, leaver);
 
+  // A second Customer in the same audience, who is NOT leaving. Without them
+  // the leaver holds every push row in the database, and a `delete from
+  // push_tickets` with no `where` at all satisfies every assertion below — the
+  // scope of the delete has to be asserted against a bystander or not at all.
+  const stayer = await signUp(app(), "stayer@example.com");
+  expect(
+    (
+      await app().request("/api/me/push-consent", {
+        method: "PUT",
+        headers: { "content-type": "application/json", cookie: stayer },
+        body: JSON.stringify({ consent: true }),
+      })
+    ).status,
+  ).toBe(204);
+  expect(
+    (
+      await app().request("/api/me/push-token", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: stayer },
+        body: JSON.stringify({
+          token: "ExponentPushToken[stayer-device]",
+          deviceId: "stayer-phone",
+        }),
+      })
+    ).status,
+  ).toBe(204);
+  const stayerScan = await earn(cafeId, owner, stayer);
+
   const sent = await app().request(`/api/cafes/${cafeId}/campaigns`, {
     method: "POST",
     headers: { "content-type": "application/json", cookie: owner },
@@ -454,19 +483,36 @@ test("a Customer who received a campaign push can still delete their account", a
   const [before] = await db<{ tickets: number }[]>`
     select count(*)::int as tickets from push_tickets
   `;
-  expect(before?.tickets).toBe(1);
+  expect(before?.tickets).toBe(2);
 
   expect((await deleteMe(leaver)).status).toBe(204);
 
-  // The telemetry goes with the account…
-  const [after] = await db<{ tickets: number }[]>`
-    select count(*)::int as tickets from push_tickets
+  // The telemetry goes with the account. Scoped through the token rather than
+  // counted table-wide: a global count reads the same whether the delete was
+  // scoped to the leaver or emptied the table.
+  const leaverTickets = await db`
+    select 1 from push_tickets t
+    join push_tokens k on k."id" = t."push_token_id"
+    where k."user_id" = ${scan.customerId}
   `;
-  expect(after?.tickets).toBe(0);
+  expect(leaverTickets).toHaveLength(0);
   const tokens = await db`
     select 1 from push_tokens where "user_id" = ${scan.customerId}
   `;
   expect(tokens).toHaveLength(0);
+
+  // …and only that account's. The bystander keeps their ticket and their
+  // token: one Customer leaving never reaches another's rows.
+  const stayerTickets = await db`
+    select 1 from push_tickets t
+    join push_tokens k on k."id" = t."push_token_id"
+    where k."user_id" = ${stayerScan.customerId}
+  `;
+  expect(stayerTickets).toHaveLength(1);
+  const stayerTokens = await db`
+    select 1 from push_tokens where "user_id" = ${stayerScan.customerId}
+  `;
+  expect(stayerTokens).toHaveLength(1);
 
   // …the ledger does not.
   const purchases = await db`
@@ -479,7 +525,7 @@ test("a Customer who received a campaign push can still delete their account", a
   const [campaign] = await db<{ recipient_count: number }[]>`
     select "recipient_count" from campaigns where "cafe_id" = ${cafeId}
   `;
-  expect(campaign?.recipient_count).toBe(1);
+  expect(campaign?.recipient_count).toBe(2);
 });
 
 test('no FK path from "user" or cafes cascades into the ledger', async () => {
@@ -516,6 +562,28 @@ const CLEARED_BY_DELETION = [
   "account",
   "session",
 ];
+
+/** The tables `deleteAccount` really deletes from, read from its own source. */
+function tablesDeletedByDeleteAccount(): string[] {
+  const src = readFileSync(
+    new URL("../src/account-deletion.ts", import.meta.url),
+    "utf8",
+  );
+  return [...src.matchAll(/delete from "?([a-z_]+)"?/g)]
+    .map((m) => m[1]!)
+    .sort();
+}
+
+test("CLEARED_BY_DELETION is exactly what deleteAccount deletes", async () => {
+  // The audit below is only ever as wide as that list, and the list lives in a
+  // different file from the deletes it mirrors. Pin the two together, or a
+  // sixth `delete from` added later falls outside the audit's scope in silence
+  // — the same "protection resting on someone remembering" shape ADR 0014
+  // rejected for the schema itself.
+  expect([...CLEARED_BY_DELETION].sort()).toEqual(
+    tablesDeletedByDeleteAccount(),
+  );
+});
 
 test("no FK can block a deletion: every blocking reference is into a table deletion also clears", async () => {
   // The audit above asserts nothing cascades destructively INTO the ledger.
