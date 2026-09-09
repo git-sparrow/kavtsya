@@ -67,10 +67,14 @@ export async function deletionPreview(
  *   user id, which is unique, so the real address is freed for a fresh signup),
  *   member code, push consent.
  * - **Deleted** — Better Auth `account` (login identities) and `session` rows,
- *   push tokens, and Ворожка history; every scanner grant is revoked. The
- *   credentials and the authority to act must not outlive the account; the
- *   fortunes are personal content the confirm screen promises is gone
- *   («історія Ворожки — назавжди»).
+ *   push tokens and the delivery tickets that reference them, and Ворожка
+ *   history; every scanner grant is revoked. The credentials and the authority
+ *   to act must not outlive the account; the fortunes are personal content the
+ *   confirm screen promises is gone («історія Ворожки — назавжди»). A
+ *   `push_tickets` row is operational telemetry — a handle for the receipts
+ *   script to poll Expo with — not ledger history: nobody else's balance
+ *   derives from it, so unlike a Purchase it has no claim to outlive the
+ *   account that received it (#253).
  * - **Kept** — `purchases` and `redemptions` (other people's balances depend on
  *   them), the account's roster rows at other people's Cafés, and its authorship
  *   of Cafés' records: the Зернятка it issued and the campaigns it sent stay
@@ -137,6 +141,25 @@ export async function deleteAccount(
     // editing another person's data. The tombstoned name renders as the
     // anonymous placeholder wherever history shows it (#81 user story 12), and
     // the revocation above already means the row can never be worked again.
+    // Tickets first: `push_tickets.push_token_id` references `push_tokens` with
+    // no cascade (ADR 0014's posture, migration 0011), and nothing else ever
+    // deletes a ticket — `push-receipts.ts` only stamps `resolved_at`. So a
+    // single campaign push used to pin the token row and fail the whole
+    // deletion, permanently (#253). Deleted explicitly here rather than by an
+    // `on delete cascade` on the constraint: the policy for what survives an
+    // account belongs in this module, where it is stated and reviewable, not
+    // hidden in a schema rule that would re-open exactly the implicit-
+    // destruction pattern migration 0017 closed.
+    //
+    // The campaign's own `recipient_count` is a stored integer, so a Café's
+    // ledger row still reports who it reached — one Customer leaving never
+    // rewrites another party's record.
+    await tx`
+      delete from push_tickets
+      where "push_token_id" in (
+        select "id" from push_tokens where "user_id" = ${userId}
+      )
+    `;
     await tx`delete from push_tokens where "user_id" = ${userId}`;
     await tx`delete from customer_fortunes where "customer_user_id" = ${userId}`;
     // Login identities and live sessions: after this the account cannot

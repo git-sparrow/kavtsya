@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import {
@@ -408,6 +409,125 @@ test("the tombstone claim is idempotent at the module seam", async () => {
   expect(purchases).toHaveLength(1);
 });
 
+test("a Customer who received a campaign push can still delete their account", async () => {
+  // The regression #253 left: `push_tickets.push_token_id` references
+  // `push_tokens` with no cascade, and nothing ever deletes a ticket — so one
+  // campaign push used to make an account permanently undeletable, and the
+  // rollback meant not a single field was scrubbed. The path is long because
+  // that is the point: nothing shorter reaches a ticket row.
+  const owner = await signUp(app(), "owner@example.com");
+  const cafeId = await registerCafe("Кавця", owner);
+  // Pro is set by the Platform's hand in v1 (migration 0011) — campaigns, and
+  // therefore tickets, exist only above this line.
+  await db`update cafes set "plan" = 'pro' where "id" = ${cafeId}`;
+
+  const leaver = await signUp(app(), "leaver@example.com");
+  expect(
+    (
+      await app().request("/api/me/push-consent", {
+        method: "PUT",
+        headers: { "content-type": "application/json", cookie: leaver },
+        body: JSON.stringify({ consent: true }),
+      })
+    ).status,
+  ).toBe(204);
+  expect(
+    (
+      await app().request("/api/me/push-token", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: leaver },
+        body: JSON.stringify({
+          token: "ExponentPushToken[leaver-device]",
+          deviceId: "leaver-phone",
+        }),
+      })
+    ).status,
+  ).toBe(204);
+  // A Purchase puts them in the campaign audience (recency window, #24).
+  const scan = await earn(cafeId, owner, leaver);
+
+  // A second Customer in the same audience, who is NOT leaving. Without them
+  // the leaver holds every push row in the database, and a `delete from
+  // push_tickets` with no `where` at all satisfies every assertion below — the
+  // scope of the delete has to be asserted against a bystander or not at all.
+  const stayer = await signUp(app(), "stayer@example.com");
+  expect(
+    (
+      await app().request("/api/me/push-consent", {
+        method: "PUT",
+        headers: { "content-type": "application/json", cookie: stayer },
+        body: JSON.stringify({ consent: true }),
+      })
+    ).status,
+  ).toBe(204);
+  expect(
+    (
+      await app().request("/api/me/push-token", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: stayer },
+        body: JSON.stringify({
+          token: "ExponentPushToken[stayer-device]",
+          deviceId: "stayer-phone",
+        }),
+      })
+    ).status,
+  ).toBe(204);
+  const stayerScan = await earn(cafeId, owner, stayer);
+
+  const sent = await app().request(`/api/cafes/${cafeId}/campaigns`, {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie: owner },
+    body: JSON.stringify({ message: "Нова кава вже у нас!" }),
+  });
+  expect(sent.status).toBe(201);
+  const [before] = await db<{ tickets: number }[]>`
+    select count(*)::int as tickets from push_tickets
+  `;
+  expect(before?.tickets).toBe(2);
+
+  expect((await deleteMe(leaver)).status).toBe(204);
+
+  // The telemetry goes with the account. Scoped through the token rather than
+  // counted table-wide: a global count reads the same whether the delete was
+  // scoped to the leaver or emptied the table.
+  const leaverTickets = await db`
+    select 1 from push_tickets t
+    join push_tokens k on k."id" = t."push_token_id"
+    where k."user_id" = ${scan.customerId}
+  `;
+  expect(leaverTickets).toHaveLength(0);
+  const tokens = await db`
+    select 1 from push_tokens where "user_id" = ${scan.customerId}
+  `;
+  expect(tokens).toHaveLength(0);
+
+  // …and only that account's. The bystander keeps their ticket and their
+  // token: one Customer leaving never reaches another's rows.
+  const stayerTickets = await db`
+    select 1 from push_tickets t
+    join push_tokens k on k."id" = t."push_token_id"
+    where k."user_id" = ${stayerScan.customerId}
+  `;
+  expect(stayerTickets).toHaveLength(1);
+  const stayerTokens = await db`
+    select 1 from push_tokens where "user_id" = ${stayerScan.customerId}
+  `;
+  expect(stayerTokens).toHaveLength(1);
+
+  // …the ledger does not.
+  const purchases = await db`
+    select 1 from purchases where "customer_user_id" = ${scan.customerId}
+  `;
+  expect(purchases).toHaveLength(1);
+
+  // …and the Café's own record of who the campaign reached is not rewritten by
+  // someone else leaving.
+  const [campaign] = await db<{ recipient_count: number }[]>`
+    select "recipient_count" from campaigns where "cafe_id" = ${cafeId}
+  `;
+  expect(campaign?.recipient_count).toBe(2);
+});
+
 test('no FK path from "user" or cafes cascades into the ledger', async () => {
   // The migration's contract, asserted structurally (#81 user story 11): the
   // database refuses the destructive shape, so the invariant outlives anyone's
@@ -428,4 +548,65 @@ test('no FK path from "user" or cafes cascades into the ledger', async () => {
       and src."relname" in ('purchases', 'redemptions', 'cafe_memberships', 'cafes')
   `;
   expect(cascades).toEqual([]);
+});
+
+/**
+ * The tables `deleteAccount` deletes rows from. The `"user"` row is absent on
+ * purpose: it is tombstoned by UPDATE, never deleted, so a reference to it can
+ * never block anything — which is exactly what ADR 0014 bought.
+ */
+const CLEARED_BY_DELETION = [
+  "push_tickets",
+  "push_tokens",
+  "customer_fortunes",
+  "account",
+  "session",
+];
+
+/** The tables `deleteAccount` really deletes from, read from its own source. */
+function tablesDeletedByDeleteAccount(): string[] {
+  const src = readFileSync(
+    new URL("../src/account-deletion.ts", import.meta.url),
+    "utf8",
+  );
+  return [...src.matchAll(/delete from "?([a-z_]+)"?/g)]
+    .map((m) => m[1]!)
+    .sort();
+}
+
+test("CLEARED_BY_DELETION is exactly what deleteAccount deletes", async () => {
+  // The audit below is only ever as wide as that list, and the list lives in a
+  // different file from the deletes it mirrors. Pin the two together, or a
+  // sixth `delete from` added later falls outside the audit's scope in silence
+  // — the same "protection resting on someone remembering" shape ADR 0014
+  // rejected for the schema itself.
+  expect([...CLEARED_BY_DELETION].sort()).toEqual(
+    tablesDeletedByDeleteAccount(),
+  );
+});
+
+test("no FK can block a deletion: every blocking reference is into a table deletion also clears", async () => {
+  // The audit above asserts nothing cascades destructively INTO the ledger.
+  // This is its mirror, and the one #253 needed: nothing may point AT a table
+  // the scrub empties without being emptied first, or the delete fails and the
+  // account is trapped. Structural on purpose — a future table referencing
+  // `push_tokens` fails here on the day it is added, not on the day a real
+  // Customer tries to leave.
+  const blocking = await db<{ table_name: string; references: string }[]>`
+    select
+      src."relname" as table_name,
+      tgt."relname" as "references"
+    from pg_constraint con
+    join pg_class src on src."oid" = con."conrelid"
+    join pg_class tgt on tgt."oid" = con."confrelid"
+    where con."contype" = 'f'
+      -- 'a' = NO ACTION, 'r' = RESTRICT: both refuse the delete.
+      and con."confdeltype" in ('a', 'r')
+      and tgt."relname" in ${db(CLEARED_BY_DELETION)}
+  `;
+
+  const unhandled = blocking.filter(
+    (fk) => !CLEARED_BY_DELETION.includes(fk.table_name),
+  );
+  expect(unhandled).toEqual([]);
 });
