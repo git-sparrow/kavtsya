@@ -408,6 +408,80 @@ test("the tombstone claim is idempotent at the module seam", async () => {
   expect(purchases).toHaveLength(1);
 });
 
+test("a Customer who received a campaign push can still delete their account", async () => {
+  // The regression #253 left: `push_tickets.push_token_id` references
+  // `push_tokens` with no cascade, and nothing ever deletes a ticket — so one
+  // campaign push used to make an account permanently undeletable, and the
+  // rollback meant not a single field was scrubbed. The path is long because
+  // that is the point: nothing shorter reaches a ticket row.
+  const owner = await signUp(app(), "owner@example.com");
+  const cafeId = await registerCafe("Кавця", owner);
+  // Pro is set by the Platform's hand in v1 (migration 0011) — campaigns, and
+  // therefore tickets, exist only above this line.
+  await db`update cafes set "plan" = 'pro' where "id" = ${cafeId}`;
+
+  const leaver = await signUp(app(), "leaver@example.com");
+  expect(
+    (
+      await app().request("/api/me/push-consent", {
+        method: "PUT",
+        headers: { "content-type": "application/json", cookie: leaver },
+        body: JSON.stringify({ consent: true }),
+      })
+    ).status,
+  ).toBe(204);
+  expect(
+    (
+      await app().request("/api/me/push-token", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: leaver },
+        body: JSON.stringify({
+          token: "ExponentPushToken[leaver-device]",
+          deviceId: "leaver-phone",
+        }),
+      })
+    ).status,
+  ).toBe(204);
+  // A Purchase puts them in the campaign audience (recency window, #24).
+  const scan = await earn(cafeId, owner, leaver);
+
+  const sent = await app().request(`/api/cafes/${cafeId}/campaigns`, {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie: owner },
+    body: JSON.stringify({ message: "Нова кава вже у нас!" }),
+  });
+  expect(sent.status).toBe(201);
+  const [before] = await db<{ tickets: number }[]>`
+    select count(*)::int as tickets from push_tickets
+  `;
+  expect(before?.tickets).toBe(1);
+
+  expect((await deleteMe(leaver)).status).toBe(204);
+
+  // The telemetry goes with the account…
+  const [after] = await db<{ tickets: number }[]>`
+    select count(*)::int as tickets from push_tickets
+  `;
+  expect(after?.tickets).toBe(0);
+  const tokens = await db`
+    select 1 from push_tokens where "user_id" = ${scan.customerId}
+  `;
+  expect(tokens).toHaveLength(0);
+
+  // …the ledger does not.
+  const purchases = await db`
+    select 1 from purchases where "customer_user_id" = ${scan.customerId}
+  `;
+  expect(purchases).toHaveLength(1);
+
+  // …and the Café's own record of who the campaign reached is not rewritten by
+  // someone else leaving.
+  const [campaign] = await db<{ recipient_count: number }[]>`
+    select "recipient_count" from campaigns where "cafe_id" = ${cafeId}
+  `;
+  expect(campaign?.recipient_count).toBe(1);
+});
+
 test('no FK path from "user" or cafes cascades into the ledger', async () => {
   // The migration's contract, asserted structurally (#81 user story 11): the
   // database refuses the destructive shape, so the invariant outlives anyone's
@@ -428,4 +502,43 @@ test('no FK path from "user" or cafes cascades into the ledger', async () => {
       and src."relname" in ('purchases', 'redemptions', 'cafe_memberships', 'cafes')
   `;
   expect(cascades).toEqual([]);
+});
+
+/**
+ * The tables `deleteAccount` deletes rows from. The `"user"` row is absent on
+ * purpose: it is tombstoned by UPDATE, never deleted, so a reference to it can
+ * never block anything — which is exactly what ADR 0014 bought.
+ */
+const CLEARED_BY_DELETION = [
+  "push_tickets",
+  "push_tokens",
+  "customer_fortunes",
+  "account",
+  "session",
+];
+
+test("no FK can block a deletion: every blocking reference is into a table deletion also clears", async () => {
+  // The audit above asserts nothing cascades destructively INTO the ledger.
+  // This is its mirror, and the one #253 needed: nothing may point AT a table
+  // the scrub empties without being emptied first, or the delete fails and the
+  // account is trapped. Structural on purpose — a future table referencing
+  // `push_tokens` fails here on the day it is added, not on the day a real
+  // Customer tries to leave.
+  const blocking = await db<{ table_name: string; references: string }[]>`
+    select
+      src."relname" as table_name,
+      tgt."relname" as "references"
+    from pg_constraint con
+    join pg_class src on src."oid" = con."conrelid"
+    join pg_class tgt on tgt."oid" = con."confrelid"
+    where con."contype" = 'f'
+      -- 'a' = NO ACTION, 'r' = RESTRICT: both refuse the delete.
+      and con."confdeltype" in ('a', 'r')
+      and tgt."relname" in ${db(CLEARED_BY_DELETION)}
+  `;
+
+  const unhandled = blocking.filter(
+    (fk) => !CLEARED_BY_DELETION.includes(fk.table_name),
+  );
+  expect(unhandled).toEqual([]);
 });
