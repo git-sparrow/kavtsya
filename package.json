@@ -21,8 +21,9 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
-    "prepare": "husky"
+    "verify": "pnpm agents:check && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "prepare": "husky",
+    "agents:check": "node scripts/check-agent-setup.mjs"
   },
   "devDependencies": {
     "@swmansion/argent": "0.20.0",

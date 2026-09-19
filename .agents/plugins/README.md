@@ -1,10 +1,10 @@
-# Vendored Claude Code plugins
+# Vendored workflow skills
 
 Plugins committed into the repo and loaded from a **relative path**, so the pinned content lives in
 version control and a checkout needs no network to get it. Same philosophy as `.agents/skills/`
 (argent): everything travels with the repo.
 
-Each plugin is declared in [`.claude/settings.json`](../../.claude/settings.json) twice — once as a
+For Claude Code, each plugin is declared in [`.claude/settings.json`](../../.claude/settings.json) twice — once as a
 marketplace pointing at its directory, once in `enabledPlugins`:
 
 ```jsonc
@@ -130,3 +130,13 @@ Deliberate, never automatic — the same treatment argent gets:
    ones — the manifest is the list, not the `skills/` tree).
 3. Update the version/commit/date in the table above.
 4. Review the diff — that diff *is* the pin. Land it in its own PR.
+
+## Codex discovery
+
+Codex uses relative directory symlinks in `.agents/skills/`, one per skill in
+`mattpocock-skills/.claude-plugin/plugin.json`. They point to this same unmodified
+pinned copy; Codex does not rely on the Claude marketplace registration.
+After updating the manifest, add/remove the corresponding symlinks and run
+`pnpm agents:check`. Do not copy skill bodies or edit upstream metadata to adapt
+a client. Invocation and current verification evidence are in
+[`docs/agents/workflow.md`](../../docs/agents/workflow.md).

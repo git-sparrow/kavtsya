@@ -13,7 +13,7 @@ React Native + Expo · Hono on Node.js · PostgreSQL with raw SQL · Anthropic C
 > Scope, roadmap and **current status** live in [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md) —
 > that file is their single home, so nothing here restates them. The domain glossary is
 > in [`CONTEXT.md`](CONTEXT.md), architecture decisions in [`docs/adr/`](docs/adr/), and
-> guidance for AI sessions in [`CLAUDE.md`](CLAUDE.md).
+> guidance for AI sessions in [`AGENTS.md`](AGENTS.md).
 > **This README covers what the project is and how to run it.**
 
 ---
@@ -196,4 +196,7 @@ covered above.
 
 Everything lands via a pull request onto `main` — branch naming, the `pnpm verify` gate
 and commit style are in [`CONTRIBUTING.md`](CONTRIBUTING.md). Guidance for AI sessions is
-in [`CLAUDE.md`](CLAUDE.md).
+in [`AGENTS.md`](AGENTS.md).
+
+For Claude Code + Codex setup and handoffs, see
+[`docs/agents/workflow.md`](docs/agents/workflow.md).

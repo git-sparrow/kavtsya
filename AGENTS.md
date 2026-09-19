@@ -1,0 +1,87 @@
+# Kavtsya (Кавця) — Coffee Loyalty App
+
+> Shared project instructions for Claude Code and Codex. Tool setup and handoffs: [`docs/agents/workflow.md`](docs/agents/workflow.md).
+
+## Status
+
+**Build phase** — scope and architecture are locked. Current status — what's merged and what's next — has exactly **one home**: the Status line + Roadmap in [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md). Don't restate it here or anywhere else (#118); update it there when a slice lands. See `CONTEXT.md` for the domain glossary and `docs/adr/` for architecture decisions.
+
+## What this is
+
+A multi-café coffee loyalty mobile app for the Ukrainian market. Each Café runs its own independent loyalty program — Customers collect **Зернятка** (loyalty units; one per Purchase) and redeem **Rewards** at the Cafés where they buy coffee. **CafeOwners** (Кавовар) scan Customer QR codes, configure their program, send push notifications, and get analytics. Signature feature: an AI "coffee fortune" (**Ворожка**) tied to the Ukrainian tradition of fortune-telling by coffee grounds.
+
+Twin goals: learn AI hands-on, and refresh JS/TS/React/React Native fundamentals.
+
+## Stack (locked in)
+
+- **Mobile**: React Native + Expo (iOS + Android), single app with CafeOwner Mode
+- **Backend**: Hono on Node.js (Railway)
+- **Database**: PostgreSQL on Railway, raw SQL via `postgres.js` (no ORM), Zod for validation
+- **Auth**: Better Auth — email/password + Google + Apple Sign-In
+- **AI**: custom provider abstraction, Claude (Sonnet 5) by default — Ukrainian quality, see ADR 0007
+- **Push**: Expo Push Notifications
+- **Repo**: monorepo — `apps/mobile` + `apps/api` + shared types
+
+See the Tech stack table in `PROJECT_BRIEF.md` and `docs/adr/` for full rationale.
+
+## Working agreement
+
+- **Deliver via PR, never commit to `main`.** Every feature/fix/doc change goes on a branch and merges through a GitHub PR — this holds for agents too, no direct commits to the default branch. A `.husky/pre-push` guard blocks direct pushes locally; GitHub-side branch protection switches on once the repo is public or on a paid plan. Full workflow (branch naming, the `pnpm verify` gate, commit style) is in `CONTRIBUTING.md`.
+- Use the domain glossary in `CONTEXT.md` consistently — **Зернятко** not "stamp/point", **CafeOwner** not "owner", **Purchase** not "transaction".
+- Keep it simple: no redundant functionality.
+- Shared skills live in `.agents/skills/`. Matt Pocock's 25 skills are pinned, unmodified under `.agents/plugins/mattpocock-skills/`; Codex discovers relative symlinks and Claude loads the existing plugin. Setup, invocation and deliberate updates: `.agents/plugins/README.md` and `docs/agents/workflow.md`.
+- Before starting or handing off work, read `docs/agents/workflow.md`. One active editor per checkout; use separate worktrees for concurrent implementation. Coordinate test databases, dev servers and devices explicitly.
+- Run the shared `verify` skill before committing or opening a PR. `pnpm agents:check` validates the repository agent wiring and is included in `pnpm verify`.
+
+## Product principles
+
+The bar for every change. When these collide, resolve in priority order: **security & data integrity → logical consistency → UX → architectural elegance → speed**.
+
+- **Simple** = fewest *concepts* the user must hold, not fewest screens. Prefer one obvious path over three configurable ones.
+- **Role-aware** = each Mode shows only what that role needs, in that role's language — no role sees another's clutter or terminology (ADR 0015).
+- **Considered** = nothing is left to chance: consistent spacing/typography; every interaction has *designed* loading, empty, error, and success states; and accessibility is treated as craft — state changes are announced, type scales, contrast and touch targets are generous.
+- **Non-negotiable floor** (not trade-offs): authorization is enforced server-side and never trusts client-supplied role/ID/permission; the same action gives the same result everywhere (no contradicting special cases); no new architectural debt (no duplicated business logic, no state in two places, no bypassing layers); every interactive element is reachable and labelled for assistive technology (a control a screen-reader user can't operate or name is a defect, not a polish item).
+- When UX collides with the floor, accept neither a weaker floor nor a silently worse UX — propose 2–3 designs that satisfy both, with trade-offs. Friction that protects the user is fine; friction that only saves the developer is not.
+
+## Key files
+
+- `PROJECT_BRIEF.md` — source of truth for scope, decisions, naming, roadmap.
+- `CONTEXT.md` — domain glossary (Зернятко, CafeOwner, Ворожка, Purchase, Reward, Plan, …).
+- `docs/adr/` — architecture decision records.
+- `docs/agents/workflow.md` — setup, tool-specific configuration, resource ownership and handoffs.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues at `git-sparrow/kavtsya`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Dependency updates
+
+Layered version-authority model (lockfile / Expo SDK / pnpm catalog / owning app), the pnpm catalog, Dependabot config, and the deliberate Expo upgrade track. **Never hand-bump or automate the Expo-governed native surface.** See `docs/agents/dependency-updates.md`.
+
+### Simulator control (Argent)
+
+The `argent-*` skills + MCP server (Software Mansion's Argent, local devDependency) let either agent drive the app in the iOS simulator — tap, type, screenshot, record flows, diff screens. Before any mobile runtime or UI work, read and follow `.claude/rules/argent.md` (shared Argent guidance despite its Claude-specific location), then the relevant `argent-*` skill. See `docs/argent-howto.md`, incl. the Mari design-review loop.
+
+### User flows & E2E (Maestro)
+
+`docs/flows/` — an auto-generated Mermaid route map (`pnpm --filter @kavtsya/mobile flows:map`) + a Maestro-driven per-role screenshot gallery (`apps/mobile/.maestro/`, `capture.sh`), captured on a **standalone dev build + `--no-dev` Metro** (not Expo Go; `ios/`+`android/` are git-ignored CNG output). **Maestro is a global CLI installed out-of-band (`curl -Ls https://get.maestro.mobile.dev | bash`; needs a JDK) — _not_ in the pnpm lockfile/catalog**, so a fresh checkout installs it separately. The YAML flows double as E2E/smoke tests; Maestro's MCP server can drive flow authoring/running from an agent — kept **on demand** (not loaded every session) via `apps/mobile/.maestro/mcp.sh enable|disable` (restart after). See `docs/flows/README.md`.
+
+### LLM doc endpoints
+
+For current, version-specific facts about a stack tool, fetch its `llms.txt` rather than relying on training memory (prefer a vendored skill where one exists). Confirmed endpoints + the index-vs-condensed rule live in `docs/agents/llms-resources.md`.
+
+### Verify before claiming
+
+**Never propose a library, version, third-party API, or *tooling behaviour* from memory.** Training data is stale in ways that feel certain, so the trigger is what you are about to write — a version, an API name, a size/benchmark figure, an "X requires Y" claim, or how a tool you're operating inside behaves (Claude Code or Codex settings/plugins/skills/hooks/MCP, git, docker, CI runners) — not how confident you feel. Check it (`npm view <pkg> version peerDependencies deprecated` costs two seconds) and **state how and when you checked it inline**.
+
+Prefer *running* the thing over reading about it — but only when the run is **hermetic**. If it reads machine-global mutable state (`~/.claude`, `~/.codex`, global npm, docker volumes, registries, caches), isolate it or clear it first and say so in the receipt; an uncontrolled stateful run produces confident wrong answers, not evidence. For a documented contract, **read the doc first** to learn which variables exist, then run it to confirm. An unchecked claim is allowed only when labelled "unverified" — never unlabelled in an issue, ADR, or code comment, where it will later read as settled fact. Full rule in `docs/agents/llms-resources.md`.
