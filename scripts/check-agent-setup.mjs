@@ -10,14 +10,28 @@ const plugin = JSON.parse(
 );
 
 async function checkLink(link, target) {
-  const value = await readlink(path.join(root, link));
+  // EINVAL = a regular file took the symlink's place (Windows checkout,
+  // `git archive`, `cp -RL`, a lint-staged backup restore); ENOENT = the link
+  // or its target is gone. Both are actionable, but only if we say so.
+  let value;
+  let resolved;
+  try {
+    value = await readlink(path.join(root, link));
+    resolved = await realpath(path.join(root, link));
+  } catch (error) {
+    assert.fail(
+      `${link}: expected a live relative symlink to ${target} (${error.code})`,
+    );
+  }
   assert(!path.isAbsolute(value), `${link}: use a portable relative symlink`);
   assert.equal(
-    await realpath(path.join(root, link)),
+    resolved,
     await realpath(path.join(root, target)),
     `${link}: must resolve to ${target}`,
   );
 }
+
+const entries = (dir) => readdir(path.join(root, dir), { withFileTypes: true });
 
 try {
   assert.match(await read("CLAUDE.md"), /^@AGENTS\.md$/m);
@@ -37,9 +51,21 @@ try {
     assert.match(await read(`${target}/SKILL.md`), /^name: .+$/m);
   }
 
-  for (const entry of await readdir(path.join(root, ".agents/skills"), {
-    withFileTypes: true,
-  })) {
+  // Claude loads the pinned skills through the plugin, not the symlinks, so
+  // the Codex leg passing says nothing about Claude's. Assert both.
+  const settings = JSON.parse(await read(".claude/settings.json"));
+  assert.equal(
+    settings.extraKnownMarketplaces?.mattpocock?.source?.path,
+    `./${pluginDir}`,
+    "Claude marketplace must point at the committed plugin",
+  );
+  assert.equal(
+    settings.enabledPlugins?.["mattpocock-skills@mattpocock"],
+    true,
+    "Claude must enable the pinned mattpocock-skills plugin",
+  );
+
+  for (const entry of await entries(".agents/skills")) {
     if (entry.isSymbolicLink()) {
       const link = `.agents/skills/${entry.name}`;
       const target = await realpath(path.join(root, link));
@@ -47,12 +73,43 @@ try {
         assert(expectedSkills.has(entry.name), `Stale plugin link: ${link}`);
       }
     }
-    if (entry.name.startsWith("argent-")) {
-      await checkLink(
-        `.claude/skills/${entry.name}`,
-        `.agents/skills/${entry.name}`,
-      );
-    }
+  }
+
+  // Sweep both sides: iterating one dir alone cannot see an orphan in the other,
+  // and Argent renames/drops skills between releases.
+  const argentSkills = new Set(
+    [...(await entries(".agents/skills")), ...(await entries(".claude/skills"))]
+      .map((entry) => entry.name)
+      .filter((name) => name.startsWith("argent-")),
+  );
+  const lock = JSON.parse(await read("skills-lock.json"));
+  for (const name of argentSkills) {
+    await checkLink(`.claude/skills/${name}`, `.agents/skills/${name}`);
+    assert(
+      lock.skills[name],
+      `Vendored Argent skill missing from skills-lock.json: ${name}`,
+    );
+  }
+  for (const name of Object.keys(lock.skills)) {
+    assert(argentSkills.has(name), `Lockfile skill is not vendored: ${name}`);
+  }
+
+  // The rules file is vendored from the Argent release, so it names the skills
+  // that release ships. A name it routes to that we never vendored means the
+  // pinned set drifted behind the package — re-run `argent update --local`.
+  const routed = new Set(
+    (await read(".claude/rules/argent.md")).match(/argent-[a-z-]+[a-z]/g),
+  );
+  routed.delete("argent-mcp"); // the MCP server, not a skill
+  routed.delete("argent-environment-inspector"); // an agent, asserted below
+  // Kavtsya ships iOS + Android only, so the TV skill is deliberately not
+  // vendored even though the release ships it and the rules file routes to it.
+  routed.delete("argent-tv-interact");
+  for (const name of routed) {
+    assert(
+      argentSkills.has(name),
+      `.claude/rules/argent.md routes to ${name}, which is not vendored`,
+    );
   }
 
   const claudeMcp = JSON.parse(await read(".mcp.json")).mcpServers.argent;
@@ -86,7 +143,7 @@ try {
   );
   assert((await stat(path.join(root, ".claude/rules/argent.md"))).size > 0);
   console.log(
-    `Agent setup OK: ${expectedSkills.size} pinned skills, shared verify and Argent wiring.`,
+    `Agent setup OK: ${expectedSkills.size} pinned skills, ${argentSkills.size} Argent skills, shared verify and Argent wiring.`,
   );
 } catch (error) {
   console.error(`Agent setup check failed: ${error.message}`);

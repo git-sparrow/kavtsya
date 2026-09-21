@@ -9,7 +9,7 @@ import { z } from "zod";
  * in either app, because those two uses must agree: the «Зміна» board pairs a
  * server-computed «closed today» with a client-rendered «з HH:MM», and a shift
  * labelled today at a time reading like yesterday is the kind of contradiction
- * `CLAUDE.md`'s consistency floor rules out.
+ * `AGENTS.md`'s consistency floor rules out.
  *
  * That this is a platform-wide constant rather than a per-Café or
  * Platform-tunable setting is a deliberate v1 decision; the reasoning has one
