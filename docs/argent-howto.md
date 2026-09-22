@@ -48,7 +48,7 @@ the failure mode that makes the set look tracked when it is not.
 Three of the vendored skills are worth calling out, because what they are for is not obvious from
 the name:
 
-- **`argent-android-emulator-setup`** — the stack is iOS **and** Android (see `CLAUDE.md`), so the
+- **`argent-android-emulator-setup`** — the stack is iOS **and** Android (see `AGENTS.md`), so the
   emulator is a first-class target. It was pruned while #79 kept us iOS-first; that no longer
   holds.
 - **`argent-settings-permissions`** — the app asks for camera (`expo-camera`, the CafeOwner scan

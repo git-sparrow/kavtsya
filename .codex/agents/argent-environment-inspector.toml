@@ -1,0 +1,8 @@
+name = "argent-environment-inspector"
+description = "Inspect mobile project setup, build commands and QA tooling using the shared Argent inspector instructions."
+developer_instructions = """
+Read .claude/agents/argent-environment-inspector.md from the repository root and
+follow its inspection procedure and JSON output schema. That file is the shared
+source of this role's instructions; its YAML frontmatter is Claude metadata.
+Do not write files. Return the environment report to the parent agent.
+"""

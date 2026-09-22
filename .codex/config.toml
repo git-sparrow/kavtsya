@@ -1,0 +1,5 @@
+# Project MCP configuration. Launch Codex from this checkout's root.
+# Keep the command/args aligned with .mcp.json; pnpm agents:check checks both.
+[mcp_servers.argent]
+command = "node"
+args = ["node_modules/@swmansion/argent/dist/cli.js", "mcp"]

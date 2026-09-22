@@ -81,6 +81,9 @@ jobs:
           # A few checks call Expo's API; a network blip is not a broken PR.
           EXPO_DOCTOR_WARN_ON_NETWORK_ERRORS: "1"
 
+      - name: Check agent setup
+        run: pnpm agents:check
+
       - name: Typecheck
         run: pnpm typecheck
 

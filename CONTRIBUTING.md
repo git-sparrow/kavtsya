@@ -59,16 +59,16 @@ drift check reads the registry, so an offline push can land there too.
    [`CONTEXT.md`](CONTEXT.md) exactly — **Зернятко** not "point/stamp",
    **CafeOwner** not "owner", **Purchase** not "transaction", **Ворожка** for
    the coffee fortune. Product bar and priorities live in
-   [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md) and [`CLAUDE.md`](CLAUDE.md).
+   [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md) and [`AGENTS.md`](AGENTS.md).
 
 3. **Run the gate locally before you push:**
 
    ```sh
-   pnpm verify   # typecheck + lint + format:check + full test suite
+   pnpm verify   # agent setup + typecheck + lint + format:check + full test suite
    ```
 
    The API suite needs Postgres — `pnpm db:up` first (see below). This is the
-   same gate CI runs, so a green `verify` means a green PR.
+   local gate; CI also runs Expo Doctor. Check the actual PR checks before merging.
 
 4. **Push your branch and open a PR:**
 
@@ -115,3 +115,10 @@ labels and triage are described under `docs/agents/`.
   pushing.
 
 Questions? Open an issue or a draft PR and ask there.
+
+## Working with Claude Code and Codex
+
+Both tools follow [`AGENTS.md`](AGENTS.md) and the same PR/verification rules.
+Read [`docs/agents/workflow.md`](docs/agents/workflow.md) for setup, skill discovery,
+implement/review handoffs and concurrent worktree/database/device ownership.
+Run `pnpm agents:check` after changing agent configuration or vendored skill links.
