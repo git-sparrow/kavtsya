@@ -15,7 +15,7 @@ things, in priority order:
 Local mode, same philosophy as our vendored skills — everything travels with the repo, no
 per-machine global installs:
 
-- **`@swmansion/argent`** pinned **exactly** (`0.20.0`, pre-1.0 API churn) in the root
+- **`@swmansion/argent`** pinned **exactly** (`0.25.2`, pre-1.0 API churn) in the root
   `devDependencies`. `pnpm install` is the whole setup on a fresh clone.
 - **`.mcp.json`** (committed) registers the MCP server for Claude Code. It runs the project-local
   copy (`node node_modules/@swmansion/argent/dist/cli.js mcp`) — nothing machine-specific in it.
@@ -29,6 +29,17 @@ per-machine global installs:
   `skills-lock.json` — the wizard followed our vendored-skills layout on its own.
 - **Rules & agent**: `.claude/rules/argent.md` (always-on guidance),
   `.claude/agents/argent-environment-inspector.md`.
+- **`.codex/config.toml`** is rewritten by `init` as well: it registers the same MCP server for
+  Codex, inlines the rules file into `developer_instructions` (Codex has no always-on rules file),
+  and writes a per-tool `approval_mode = "approve"` allowlist. That allowlist is Codex parity with
+  the `"allow": ["mcp__argent"]` Claude already has in `.claude/settings.json` — not a new
+  posture. `approve` there means *pre-approved*, not *asks for approval*: Codex accepts
+  `auto | prompt | writes | approve` (read off the parse error from a deliberately bogus value, in
+  an isolated `CODEX_HOME`, codex-cli 0.155.1, 2026-09-23), and `AppToolApproval::restrict_to` in
+  `codex-rs/config/src/mcp_types.rs` makes `Approve` the identity of the restriction merge — it
+  never adds an approval, while `Prompt` always wins. `init` round-trips the file through a TOML
+  writer, so **comments in it do not survive** (verified by re-adding ours and re-running `init`
+  on 0.25.2, 2026-09-23); document decisions about it here, not in the file.
 - **`.argent/install.json`** records local mode so future `argent init` runs (and teammates') stay
   local.
 - `pnpm-workspace.yaml → allowBuilds` approves Argent's native build scripts (node-pty,
@@ -43,9 +54,12 @@ here). Everything else the wizard ships is vendored.
 That prune has to be **re-applied after each bump** — `argent init` restores the full wizard set,
 including skills added since the last run. Prune the directory in `.agents/skills/`, its
 `.claude/skills/` symlink, **and** its `skills-lock.json` entry; leaving the lock entry behind is
-the failure mode that makes the set look tracked when it is not.
+the failure mode that makes the set look tracked when it is not. `pnpm agents:check` now asserts
+the TV prune outright (#263), so a forgotten re-prune fails the gate instead of silently widening
+the vendored set — and it sweeps the routing in **both** vendored files, since 0.25 inlines the
+same rules text into `.codex/config.toml`.
 
-Three of the vendored skills are worth calling out, because what they are for is not obvious from
+A few of the vendored skills are worth calling out, because what they are for is not obvious from
 the name:
 
 - **`argent-android-emulator-setup`** — the stack is iOS **and** Android (see `AGENTS.md`), so the
@@ -58,6 +72,13 @@ the name:
 - **`argent-screen-recording`** — mp4 of a flow. The Mari loop judges stills and screenshot diffs,
   but motion is the thing a still cannot show: the scan-success moment and the Ворожка reveal
   (#67) are both animations.
+- **`argent-ios-device-setup` / `argent-ios-device-interact`** — a **cabled physical iPhone**, not
+  a simulator (the pair arrived in 0.24 and was vendored on the 0.25.2 bump; see that release's
+  notes). Kept rather than pruned because the two things we cannot judge on a simulator are
+  exactly ours: a real camera reading a QR code, and push delivery. Hardware is app-scoped and
+  much narrower — every interaction starts with `launch-app`, and `paste`, `settings-permissions`,
+  `rotate`, `shake`, screen recording and every `debugger-*` / `*-profiler-*` / `native-*` tool do
+  not exist there (per the vendored `argent-ios-device-interact` SKILL.md, "Only these exist:").
 
 ### Argent flows vs the Maestro gallery
 
@@ -75,8 +96,13 @@ walk the same path twice in one session, record an Argent flow. **Do not port th
 Argent** — duplicated E2E is exactly the "state in two places" debt the product principles rule
 out.
 
-**Telemetry** is enabled (the wizard default; it excludes source code, paths, and tool inputs).
-Opt out with `./node_modules/.bin/argent telemetry disable`.
+**Telemetry** is on by the wizard default (it excludes source code, paths, and tool inputs; 0.22
+moved the transport from PostHog to OpenTelemetry OTLP — release notes for v0.22.0, read
+2026-09-23). Opt out per machine with `./node_modules/.bin/argent telemetry disable`, or for
+everyone who clones the repo with `./node_modules/.bin/argent init --local --no-telemetry` (0.22.1;
+the merge is restrictive, so a project opt-out cannot be re-enabled by a machine setting — the flag
+is in `argent init --help` on 0.25.2, checked 2026-09-23). We currently rely on the per-machine
+opt-out — the project-scoped one is available if we decide teammates should inherit it.
 
 ## Running a session
 
@@ -149,12 +175,15 @@ pnpm add -D -w -E @swmansion/argent@<version>
 `v0.15.0` while the package ran 0.16 — four months of silent drift, caught only during the 0.20
 bump. The package and the skills are one unit; move them together or the lockfile is lying.
 
-After `init`, check the diff for all four surfaces it rewrites: `.agents/skills/argent-*`,
-`.claude/skills/` symlinks, `skills-lock.json`, and `.claude/rules/argent.md` (the always-on rule
-is regenerated, so tool-contract changes land there — e.g. 0.20 made
-`stop-all-simulator-servers` take an explicit `devices: [...]` list, because one tool-server is
-now shared across agents and an unscoped call tears down other sessions' devices). `init` also
-rewrites `.mcp.json` unformatted; `pnpm format` puts it back.
+After `init`, check the diff for every surface it rewrites: `.agents/skills/argent-*`,
+`.claude/skills/` symlinks, `skills-lock.json`, `.argent/install.json`, `.codex/config.toml`, and
+`.claude/rules/argent.md` (the always-on rule is regenerated, so tool-contract changes land there
+— e.g. 0.20 made `stop-all-simulator-servers` take an explicit `devices: [...]` list, because one
+tool-server is shared across agents and an unscoped call tears down other sessions' devices; 0.23
+relaxed the tapping rule, because interaction tools now return the element tree alongside the
+screenshot, so a tap no longer needs its own discovery call — that one is upstream's
+"feat(mcp): auto-describe … + relaxed tapping rule", and it is the regenerated rule file, not this
+doc, that binds agents). `init` also rewrites `.mcp.json` unformatted; `pnpm format` puts it back.
 
 Bumping within 24h of an npm release trips pnpm 11's `minimumReleaseAge` quarantine — same trap
 as the Expo track, and the same fix. See `docs/agents/dependency-updates.md`.
