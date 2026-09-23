@@ -115,8 +115,9 @@ opens on a normal mode home.
 
 ### Writing flows against this app
 
-Four things cost real debugging time here; they are worth knowing before editing a
-flow. (Checked against Maestro 2.6.1 / iOS 26.5, 2026-09-04.)
+Eight things cost real debugging time here; they are worth knowing before editing
+a flow. (Checked against Maestro 2.6.1 / iOS 26.5, 2026-09-04; the tap-delivery
+and keyboard-layout notes 2026-09-07.)
 
 - **Target `testID`s, not copy.** The flows now select by `id:` throughout — the app
   carries a `testID` on essentially every control, so a redesign turn that rewrites
@@ -146,6 +147,24 @@ flow. (Checked against Maestro 2.6.1 / iOS 26.5, 2026-09-04.)
   bare `assertVisible` after one — several screens refetch on focus.
 - **`back` is Android/Web only.** It is silently a no-op on iOS, so navigate with the
   screen's own `*.back` control instead.
+- **A tap can be reported `COMPLETED` and never reach the app.** A bare `tapOn` on
+  `scan.back` missed 5 times in 6 (#249); on a miss an instrumented build counted
+  `onTouchStart` **0**, so the touch was never delivered at all — nothing in the app
+  cancelled it, and Argent's HID tap at the identical point on the identical screen
+  navigated every time. Maestro's own "did the hierarchy change?" check
+  false-positives on the miss, so `retryTapIfNoChange` does not save it either. The
+  cure is to wrap the tap in a bounded `repeat … while visible` loop (see
+  `30-owner.yaml`): 8 of 8 runs then landed it. Note *why* — the `while` guard makes
+  the driver take a fresh view-hierarchy read immediately before the tap, and that is
+  what lands it; the retry never had to fire. `waitForAnimationToEnd` is not a
+  substitute, it returns in ~0.3s here.
+- **`inputText` types through whatever keyboard iOS last had up.** With a Ukrainian
+  keyboard installed on the simulator, iOS can return to the Cyrillic layout, where
+  the Latin characters of an email or password have no keys — the credential is typed
+  *partially* and sign-in fails with «Invalid email or password», which looks like a
+  seed or API problem and is not. `capture.sh` pins the simulator to `en_US` before
+  the first flow; if you drive Maestro by hand, pin it yourself:
+  `xcrun simctl spawn booted defaults write .GlobalPreferences AppleKeyboards -array "en_US@sw=QWERTY;hw=Automatic" "emoji@sw=Emoji"`.
 - **`hideKeyboard` works on some screens and not others.** It dismisses the keyboard
   fine on the register-café subscreen, but fails outright on the auth screen
   (`Couldn't hide the keyboard`), where the flows tap the «Кавця» wordmark instead.
@@ -155,14 +174,12 @@ flow. (Checked against Maestro 2.6.1 / iOS 26.5, 2026-09-04.)
 
 ### Known follow-ups
 
-- **iOS touch reliability** — React Native can swallow taps in deeply nested views
-  (per Maestro's RN notes); if a tap doesn't register, toggling `accessible` (off
-  on the outer container, on for the target) exposes it.
-- **`30-owner` can't tap out of the scan screen** (#249) — `scan.back` resolves and
-  Maestro reports the tap `COMPLETED`, but the app stays put, so the lens aborts the
-  suite before `40`/`50` (both pass standalone). Not the id, not a mid-push tap, not
-  `delaysContentTouches`, not the stray scroll indicator over the button — all four
-  ruled out in the issue.
+- **iOS touch reliability** — Maestro's RN notes suggest React Native can swallow
+  taps in deeply nested views, and toggling `accessible` (off on the outer
+  container, on for the target) as the cure. That was *not* what #249 turned out to
+  be — there the app never received the touch at all — so measure before reaching
+  for it: instrument the control with an `onTouchStart` counter and see whether the
+  touch arrives.
 - **Ворожка + Redemption lenses** — still uncaptured. Both need the Customer at or
   past the threshold, which the seed deliberately does not give (`demo.customer`
   sits below it), so they need either a cross-role scan flow or a state-setup script

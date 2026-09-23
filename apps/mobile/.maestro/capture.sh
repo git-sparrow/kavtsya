@@ -33,6 +33,29 @@ COMMON_ENV=(--env "APP_ID=$APP_ID" --env "DEMO_PASSWORD=$DEMO_PASSWORD"
 
 mkdir -p "$SHOTS"/customer "$SHOTS"/owner "$SHOTS"/scanner
 
+# Pin the simulator's software keyboard to a Latin layout before typing anything.
+# `inputText` types through whatever keyboard iOS last had up, and iOS remembers
+# that choice: with a Ukrainian keyboard installed it can come back on the
+# Cyrillic layout, where the Latin characters of an email/password simply have no
+# keys. The credential is then typed *partially* and sign-in fails with «Invalid
+# email or password» — a red herring that looks nothing like a keyboard problem.
+# Verified on iOS 26.5 / Maestro 2.6.1, 2026-09-07: a Cyrillic layout truncated
+# `demo-password-1` to three characters.
+pin_latin_keyboard() {
+  local udid
+  # Guarded end to end: a missing simulator, a python hiccup or a read-only
+  # defaults domain must not abort the capture under `set -euo pipefail` — the
+  # keyboard is a nicety, the gallery is the job.
+  udid="$(xcrun simctl list devices booted -j 2>/dev/null \
+    | python3 -c 'import json,sys;d=json.load(sys.stdin)["devices"];print(next((x["udid"] for v in d.values() for x in v if x.get("state")=="Booted"),""))' \
+    2>/dev/null || true)"
+  [[ -n "$udid" ]] || return 0
+  xcrun simctl spawn "$udid" defaults write .GlobalPreferences AppleKeyboards \
+    -array "en_US@sw=QWERTY;hw=Automatic" "emoji@sw=Emoji" 2>/dev/null || return 0
+  echo "▶ pinned the simulator keyboard to en_US (see #249)"
+}
+pin_latin_keyboard
+
 run() { echo "▶ $1"; maestro test "$HERE/$1" "${COMMON_ENV[@]}"; }
 
 # Clean slate: end any lingering Зміна so a prior scanner run's kiosk (which has
