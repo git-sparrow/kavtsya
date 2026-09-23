@@ -41,9 +41,7 @@ export interface SendCampaignInput {
 
 /** Why sending was refused — the wire mapping is exhaustive over it (#50). */
 export type SendCampaignRejection =
-  | "cafe_not_owned"
-  | "pro_required"
-  | "campaign_limit_reached";
+  "cafe_not_owned" | "pro_required" | "campaign_limit_reached";
 
 export type SendCampaignOutcome =
   | { ok: true; recipients: number }
