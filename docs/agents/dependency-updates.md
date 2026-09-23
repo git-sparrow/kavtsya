@@ -43,6 +43,7 @@ there is exactly one version and it cannot diverge.
 | --- | --- | --- |
 | `typescript` | root, api, shared, mobile | was drifting (`^5.6.3` vs `~6.0.3`) |
 | `vitest` | api, mobile | was drifting (`^2.1.8` vs `^2.1.9`) |
+| `vite` | api, mobile | vitest 5's peer; left undeclared, pnpm kept a stale vite 5 (#270) |
 | `zod` | api, shared | shared validation schemas |
 | `better-auth` | api, mobile | auth server + client halves |
 | `@better-auth/expo` | api, mobile | moves in lockstep with `better-auth` |

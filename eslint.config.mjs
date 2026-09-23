@@ -32,7 +32,7 @@ export default tseslint.config(
   // Mobile: Expo's own config (React Native + TypeScript aware). Point the
   // import resolver at the mobile tsconfig so `@/*` path aliases resolve.
   {
-    files: ["apps/mobile/**/*.{ts,tsx,js,jsx}"],
+    files: ["apps/mobile/**/*.{ts,tsx,mts,js,jsx}"],
     extends: [expoFlat],
     settings: {
       "import/resolver": {
