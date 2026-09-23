@@ -585,13 +585,23 @@ test("CLEARED_BY_DELETION is exactly what deleteAccount deletes", async () => {
   );
 });
 
-test("no FK can block a deletion: every blocking reference is into a table deletion also clears", async () => {
+test("every blocking reference into a cleared table is itself cleared", async () => {
   // The audit above asserts nothing cascades destructively INTO the ledger.
   // This is its mirror, and the one #253 needed: nothing may point AT a table
-  // the scrub empties without being emptied first, or the delete fails and the
+  // the scrub empties without being emptied too, or the delete fails and the
   // account is trapped. Structural on purpose — a future table referencing
   // `push_tokens` fails here on the day it is added, not on the day a real
   // Customer tries to leave.
+  //
+  // Scope, narrower than the shape of the bug suggests: `pg_constraint` records
+  // no statement order, so this proves set-closure ONLY — that every table with
+  // a blocking reference is itself cleared — and never that the deletes run in
+  // an order the database will accept. Swap the `push_tickets` and `push_tokens`
+  // statements in `deleteAccount` and this test stays green; what fails is the
+  // behavioural regression above, on `deleteMe` returning 500. So order is that
+  // test's job, not this one's: a table added to `CLEARED_BY_DELETION` whose
+  // delete sits AFTER the table it references passes here and needs its own
+  // behavioural case.
   const blocking = await db<{ table_name: string; references: string }[]>`
     select
       src."relname" as table_name,

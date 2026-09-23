@@ -141,6 +141,7 @@ export async function deleteAccount(
     // editing another person's data. The tombstoned name renders as the
     // anonymous placeholder wherever history shows it (#81 user story 12), and
     // the revocation above already means the row can never be worked again.
+
     // Tickets first: `push_tickets.push_token_id` references `push_tokens` with
     // no cascade (ADR 0014's posture, migration 0011), and nothing else ever
     // deletes a ticket — `push-receipts.ts` only stamps `resolved_at`. So a
