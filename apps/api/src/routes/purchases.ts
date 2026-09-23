@@ -59,9 +59,7 @@ const wireCodes: Record<
 function reject(
   c: Context<AuthedEnv>,
   reason:
-    | QrTokenInvalidReason
-    | MemberCodeInvalidReason
-    | IssuePurchaseRejection,
+    QrTokenInvalidReason | MemberCodeInvalidReason | IssuePurchaseRejection,
 ) {
   const code = wireCodes[reason];
   return c.json({ error: code }, scanRejectionStatuses[code]);

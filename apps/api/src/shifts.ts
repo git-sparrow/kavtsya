@@ -58,8 +58,7 @@ function activeGrant(sql: Queryable, now: Date, alias?: string): SqlFragment {
 export type CounterRejection = "cafe_not_owned" | "self_scan" | "own_cafe";
 
 export type AuthorizeCounterOutcome<R extends CounterRejection> =
-  | { ok: true; program: LoyaltyProgram }
-  | { ok: false; reason: R };
+  { ok: true; program: LoyaltyProgram } | { ok: false; reason: R };
 
 export interface AuthorizeCounterInput {
   /** The Café the scan happens at. */

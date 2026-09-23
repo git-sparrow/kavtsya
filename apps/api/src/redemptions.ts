@@ -34,10 +34,7 @@ export interface ConfirmRedemptionInput {
 
 /** Why confirming was refused — the wire mapping is exhaustive over it (#50). */
 export type ConfirmRedemptionRejection =
-  | "cafe_not_owned"
-  | "own_cafe"
-  | "insufficient_balance"
-  | "no_reward";
+  "cafe_not_owned" | "own_cafe" | "insufficient_balance" | "no_reward";
 
 export type ConfirmRedemptionOutcome =
   | {

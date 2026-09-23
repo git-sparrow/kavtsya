@@ -24,8 +24,7 @@ export type ConfirmTone = "neutral" | "danger";
 
 /** The context chip above the title: a glyph on a tinted circle, or a person. */
 export type ConfirmChip =
-  | { glyph: IconName; tone?: "primary" | "danger" }
-  | { avatar: string };
+  { glyph: IconName; tone?: "primary" | "danger" } | { avatar: string };
 
 /** A stable no-op, so a non-dismissible dialog doesn't allocate one per render. */
 const noop = () => {};
