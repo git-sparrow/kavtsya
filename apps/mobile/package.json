@@ -49,6 +49,7 @@
     "expo-mcp": "^0.2.4",
     "test-renderer": "^1.2.0",
     "typescript": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:"
   }
 }
