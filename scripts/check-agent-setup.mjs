@@ -4,6 +4,7 @@ import path from "node:path";
 
 const root = path.resolve(import.meta.dirname, "..");
 const read = (file) => readFile(path.join(root, file), "utf8");
+const entries = (dir) => readdir(path.join(root, dir), { withFileTypes: true });
 const pluginDir = ".agents/plugins/mattpocock-skills";
 const plugin = JSON.parse(
   await read(`${pluginDir}/.claude-plugin/plugin.json`),
@@ -31,9 +32,12 @@ async function checkLink(link, target) {
   );
 }
 
-const entries = (dir) => readdir(path.join(root, dir), { withFileTypes: true });
-
-try {
+/**
+ * Invariants that hold regardless of which mobile provider we use: the shared
+ * instruction files, the shared verify skill, and the pinned Matt Pocock plugin
+ * on both its legs. Returns the pinned skill names.
+ */
+async function checkRepoAgentWiring() {
   assert.match(await read("CLAUDE.md"), /^@AGENTS\.md$/m);
   assert((await stat(path.join(root, "AGENTS.md"))).size > 0);
   await checkLink(
@@ -75,6 +79,15 @@ try {
     }
   }
 
+  return expectedSkills;
+}
+
+/**
+ * Everything that exists because Argent ships its skills, rules and agent
+ * definitions as files we vendor and pin. If the provider ever changes, this
+ * is the function that goes. Returns the vendored Argent skill names.
+ */
+async function checkArgentVendoring() {
   // Sweep both sides: iterating one dir alone cannot see an orphan in the other,
   // and Argent renames/drops skills between releases.
   const argentSkills = new Set(
@@ -94,9 +107,34 @@ try {
     assert(argentSkills.has(name), `Lockfile skill is not vendored: ${name}`);
   }
 
+  // Alignment guard (#262). The npm package and the vendored skills document
+  // one release and only `argent init --local` moves them together, so a
+  // package-only or skills-only update silently desynchronises them.
+  //
+  // Its limits, deliberately: this compares DECLARED METADATA only — not
+  // vendored file contents, not runtime compatibility. It passes whenever the
+  // two agree, including when both are equally stale, so it says nothing about
+  // whether a newer release exists. Upstream freshness is #264's job, and
+  // belongs in a scheduled network check rather than this offline gate.
+  const pin = JSON.parse(await read("package.json")).devDependencies[
+    "@swmansion/argent"
+  ];
+  assert.match(
+    pin,
+    /^\d+\.\d+\.\d+$/,
+    `package.json must pin @swmansion/argent to an exact version (found "${pin}") — the vendored skills are pinned to a single release`,
+  );
+  for (const [name, entry] of Object.entries(lock.skills)) {
+    assert.equal(
+      entry.ref,
+      `v${pin}`,
+      `skills-lock.json: ${name} is vendored from ${entry.ref}, but package.json pins ${pin} — re-run \`argent init --local\` so both move together`,
+    );
+  }
+
   // The rules file is vendored from the Argent release, so it names the skills
   // that release ships. A name it routes to that we never vendored means the
-  // pinned set drifted behind the package — re-run `argent update --local`.
+  // pinned set drifted behind the package — re-run `argent init --local`.
   const routed = new Set(
     (await read(".claude/rules/argent.md")).match(/argent-[a-z-]+[a-z]/g),
   );
@@ -142,8 +180,15 @@ try {
     "Shared instructions must route Codex to the Argent rules",
   );
   assert((await stat(path.join(root, ".claude/rules/argent.md"))).size > 0);
+
+  return argentSkills;
+}
+
+try {
+  const pinnedSkills = await checkRepoAgentWiring();
+  const argentSkills = await checkArgentVendoring();
   console.log(
-    `Agent setup OK: ${expectedSkills.size} pinned skills, ${argentSkills.size} Argent skills, shared verify and Argent wiring.`,
+    `Agent setup OK: ${pinnedSkills.size} pinned skills, ${argentSkills.size} Argent skills, shared verify and Argent wiring.`,
   );
 } catch (error) {
   console.error(`Agent setup check failed: ${error.message}`);
