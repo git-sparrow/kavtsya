@@ -59,7 +59,7 @@ updates:
       - dependency-name: "eslint-config-expo"
       # @swmansion/argent is version-coupled to files Dependabot cannot produce.
       # Its skills are hand-vendored into .agents/skills/ with .claude/skills/
-      # symlinks, and skills-lock.json pins every one to a `ref` (v0.20.0) plus a
+      # symlinks, and skills-lock.json pins every one to a `ref` (v0.25.2) plus a
       # content hash. Only `argent init --local` re-vendors them. A bump here
       # would move the MCP server while the skills documenting it stay behind —
       # and on a 0.x package `minor` is the breaking slot, so it would arrive in

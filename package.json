@@ -26,7 +26,7 @@
     "agents:check": "node scripts/check-agent-setup.mjs"
   },
   "devDependencies": {
-    "@swmansion/argent": "0.20.0",
+    "@swmansion/argent": "0.25.2",
     "eslint": "^9.39.4",
     "eslint-config-expo": "^57.0.0",
     "eslint-config-prettier": "^10.1.8",

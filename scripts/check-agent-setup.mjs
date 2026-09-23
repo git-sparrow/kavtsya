@@ -6,6 +6,9 @@ const root = path.resolve(import.meta.dirname, "..");
 const read = (file) => readFile(path.join(root, file), "utf8");
 const entries = (dir) => readdir(path.join(root, dir), { withFileTypes: true });
 const pluginDir = ".agents/plugins/mattpocock-skills";
+// Argent skills the release ships that we deliberately do not vendor.
+// Asserted absent below, not merely excused — see checkArgentVendoring().
+const PRUNED_SKILLS = ["argent-tv-interact"];
 const plugin = JSON.parse(
   await read(`${pluginDir}/.claude-plugin/plugin.json`),
 );
@@ -132,21 +135,38 @@ async function checkArgentVendoring() {
     );
   }
 
-  // The rules file is vendored from the Argent release, so it names the skills
-  // that release ships. A name it routes to that we never vendored means the
-  // pinned set drifted behind the package — re-run `argent init --local`.
-  const routed = new Set(
-    (await read(".claude/rules/argent.md")).match(/argent-[a-z-]+[a-z]/g),
-  );
+  // Both files are vendored from the Argent release, so they name the skills
+  // that release ships: `.claude/rules/argent.md` is Claude's always-on rule,
+  // and since 0.25 `init` inlines the same text into Codex's
+  // `developer_instructions`. Sweep both — one leg alone cannot see a name the
+  // other routes to. A routed name we never vendored means the pinned set
+  // drifted behind the package: re-run `argent init --local`.
+  // name -> the file that routes to it, so a failure names the file to fix.
+  const routed = new Map();
+  for (const file of [".claude/rules/argent.md", ".codex/config.toml"]) {
+    for (const name of (await read(file)).match(/argent-[a-z-]+[a-z]/g) ?? []) {
+      if (!routed.has(name)) routed.set(name, file);
+    }
+  }
   routed.delete("argent-mcp"); // the MCP server, not a skill
   routed.delete("argent-environment-inspector"); // an agent, asserted below
-  // Kavtsya ships iOS + Android only, so the TV skill is deliberately not
-  // vendored even though the release ships it and the rules file routes to it.
-  routed.delete("argent-tv-interact");
-  for (const name of routed) {
+  for (const name of PRUNED_SKILLS) {
+    // Kavtsya ships iOS + Android phone targets only, so the TV skill is
+    // deliberately pruned even though the release ships it and both files
+    // route to it (docs/argent-howto.md). `argent init --local` restores the
+    // full wizard set on every bump, so assert the prune rather than merely
+    // exempting it from the routing check — an unnoticed restore is how a
+    // pruned set drifts back.
+    routed.delete(name);
+    assert(
+      !argentSkills.has(name),
+      `${name} is vendored again — \`argent init --local\` restores it on every bump. Re-prune all three: .agents/skills/, the .claude/skills/ symlink, and the skills-lock.json entry (docs/argent-howto.md)`,
+    );
+  }
+  for (const [name, file] of routed) {
     assert(
       argentSkills.has(name),
-      `.claude/rules/argent.md routes to ${name}, which is not vendored`,
+      `${file} routes to ${name}, which is not vendored`,
     );
   }
 
