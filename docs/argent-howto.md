@@ -96,13 +96,18 @@ walk the same path twice in one session, record an Argent flow. **Do not port th
 Argent** — duplicated E2E is exactly the "state in two places" debt the product principles rule
 out.
 
-**Telemetry** is on by the wizard default (it excludes source code, paths, and tool inputs; 0.22
-moved the transport from PostHog to OpenTelemetry OTLP — release notes for v0.22.0, read
-2026-09-23). Opt out per machine with `./node_modules/.bin/argent telemetry disable`, or for
-everyone who clones the repo with `./node_modules/.bin/argent init --local --no-telemetry` (0.22.1;
-the merge is restrictive, so a project opt-out cannot be re-enabled by a machine setting — the flag
-is in `argent init --help` on 0.25.2, checked 2026-09-23). We currently rely on the per-machine
-opt-out — the project-scoped one is available if we decide teammates should inherit it.
+**Telemetry is off for this project**, and the opt-out is committed: `.argent/config.json`
+(`{ "telemetry": { "enabled": false } }`), written by
+`./node_modules/.bin/argent init --local --no-telemetry` (0.22.1). It is a *project* opt-out, so it
+travels with the repo — nobody has to remember `argent telemetry disable` on a fresh clone, and the
+merge is restrictive, so no machine-level setting can turn it back on. `argent telemetry status`
+then reports `source: config.json (project and global)`.
+
+Unlike the skill prune above, this one **does not need re-applying after a bump**: verified on
+0.25.2 (2026-09-23) by running a plain `argent init --local` afterwards and re-reading the file and
+`telemetry status` — both unchanged. Telemetry is on by the wizard default otherwise, and excludes
+source code, paths, and tool inputs; 0.22 moved its transport from PostHog to OpenTelemetry OTLP
+(v0.22.0 release notes, read 2026-09-23).
 
 ## Running a session
 
