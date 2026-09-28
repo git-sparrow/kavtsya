@@ -14,8 +14,10 @@
 set -euo pipefail
 
 # Maestro installs to ~/.maestro/bin; make it resolvable even from a shell that
-# hasn't sourced the user's profile (CI, non-interactive runners).
-export PATH="$HOME/.maestro/bin:$PATH"
+# hasn't sourced the user's profile (CI, non-interactive runners). Appended, not
+# prepended: a maestro the caller already put on PATH (CI, a pinned side
+# install) must win over whatever the default install dir happens to hold.
+export PATH="$PATH:$HOME/.maestro/bin"
 
 # Opt out of Maestro's anonymous analytics for every capture run.
 export MAESTRO_CLI_NO_ANALYTICS=1
@@ -23,13 +25,34 @@ export MAESTRO_CLI_NO_ANALYTICS=1
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../../.." && pwd)"
 
+# The flows are proven against ONE Maestro release, and that release lives in
+# ./maestro-version — CI installs from the same file (#246). Refuse to run on
+# anything else: driver defaults (launch permissions, Unicode input, what errors
+# are surfaced) differ between releases, so a mismatch is a different test.
+MAESTRO_EXPECTED="$(tr -d '[:space:]' < "$HERE/maestro-version")"
+MAESTRO_ACTUAL="$(maestro --version 2>/dev/null | tail -n1 | tr -d '[:space:]' || true)"
+if [[ "$MAESTRO_ACTUAL" != "$MAESTRO_EXPECTED" ]]; then
+  echo "✗ Maestro $MAESTRO_EXPECTED required (apps/mobile/.maestro/maestro-version), found '${MAESTRO_ACTUAL:-none}' at $(command -v maestro || echo 'no maestro on PATH')" >&2
+  echo "  Install it: curl -Ls https://get.maestro.mobile.dev | MAESTRO_VERSION=$MAESTRO_EXPECTED bash" >&2
+  exit 1
+fi
+
 APP_ID="${APP_ID:-com.kavtsya.app}"                        # standalone dev build (app.json bundleIdentifier)
 DEMO_PASSWORD="${DEMO_PASSWORD:-demo-password-1}"          # seed-world.ts universal password
 SHOTS="${SHOTS:-$REPO/docs/flows/shots}"
 SIGNUP_EMAIL="${SIGNUP_EMAIL:-signup+$(date +%s)@kavtsya.test}"  # unique per run → re-runnable
 
+# Every run's Maestro artifacts (commands.json, logs, failure screenshots + view
+# hierarchy) go to one directory per flow under ARTIFACTS — the thing to read, or
+# for CI to upload, when a flow fails. Defaults to a fresh temp dir.
+ARTIFACTS="${ARTIFACTS:-$(mktemp -d "${TMPDIR:-/tmp}/kavtsya-maestro.XXXXXX")}"
+
+# Maestro 2.7+ writes every `takeScreenshot` INSIDE the flow's artifact dir, even
+# an absolute path (verified 2.7.0, #246). So the flows get a relative marker
+# ("gallery") as ${SHOTS}, and run() copies what lands under it into the real
+# gallery directory afterwards.
 COMMON_ENV=(--env "APP_ID=$APP_ID" --env "DEMO_PASSWORD=$DEMO_PASSWORD"
-            --env "SHOTS=$SHOTS" --env "SIGNUP_EMAIL=$SIGNUP_EMAIL")
+            --env "SHOTS=gallery" --env "SIGNUP_EMAIL=$SIGNUP_EMAIL")
 
 mkdir -p "$SHOTS"/customer "$SHOTS"/owner "$SHOTS"/scanner
 
@@ -56,7 +79,23 @@ pin_latin_keyboard() {
 }
 pin_latin_keyboard
 
-run() { echo "▶ $1"; maestro test "$HERE/$1" "${COMMON_ENV[@]}"; }
+# With more than one simulator/emulator attached, Maestro cannot pick one on its
+# own — MAESTRO_DEVICE (a UDID or adb serial) names the target explicitly.
+run() {
+  local out="$ARTIFACTS/${1%.yaml}"
+  echo "▶ $1"
+  if ! maestro ${MAESTRO_DEVICE:+--device "$MAESTRO_DEVICE"} test "$HERE/$1" \
+       --test-output-dir "$out" "${COMMON_ENV[@]}"; then
+    echo "✗ $1 failed — artifacts: $out" >&2
+    return 1
+  fi
+  # 2.7.0 nests the flow's artifacts as <out>/<timestamp>/<flow>/ despite its
+  # --help saying "directly into it" — so locate the gallery folder, don't assume.
+  local gallery
+  gallery="$(find "$out" -type d -path '*/takeScreenshot/gallery' | sort | tail -n1)"
+  [[ -n "$gallery" ]] || { echo "✗ $1: no gallery screenshots under $out" >&2; return 1; }
+  cp -R "$gallery/." "$SHOTS/"
+}
 
 # Clean slate: end any lingering Зміна so a prior scanner run's kiosk (which has
 # no sign-out) can't strand the first flow's reset. Makes the suite re-runnable.
@@ -78,4 +117,4 @@ else
   echo "⏭  Skipping scanner flow (set CAPTURE_SCANNER=1 to grant a Зміна + capture the kiosk)"
 fi
 
-echo "✓ Gallery captured → $SHOTS"
+echo "✓ Gallery captured → $SHOTS (Maestro artifacts: $ARTIFACTS)"

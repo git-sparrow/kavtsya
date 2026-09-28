@@ -50,9 +50,16 @@ git-ignored, never committed (the managed workflow stays the source of truth).
 **One-time setup**
 
 ```sh
-curl -Ls https://get.maestro.mobile.dev | bash   # installs Maestro (needs a JDK)
+# Maestro at the pinned release (needs a JDK); capture.sh refuses any other version
+curl -Ls https://get.maestro.mobile.dev | MAESTRO_VERSION="$(cat apps/mobile/.maestro/maestro-version)" bash
 npx expo run:ios                                  # build + install com.kavtsya.app on the sim (regenerates ios/)
 ```
+
+The flows are proven against the one Maestro release named in
+`apps/mobile/.maestro/maestro-version`; CI installs from the same file. Driver
+defaults differ between releases (launch permissions, Unicode input, which errors
+surface), so a different version is a different test — bump it deliberately, and
+re-run the suite on both platforms when you do.
 
 **Each capture**
 
@@ -70,7 +77,11 @@ Flows sign in as the seeded accounts (universal password `demo-password-1`):
 account the on-ramp lens needs — it owns no café and sits on no roster, so Settings
 offers it both «Стати Кавоваром» and «Приєднатися до кав'ярні»). Screenshots land in
 `shots/<role>/` — git-ignored because they're a regenerable local artifact; the
-committed map is the durable reference.
+committed map is the durable reference. Maestro's own per-flow artifacts (step
+log, `commands.json`, a screenshot + view hierarchy for a failing step) go to a
+temp dir printed at the end, or to `ARTIFACTS=<dir>` if you set it — read those
+first when a flow fails. With more than one simulator/emulator attached, name the
+target with `MAESTRO_DEVICE=<udid or adb serial>`.
 
 ### The lenses
 
@@ -89,12 +100,40 @@ account per run.
 `capture.sh` defaults `APP_ID=com.kavtsya.app` (`app.json` bundle id); verify the
 installed id before a run with `xcrun simctl listapps booted | grep -i kavtsya`.
 
-### CI-grade variant
+### Release-build variant
 
-For captures without a running Metro (CI, or fully production-faithful pixels),
-build Release instead: `npx expo run:ios --configuration Release`. The JS is baked
-into the binary, so it needs a rebuild for every UI change — heavier, and why it's
-not the default.
+For fully production-faithful pixels without a running Metro, build Release
+instead: `npx expo run:ios --configuration Release`. The JS is baked into the
+binary, so it needs a rebuild for every UI change — heavier, and why it's not the
+default. (CI does *not* use it — see below.)
+
+### In CI — the Android E2E pilot (#246)
+
+`.github/workflows/e2e-android.yml` runs the whole suite, Scanner included, on an
+Android emulator on a standard Linux runner, against a real API and Postgres seeded
+with the demo world. It runs on every PR that touches the app, the API, shared
+packages, dependency manifests or the E2E tooling; any other PR reports success
+without running (the filter is inside the job, so a required check can never sit
+pending). It is a **pilot, not a required check** — promotion is a separate
+decision once the hosted runs have earned it.
+
+What a green run proves: sign-up, sign-in/out, navigation and Role Mode dispatch
+against the real API. What it does **not**: a completed Purchase or Reward
+redemption (the scanner lens stops at the kiosk, onboarding never submits),
+Ворожка, denied-permission UX, or the release binary — CI runs the debug build,
+which loads its JS from Metro and is allowed cleartext HTTP to the runner's API.
+
+**Reproduce a CI failure locally.** The job uploads an `e2e-android-<run>`
+artifact: `maestro/<flow>/…` holds the failing step's screenshot, view hierarchy
+and logs, plus `api.log` and `metro.log`. To rerun the same thing:
+
+```sh
+pnpm db:up && pnpm migrate && pnpm db:seed-demo
+pnpm dev:api
+pnpm --filter @kavtsya/mobile exec expo start --no-dev --minify
+(cd apps/mobile && npx expo run:android --no-bundler)   # debug build on a booted emulator
+MAESTRO_DEVICE=emulator-5554 CAPTURE_SCANNER=1 apps/mobile/.maestro/capture.sh
+```
 
 ### Scanner lens
 
@@ -115,9 +154,10 @@ opens on a normal mode home.
 
 ### Writing flows against this app
 
-Eight things cost real debugging time here; they are worth knowing before editing
+Ten things cost real debugging time here; they are worth knowing before editing
 a flow. (Checked against Maestro 2.6.1 / iOS 26.5, 2026-09-04; the tap-delivery
-and keyboard-layout notes 2026-09-07.)
+and keyboard-layout notes 2026-09-07; the two Android notes against Maestro 2.7.0 /
+Android 15, 2026-09-28.)
 
 - **Target `testID`s, not copy.** The flows now select by `id:` throughout — the app
   carries a `testID` on essentially every control, so a redesign turn that rewrites
@@ -171,6 +211,15 @@ and keyboard-layout notes 2026-09-07.)
   Prefer it where it works — the fallback puts a visible string in a selector, and
   the wordmark is only safe there because a brand mark is not product copy. Test it
   on the specific screen rather than assuming either way.
+- **Android needs longer to paint after `clearState`.** The debug build re-fetches
+  its bundle from Metro cold: 8–16s per launch on a Pixel 9 AVD, 30.9s at worst
+  (#246). The reset subflow waits 60s for that reason; keep first-paint waits
+  generous and let the element assertions do the checking.
+- **Don't trust `scrollUntilVisible` on Android.** Under Maestro 2.7.0 it once
+  reported ElementNotFound for its full timeout while its own hierarchy dump held
+  the target on screen. `20-customer-core` scrolls to the Settings gear with the
+  same bounded `repeat … while notVisible` idiom as the scan-back tap, and lets the
+  following `tapOn` fail the flow if the gear never shows.
 
 ### Known follow-ups
 

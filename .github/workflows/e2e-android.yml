@@ -1,0 +1,179 @@
+name: E2E (Android)
+
+# The Maestro suite (apps/mobile/.maestro, entry point capture.sh) against a real
+# API + Postgres on an Android emulator — the #246 pilot. It proves sign-up,
+# sign-in/out, navigation and Role Mode dispatch; not Purchase, Reward, Ворожка,
+# denied-permission UX or the release binary. See docs/flows/README.md.
+#
+# PILOT: not a required check yet. Promotion is a separate, explicit decision
+# (#246 revision 1: ≥10 hosted observations, the last three unchanged first-
+# attempt passes, a deliberate failure shown to fail the job).
+#
+# `pull_request`, never `pull_request_target`: fork PRs run this with a
+# read-only token and no secrets — the job needs none (the demo password is a
+# seed constant, the API secrets are generated per run).
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    # Same Postgres the API suite uses in ci.yml; this run gets its own database.
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kavtsya
+          POSTGRES_PASSWORD: kavtsya
+          POSTGRES_DB: kavtsya_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kavtsya -d kavtsya_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://kavtsya:kavtsya@localhost:5432/kavtsya_e2e
+      PORT: "3000"
+      BETTER_AUTH_URL: http://localhost:3000
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Filtered HERE, inside the one job, not with workflow-level `paths:` — a
+      # required check skipped by a path filter stays pending forever. A PR that
+      # touches nothing the app or API runs on reports success without running.
+      - name: Decide whether this change needs E2E
+        id: changes
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" != "pull_request" ]]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          changed="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" HEAD)"
+          echo "$changed"
+          if grep -qE '^(apps/mobile/|apps/api/|packages/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.github/workflows/e2e-android\.yml$)' <<<"$changed"; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No app, API or E2E tooling change — E2E not applicable."
+          fi
+
+      - name: Set up pnpm (version from packageManager)
+        if: steps.changes.outputs.relevant == 'true'
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node (version from engines.node)
+        if: steps.changes.outputs.relevant == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Set up Java 17 (Gradle)
+        if: steps.changes.outputs.relevant == 'true'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Install dependencies
+        if: steps.changes.outputs.relevant == 'true'
+        run: pnpm install --frozen-lockfile
+
+      # The pinned release lives in apps/mobile/.maestro/maestro-version, and
+      # capture.sh refuses any other.
+      - name: Install Maestro (pinned)
+        if: steps.changes.outputs.relevant == 'true'
+        run: |
+          MAESTRO_VERSION="$(tr -d '[:space:]' < apps/mobile/.maestro/maestro-version)" \
+            bash -c 'curl -fsSL https://get.maestro.mobile.dev | bash'
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Migrate and seed the demo world
+        if: steps.changes.outputs.relevant == 'true'
+        run: |
+          pnpm migrate
+          pnpm db:seed-demo
+        env:
+          BETTER_AUTH_SECRET: ${{ github.run_id }}-e2e-throwaway-secret-not-a-real-one
+          QR_TOKEN_SECRET: ${{ github.run_id }}-e2e-throwaway-qr-secret-not-a-real-one
+
+      # Debug variant on purpose: it allows cleartext HTTP to this runner's API
+      # (a release build would not) and loads JS from Metro. x86_64 only — the
+      # runner's emulator architecture — which is most of the build time saved.
+      - name: Build the Android debug APK
+        if: steps.changes.outputs.relevant == 'true'
+        working-directory: apps/mobile
+        run: |
+          npx expo prebuild --platform android --no-install
+          cd android && ./gradlew assembleDebug -PreactNativeArchitectures=x86_64 --no-daemon
+
+      - name: Start API and Metro
+        if: steps.changes.outputs.relevant == 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/e2e"
+          pnpm --filter @kavtsya/api start > "$RUNNER_TEMP/e2e/api.log" 2>&1 &
+          CI=1 pnpm --filter @kavtsya/mobile exec expo start --no-dev --minify --port 8081 \
+            > "$RUNNER_TEMP/e2e/metro.log" 2>&1 &
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:3000/api/auth/ok >/dev/null 2>&1 \
+              && curl -fsS http://localhost:8081/status >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          echo "API or Metro did not come up" >&2; exit 1
+        env:
+          BETTER_AUTH_SECRET: ${{ github.run_id }}-e2e-throwaway-secret-not-a-real-one
+          QR_TOKEN_SECRET: ${{ github.run_id }}-e2e-throwaway-qr-secret-not-a-real-one
+
+      # Hardware-accelerated emulators on Linux runners need /dev/kvm opened up.
+      - name: Enable KVM
+        if: steps.changes.outputs.relevant == 'true'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the Maestro suite on an emulator
+        if: steps.changes.outputs.relevant == 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          APK: ${{ github.workspace }}/apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          ARTIFACTS: ${{ runner.temp }}/e2e/maestro
+          SHOTS: ${{ runner.temp }}/e2e/shots
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          force-avd-creation: true
+          disable-animations: true
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash apps/mobile/.maestro/ci-android.sh
+
+      # Every outcome keeps its evidence: first-attempt results only, no
+      # retry-to-green. Short retention keeps storage inside the free allowance.
+      - name: Upload E2E evidence
+        if: always() && steps.changes.outputs.relevant == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-android-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/e2e
+          retention-days: 7
+          if-no-files-found: warn
