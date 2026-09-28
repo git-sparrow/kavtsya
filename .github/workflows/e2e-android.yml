@@ -85,13 +85,16 @@ jobs:
           node-version-file: package.json
           cache: pnpm
 
+      # No `cache: gradle`: it keys on Gradle files present at checkout, and
+      # android/ only exists after `expo prebuild` below (CNG, git-ignored) —
+      # setup-java fails outright when nothing matches. Every run is therefore a
+      # cold Gradle build; add caching only if the measured build time warrants it.
       - name: Set up Java 17 (Gradle)
         if: steps.changes.outputs.relevant == 'true'
         uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
       - name: Install dependencies
         if: steps.changes.outputs.relevant == 'true'
