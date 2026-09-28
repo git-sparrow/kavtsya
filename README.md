@@ -191,6 +191,7 @@ covered above.
 | [0014](docs/adr/0014-account-deletion-anonymize-not-cascade.md) | Account deletion anonymizes; the ledger is never rewritten |
 | [0015](docs/adr/0015-role-modes-derived-landing.md) | Role Modes: derived landing, precedence, owner-primary |
 | ★ [0016](docs/adr/0016-hand-rolled-data-fetching.md) | One hand-rolled data-fetching hook, not a query library |
+| [0017](docs/adr/0017-mobile-agent-tooling.md) | Mobile-agent tooling: keep Argent, no portability layer |
 
 ## 🌿 Contributing
 
