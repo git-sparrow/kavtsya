@@ -109,14 +109,22 @@ jobs:
             bash -c 'curl -fsSL https://get.maestro.mobile.dev | bash'
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
+      # Fresh throwaway secrets per run, exported job-wide: the API, the seed and
+      # capture.sh's `demo-shift` all load the full API env. Nothing real to leak.
+      - name: Generate throwaway API secrets
+        if: steps.changes.outputs.relevant == 'true'
+        run: |
+          for name in BETTER_AUTH_SECRET QR_TOKEN_SECRET; do
+            value="$(openssl rand -base64 32)"
+            echo "::add-mask::$value"
+            echo "$name=$value" >> "$GITHUB_ENV"
+          done
+
       - name: Migrate and seed the demo world
         if: steps.changes.outputs.relevant == 'true'
         run: |
           pnpm migrate
           pnpm db:seed-demo
-        env:
-          BETTER_AUTH_SECRET: ${{ github.run_id }}-e2e-throwaway-secret-not-a-real-one
-          QR_TOKEN_SECRET: ${{ github.run_id }}-e2e-throwaway-qr-secret-not-a-real-one
 
       # Debug variant on purpose: it allows cleartext HTTP to this runner's API
       # (a release build would not) and loads JS from Metro. x86_64 only — the
@@ -141,9 +149,6 @@ jobs:
             sleep 2
           done
           echo "API or Metro did not come up" >&2; exit 1
-        env:
-          BETTER_AUTH_SECRET: ${{ github.run_id }}-e2e-throwaway-secret-not-a-real-one
-          QR_TOKEN_SECRET: ${{ github.run_id }}-e2e-throwaway-qr-secret-not-a-real-one
 
       # Hardware-accelerated emulators on Linux runners need /dev/kvm opened up.
       - name: Enable KVM
