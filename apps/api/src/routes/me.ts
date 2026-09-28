@@ -8,10 +8,11 @@ import { pushConsentFor } from "../push-tokens";
 import type { AuthedEnv } from "../require-user";
 
 /**
- * App-owned routes that depend on an authenticated session. Better Auth's own
- * endpoints live under /api/auth/*; this is where our domain reads the session.
+ * The `/api/me` aggregator: who the signed-in account is and what it can do —
+ * its roles and owned Cafés (from which the app derives its Mode, ADR 0015),
+ * plus the account's own deletion preview and deletion.
  */
-export function registerAuthRoutes(
+export function registerMeRoutes(
   app: Hono<AuthedEnv>,
   { db, clock }: AppDeps,
 ): void {
