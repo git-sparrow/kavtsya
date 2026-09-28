@@ -96,6 +96,29 @@ test("«Дякую» marks the reveal seen, so it is not shown again", async () 
   expect(after).toBeNull();
 });
 
+test("a malformed fortune id answers like an unknown one, and never reaches Postgres (#252)", async () => {
+  const owner = await signUp(app(), "owner@example.com");
+  const cafeId = await registerCafeAt(app(), "Кавця", owner);
+  const customer = await signUp(app(), "customer@example.com");
+  await earn(cafeId, owner, customer);
+
+  const seen = (id: string) =>
+    app().request(`/api/me/fortune/${id}/seen`, {
+      method: "POST",
+      headers: { cookie: customer },
+    });
+
+  const malformed = await seen("not-a-uuid");
+  const unknown = await seen(crypto.randomUUID());
+  expect(malformed.status).toBe(204);
+  expect(unknown.status).toBe(204);
+
+  // Neither touched the real reveal.
+  expect(
+    pendingFortuneResponseSchema.parse(await (await pending(customer)).json()),
+  ).not.toBeNull();
+});
+
 test("the pending reveal is per-Customer and needs auth", async () => {
   const owner = await signUp(app(), "owner@example.com");
   const cafeId = await registerCafeAt(app(), "Кавця", owner);
