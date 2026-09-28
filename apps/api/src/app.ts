@@ -7,10 +7,11 @@ import type { PlatformConfig } from "./platform-config";
 import type { PushProvider } from "./push";
 import { requireUser } from "./require-user";
 import { registerAnalyticsRoutes } from "./routes/analytics";
-import { registerAuthRoutes } from "./routes/auth";
 import { registerCafeRoutes } from "./routes/cafes";
+import { registerFortuneRoutes } from "./routes/fortunes";
 import { registerHealthRoute } from "./routes/health";
 import { registerLoyaltyRoutes } from "./routes/loyalty";
+import { registerMeRoutes } from "./routes/me";
 import { registerMemberCodeRoutes } from "./routes/member-code";
 import { registerPurchaseRoutes } from "./routes/purchases";
 import { registerQrTokenRoutes } from "./routes/qr-token";
@@ -105,12 +106,13 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.on(["POST", "GET"], "/api/auth/*", (c) => deps.auth.handler(c.req.raw));
   registerHealthRoute(app, deps);
 
-  registerAuthRoutes(authed, deps);
+  registerMeRoutes(authed, deps);
   registerCafeRoutes(authed, deps);
   registerLoyaltyRoutes(authed, deps);
   registerQrTokenRoutes(authed, deps);
   registerMemberCodeRoutes(authed, deps);
   registerPurchaseRoutes(authed, deps);
+  registerFortuneRoutes(authed, deps);
   registerRedemptionRoutes(authed, deps);
   registerShiftRoutes(authed, deps);
   registerRosterRoutes(authed, deps);

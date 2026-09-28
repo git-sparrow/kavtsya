@@ -6,11 +6,7 @@ import {
 } from "@kavtsya/shared";
 import type { AppDeps } from "../app";
 import { kyivDayOf } from "../clock";
-import {
-  markFortuneSeen,
-  pendingFortuneFor,
-  recordFortune,
-} from "../customer-fortunes";
+import { recordFortune } from "../customer-fortunes";
 import { fortuneForScan } from "../fortunes";
 import { customerIdForMemberCode } from "../member-code";
 import type { IssuePurchaseRejection, PurchaseEntry } from "../purchases";
@@ -18,7 +14,6 @@ import { issuePurchase, listBalances } from "../purchases";
 import type { QrTokenInvalidReason } from "../qr-token";
 import { validateQrToken } from "../qr-token";
 import type { AuthedEnv } from "../require-user";
-import { uuidParamSchema } from "./params";
 
 /**
  * The CafeOwner's scan (#20): validate the Customer's rotating QR token
@@ -146,23 +141,5 @@ export function registerPurchaseRoutes(
     const user = c.get("user");
 
     return c.json(await listBalances(db, user.id));
-  });
-
-  // The Customer's pending Ворожка reveal (#23, turn 1), and the «Дякую» that
-  // marks it seen.
-  app.get("/api/me/fortune/pending", async (c) => {
-    const user = c.get("user");
-
-    return c.json(await pendingFortuneFor(db, user.id));
-  });
-
-  app.post("/api/me/fortune/:id/seen", async (c) => {
-    const user = c.get("user");
-
-    // Seen is idempotent and answers 204 whether or not a row matched, so a
-    // malformed id lands on that same 204 rather than failing a uuid cast.
-    const id = uuidParamSchema.safeParse(c.req.param("id"));
-    if (id.success) await markFortuneSeen(db, user.id, id.data);
-    return c.body(null, 204);
   });
 }
