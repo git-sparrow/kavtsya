@@ -619,6 +619,14 @@ test("approving an account that never requested is not found — no phantom rost
   expect(res.status).toBe(404);
 });
 
+test("a malformed barista id is simply not found — no validation needed on a text id (#252)", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
+  const { owner, cafeId } = await rosterFixture(app);
+
+  expect((await approve(app, cafeId, "not-an-id", owner)).status).toBe(404);
+  expect((await remove(app, cafeId, "not-an-id", owner)).status).toBe(404);
+});
+
 test("another café's owner can neither read the board nor approve/remove a barista", async () => {
   const app = makeApp({ db, auth, clock: fixedClock(SCAN_AT) });
   const { cafeId, posterCode } = await rosterFixture(app);

@@ -141,7 +141,10 @@ export function registerRosterRoutes(
     return c.json(body);
   });
 
-  // Approve a pending request → rostered.
+  // Approve a pending request → rostered. `:userId` is deliberately not
+  // validated here or on the removal below: Better Auth ids are `text`
+  // (migrations/0002_auth.sql), so there is no cast to fail, and an unknown
+  // one simply matches no row and 404s (#252).
   app.post("/api/cafes/:id/roster/:userId/approve", async (c) => {
     const user = c.get("user");
 

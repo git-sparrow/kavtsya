@@ -18,6 +18,7 @@ import { issuePurchase, listBalances } from "../purchases";
 import type { QrTokenInvalidReason } from "../qr-token";
 import { validateQrToken } from "../qr-token";
 import type { AuthedEnv } from "../require-user";
+import { uuidParamSchema } from "./params";
 
 /**
  * The CafeOwner's scan (#20): validate the Customer's rotating QR token
@@ -158,7 +159,10 @@ export function registerPurchaseRoutes(
   app.post("/api/me/fortune/:id/seen", async (c) => {
     const user = c.get("user");
 
-    await markFortuneSeen(db, user.id, c.req.param("id"));
+    // Seen is idempotent and answers 204 whether or not a row matched, so a
+    // malformed id lands on that same 204 rather than failing a uuid cast.
+    const id = uuidParamSchema.safeParse(c.req.param("id"));
+    if (id.success) await markFortuneSeen(db, user.id, id.data);
     return c.body(null, 204);
   });
 }
