@@ -55,6 +55,18 @@ tags:
       id: "settings.become-owner"
     timeout: 20000
 # 2. Join a Café as Barista — the printed-poster join code (ADR 0013).
+# On a short screen the РОЛІ rows sit below the fold (first seen on CI's default
+# emulator, #246), so bring the join row into view before tapping. Bounded
+# `repeat … while` rather than `scrollUntilVisible`, which is unreliable on
+# Android (see 20-customer-core); `tapOn` still fails if the row never shows.
+- repeat:
+    times: 4
+    while:
+      notVisible:
+        id: "settings.join-cafe"
+    commands:
+      - swipe:
+          direction: UP
 - tapOn:
     id: "settings.join-cafe"
 - extendedWaitUntil:

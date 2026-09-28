@@ -170,6 +170,10 @@ jobs:
           api-level: 35
           arch: x86_64
           target: google_apis
+          # A phone-sized screen close to the local reference AVD (Pixel 9,
+          # 1080×2424), so a CI failure reproduces locally. The runner's default
+          # device is ~320×640, which pushed Settings rows below the fold.
+          profile: pixel_7
           force-avd-creation: true
           disable-animations: true
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
