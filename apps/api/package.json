@@ -11,6 +11,7 @@
     "generate-fortunes": "tsx scripts/generate-fortunes.ts",
     "check-ledger-invariant": "tsx scripts/check-ledger-invariant.ts",
     "prune-push-receipts": "tsx scripts/prune-push-receipts.ts",
+    "prune-expired-sessions": "tsx scripts/prune-expired-sessions.ts",
     "seed-demo": "tsx scripts/seed-demo.ts",
     "seed-demo-fresh": "tsx scripts/seed-demo-fresh.ts",
     "demo-shift": "tsx scripts/demo-shift.ts",
