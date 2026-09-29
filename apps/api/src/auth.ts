@@ -49,5 +49,9 @@ export function createAuth({
     // app scheme to the OAuth/redirect allow-list.
     plugins: [expo()],
     trustedOrigins,
+    // IP tracking stays on (no `advanced.ipAddress.disableIpTracking`): the
+    // auth rate limiter keys on it (checked against 1.7.5, see ADR 0018).
+    // Expired sessions carrying the IP are deleted after
+    // `SESSION_RETENTION_DAYS` by `session-retention.ts`.
   });
 }

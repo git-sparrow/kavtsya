@@ -192,6 +192,7 @@ covered above.
 | [0015](docs/adr/0015-role-modes-derived-landing.md) | Role Modes: derived landing, precedence, owner-primary |
 | ★ [0016](docs/adr/0016-hand-rolled-data-fetching.md) | One hand-rolled data-fetching hook, not a query library |
 | [0017](docs/adr/0017-mobile-agent-tooling.md) | Mobile-agent tooling: keep Argent, no portability layer |
+| [0018](docs/adr/0018-session-retention.md) | Expired sessions are deleted within 31 days; IP tracking stays on |
 
 ## 🌿 Contributing
 
