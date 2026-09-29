@@ -10,8 +10,9 @@ import type { Database } from "./db";
  * path. Left alone it grows into a per-Customer location-and-device
  * history nobody decided to keep.
  *
- * An expired session is kept at most this long, so a "was my account
- * accessed?" question can still be answered, then deleted. The policy and its reasoning
+ * An expired session is kept this long, so a "was my account accessed?"
+ * question can still be answered, then deleted by the next daily run. The
+ * real maximum is this window plus the job's cadence: 31 days, ADR 0018. The policy and its reasoning
  * live in ADR 0018; this constant is its enforcement.
  */
 export const SESSION_RETENTION_DAYS = 30;
