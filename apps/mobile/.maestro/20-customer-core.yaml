@@ -26,10 +26,21 @@ tags:
 # the gear off the top — how far depends on how tall the page happens to be (the
 # #24 consent card is there only until it's answered). Scroll back to the gear
 # instead of assuming it survived the scroll.
-- scrollUntilVisible:
-    element:
-      id: "customer-home.settings"
-    direction: UP
+#
+# A bounded `repeat … while` rather than `scrollUntilVisible` — the same idiom as
+# the scan-back tap in 30-owner (#249). On Android (Maestro 2.7.0, #246)
+# `scrollUntilVisible` once reported ElementNotFound for 20s while its own
+# hierarchy dump held the gear on screen at valid bounds; the `while` guard
+# re-reads the hierarchy each pass, and skips the swipe when the gear is already
+# there. `tapOn` below still fails the flow if the gear never appears.
+- repeat:
+    times: 4
+    while:
+      notVisible:
+        id: "customer-home.settings"
+    commands:
+      - swipe:
+          direction: DOWN
 - waitForAnimationToEnd:
     timeout: 5000
 - tapOn:
@@ -65,9 +76,26 @@ tags:
 # compares frames, and a slow glide reads as two identical ones), and the tap
 # then lands on whatever slid under it — the confirm never opens. The pre-tap
 # settle window is the deterministic version of the same wait.
-- tapOn:
-    id: '^settings\.delete-account$'
-    waitToSettleTimeoutMs: 2000
+#
+# And even settled, the tap can be reported COMPLETED yet never reach the app —
+# the #249 failure, seen here on iOS / Maestro 2.7.0 (#246): the row sat fully on
+# screen and no dialog opened. Same cure as the scan-back tap in 30-owner: a
+# bounded `repeat … while` whose guard forces a fresh hierarchy read before each
+# tap. Bounded, so a dialog that genuinely never opens still fails below.
+- repeat:
+    times: 3
+    while:
+      notVisible:
+        id: 'settings\.delete-account\.dialog\.cancel$'
+    commands:
+      - tapOn:
+          id: '^settings\.delete-account$'
+          waitToSettleTimeoutMs: 2000
+      - extendedWaitUntil:
+          visible:
+            id: 'settings\.delete-account\.dialog\.cancel$'
+          timeout: 6000
+          optional: true
 # Wait on the dialog's cancel BUTTON, not its container: `ConfirmDialog` puts the
 # testID on a wrapper View, which RN does not surface as an identified element —
 # only the derived `.confirm` / `.cancel` buttons reach the accessibility tree.
