@@ -76,11 +76,17 @@ function NoticeCard({
     onDismiss,
     exit: (done) => {
       if (reduceMotion.current) return done();
+      // Only an exit that ran to the end dismisses. Unmounting mid-exit (a new
+      // message remounts the card) stops the animation and fires this with
+      // `finished: false` during the commit — before any effect cleanup could
+      // mark the card gone — and that must not clear the message replacing it.
       Animated.timing(anim, {
         toValue: 0,
         duration: 180,
         useNativeDriver: true,
-      }).start(() => done());
+      }).start(({ finished }) => {
+        if (finished) done();
+      });
     },
   });
 
