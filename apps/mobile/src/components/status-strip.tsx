@@ -7,6 +7,21 @@ import { fontFamily, useTheme } from "@/theme";
 export type StatusIntent = "success" | "danger" | "info";
 
 /**
+ * The strip's background for an intent — a tint when something succeeded or
+ * failed, none for `info` (nothing failed). Shared so a placement that wraps the
+ * strip (the floating `NoticeBanner`, §9b) paints the same surface instead of
+ * restating the table.
+ */
+export function statusSurface(
+  t: ReturnType<typeof useTheme>,
+  intent: StatusIntent,
+): string {
+  if (intent === "success") return t.c["success-surface"];
+  if (intent === "danger") return t.c["danger-surface"];
+  return "transparent";
+}
+
+/**
  * One anatomy, three intents: a `radius-md` strip with an icon + a bold title +
  * an optional detail line. Status is always icon + text, never colour alone, and
  * the strip is a live region so a screen-reader hears the outcome on mount
@@ -39,29 +54,27 @@ export function StatusStrip({
 
   const spec: Record<
     StatusIntent,
-    { bg: string; icon: IconName; accent: string; onAccent: string }
+    { icon: IconName; accent: string; onAccent: string }
   > = {
     success: {
-      bg: t.c["success-surface"],
       icon: "check",
       accent: t.c.success,
       onAccent: t.c["success-foreground"],
     },
     danger: {
-      bg: t.c["danger-surface"],
       icon: "alert",
       accent: t.c.danger,
       onAccent: t.c["danger-foreground"],
     },
-    // Informational: no tinted background, muted glyph.
+    // Informational: muted glyph.
     info: {
-      bg: "transparent",
       icon: "info",
       accent: t.c["text-muted"],
       onAccent: t.c.foreground,
     },
   };
-  const { bg, icon, accent, onAccent } = spec[intent];
+  const { icon, accent, onAccent } = spec[intent];
+  const bg = statusSurface(t, intent);
 
   return (
     <View
