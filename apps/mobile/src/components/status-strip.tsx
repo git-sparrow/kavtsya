@@ -7,6 +7,51 @@ import { fontFamily, useTheme } from "@/theme";
 export type StatusIntent = "success" | "danger" | "info";
 
 /**
+ * Each intent's colours and glyph — one table, read by the inline strip and by
+ * its floating placement (`NoticeBanner`, §9b) alike.
+ */
+function intentSpec(
+  t: ReturnType<typeof useTheme>,
+): Record<
+  StatusIntent,
+  { bg: string; icon: IconName; accent: string; onAccent: string }
+> {
+  return {
+    success: {
+      bg: t.c["success-surface"],
+      icon: "check",
+      accent: t.c.success,
+      onAccent: t.c["success-foreground"],
+    },
+    danger: {
+      bg: t.c["danger-surface"],
+      icon: "alert",
+      accent: t.c.danger,
+      onAccent: t.c["danger-foreground"],
+    },
+    // Informational: no tinted background, muted glyph.
+    info: {
+      bg: "transparent",
+      icon: "info",
+      accent: t.c["text-muted"],
+      onAccent: t.c.foreground,
+    },
+  };
+}
+
+/**
+ * The strip's background for an intent: a tint when something succeeded or
+ * failed, `transparent` for `info` (nothing failed). Exposed so the floating
+ * placement paints the same card the strip sits on.
+ */
+export function statusBackground(
+  t: ReturnType<typeof useTheme>,
+  intent: StatusIntent,
+): string {
+  return intentSpec(t)[intent].bg;
+}
+
+/**
  * One anatomy, three intents: a `radius-md` strip with an icon + a bold title +
  * an optional detail line. Status is always icon + text, never colour alone, and
  * the strip is a live region so a screen-reader hears the outcome on mount
@@ -37,31 +82,7 @@ export function StatusStrip({
 }) {
   const t = useTheme();
 
-  const spec: Record<
-    StatusIntent,
-    { bg: string; icon: IconName; accent: string; onAccent: string }
-  > = {
-    success: {
-      bg: t.c["success-surface"],
-      icon: "check",
-      accent: t.c.success,
-      onAccent: t.c["success-foreground"],
-    },
-    danger: {
-      bg: t.c["danger-surface"],
-      icon: "alert",
-      accent: t.c.danger,
-      onAccent: t.c["danger-foreground"],
-    },
-    // Informational: no tinted background, muted glyph.
-    info: {
-      bg: "transparent",
-      icon: "info",
-      accent: t.c["text-muted"],
-      onAccent: t.c.foreground,
-    },
-  };
-  const { bg, icon, accent, onAccent } = spec[intent];
+  const { bg, icon, accent, onAccent } = intentSpec(t)[intent];
 
   return (
     <View
