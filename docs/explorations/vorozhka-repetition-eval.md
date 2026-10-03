@@ -6,6 +6,14 @@
 > situations apart. They say nothing about how often real fortunes repeat, and
 > no product remedy is chosen here.
 
+## For Olek — the whole thing in three lines
+
+1. We can't know yet whether fortunes repeat too often, because there is no real data yet.
+2. Once the daily job has run for about 2 weeks, run the script on those fortunes to get a few numbers.
+3. Only then decide #117 (bigger batch or blocking repeats). **Nothing to do before that.**
+
+Everything below is the method, for whoever runs that check.
+
 ## Question
 
 What is the smallest offline evaluation that can tell **repeated fortune
