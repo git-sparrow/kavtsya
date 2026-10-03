@@ -71,9 +71,9 @@ Rules: icon + text always, never color alone; `radius-md`; outcome strips are li
 Not a new anatomy: the §9 strip, floated over a Mode surface for a cross-Mode fact (shift ended #99, shift check failed #187). Still never a toast — no queue, no portal.
 - **Placement:** absolute, `safe-area top + space-2`, `space-4` side insets, over the Mode's own layout (never pushes it).
 - **Elevation:** 1px `border-strong` outline, no shadow token. The card is painted in the strip's own tint (`danger-surface` survives floating); `info` has no tint, so it sits on opaque `surface`.
-- **Lifetimes look different by intent, on purpose:** `transient` (auto-leaves after 5s) is for `info` only; anything `danger` is `persistent` — an error never auto-dismisses.
+- **Lifetime follows intent, so the two never look alike:** `danger` is persistent (stays until acted on or ✕ — an error never auto-dismisses); anything else is transient (leaves after 5s). Not a prop — a danger notice cannot be made transient.
 - **Controls:** ✕ always (`Сховати`, top-right, 12pt hit slop); optional action row under the copy (full-width secondary button, e.g. «Спробувати знову»).
-- **Motion / a11y:** 220ms fade + 8px slide in, 180ms out before the notice unmounts; `role="alert"` and an explicit announcement on mount (and on message change).
+- **Motion / a11y:** 220ms fade + 8px slide in, 180ms out before the notice unmounts — both skipped under Reduce Motion; `role="alert"` and an explicit announcement of title + detail on mount (and on message change).
 - **Two notices, one slot:** the caller decides (the more specific one wins; today the shift-ended notice over the failed check). A shared host is deferred until a third caller.
 
 ## 10. ConfirmDialog — NEW

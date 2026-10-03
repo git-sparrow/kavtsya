@@ -7,18 +7,48 @@ import { fontFamily, useTheme } from "@/theme";
 export type StatusIntent = "success" | "danger" | "info";
 
 /**
- * The strip's background for an intent — a tint when something succeeded or
- * failed, none for `info` (nothing failed). Shared so a placement that wraps the
- * strip (the floating `NoticeBanner`, §9b) paints the same surface instead of
- * restating the table.
+ * Each intent's colours and glyph — one table, read by the inline strip and by
+ * its floating placement (`NoticeBanner`, §9b) alike.
  */
-export function statusSurface(
+function intentSpec(
+  t: ReturnType<typeof useTheme>,
+): Record<
+  StatusIntent,
+  { bg: string; icon: IconName; accent: string; onAccent: string }
+> {
+  return {
+    success: {
+      bg: t.c["success-surface"],
+      icon: "check",
+      accent: t.c.success,
+      onAccent: t.c["success-foreground"],
+    },
+    danger: {
+      bg: t.c["danger-surface"],
+      icon: "alert",
+      accent: t.c.danger,
+      onAccent: t.c["danger-foreground"],
+    },
+    // Informational: no tinted background, muted glyph.
+    info: {
+      bg: "transparent",
+      icon: "info",
+      accent: t.c["text-muted"],
+      onAccent: t.c.foreground,
+    },
+  };
+}
+
+/**
+ * The strip's background for an intent: a tint when something succeeded or
+ * failed, `transparent` for `info` (nothing failed). Exposed so the floating
+ * placement paints the same card the strip sits on.
+ */
+export function statusBackground(
   t: ReturnType<typeof useTheme>,
   intent: StatusIntent,
 ): string {
-  if (intent === "success") return t.c["success-surface"];
-  if (intent === "danger") return t.c["danger-surface"];
-  return "transparent";
+  return intentSpec(t)[intent].bg;
 }
 
 /**
@@ -52,29 +82,7 @@ export function StatusStrip({
 }) {
   const t = useTheme();
 
-  const spec: Record<
-    StatusIntent,
-    { icon: IconName; accent: string; onAccent: string }
-  > = {
-    success: {
-      icon: "check",
-      accent: t.c.success,
-      onAccent: t.c["success-foreground"],
-    },
-    danger: {
-      icon: "alert",
-      accent: t.c.danger,
-      onAccent: t.c["danger-foreground"],
-    },
-    // Informational: muted glyph.
-    info: {
-      icon: "info",
-      accent: t.c["text-muted"],
-      onAccent: t.c.foreground,
-    },
-  };
-  const { icon, accent, onAccent } = spec[intent];
-  const bg = statusSurface(t, intent);
+  const { bg, icon, accent, onAccent } = intentSpec(t)[intent];
 
   return (
     <View

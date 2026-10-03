@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AccessibilityInfo,
   Animated,
@@ -10,13 +10,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   StatusStrip,
-  statusSurface,
+  statusBackground,
   type StatusIntent,
 } from "@/components/status-strip";
-import {
-  useNoticeLifetime,
-  type NoticeLifetime,
-} from "@/lib/use-notice-lifetime";
+import { useNoticeLifetime } from "@/lib/use-notice-lifetime";
 import { useTheme } from "@/theme";
 
 /**
@@ -27,12 +24,14 @@ import { useTheme } from "@/theme";
  * The shell adds only what the placement needs:
  * - a `surface`-backed card with a `border-strong` outline, painted in the
  *   strip's own tint so the strip and its controls read as one card;
- * - a short fade/slide in on mount, and an `AccessibilityInfo` announcement of
- *   `announcement` — something changed under the reader that they cannot see;
- * - an optional ✕ and an optional `action` row (a retry, under the copy);
- * - a `lifetime`: `transient` leaves by itself, `persistent` stays until acted
- *   on (an error never auto-dismisses). Either way the exit animation runs
- *   before `onDismiss`, so the caller's state outlives what is still showing.
+ * - a short fade/slide in on mount (skipped under Reduce Motion), and an
+ *   announcement of its title + detail — something changed under the reader
+ *   that they cannot see;
+ * - a ✕ and an optional `action` row (a retry, under the copy);
+ * - a lifetime that follows from the intent: `danger` stays until acted on (an
+ *   error never auto-dismisses), anything else leaves by itself. Either way the
+ *   exit runs before `onDismiss`, so the caller's state outlives what is still
+ *   showing.
  *
  * Two notices that want the slot at once are the caller's call — there is no
  * queue here on purpose (#219: a host is deferred until a third caller).
@@ -41,8 +40,6 @@ export function NoticeBanner({
   intent,
   title,
   detail,
-  announcement,
-  lifetime,
   onDismiss,
   action,
   testID,
@@ -50,9 +47,6 @@ export function NoticeBanner({
   intent: StatusIntent;
   title: string;
   detail?: string;
-  /** What a screen reader hears on mount, and again whenever it changes. */
-  announcement: string;
-  lifetime: NoticeLifetime;
   onDismiss: () => void;
   /** A control under the copy — typically a secondary «Спробувати знову». */
   action?: ReactNode;
@@ -62,31 +56,48 @@ export function NoticeBanner({
   const insets = useSafeAreaInsets();
   // Lazy init so the driver value is created once, not a ref read in render.
   const [anim] = useState(() => new Animated.Value(0));
+  // Read once on mount; the exit honours the same answer the entrance did.
+  const reduceMotion = useRef(false);
 
   const dismiss = useNoticeLifetime({
-    lifetime,
+    lifetime: intent === "danger" ? "persistent" : "transient",
     onDismiss,
-    exit: (done) =>
+    exit: (done) => {
+      if (reduceMotion.current) return done();
       Animated.timing(anim, {
         toValue: 0,
         duration: 180,
         useNativeDriver: true,
-      }).start(() => done()),
+      }).start(() => done());
+    },
   });
 
   useEffect(() => {
-    Animated.timing(anim, {
-      toValue: 1,
-      duration: 220,
-      useNativeDriver: true,
-    }).start();
+    let mounted = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then((reduced) => {
+      if (!mounted) return;
+      reduceMotion.current = reduced;
+      if (reduced) {
+        anim.setValue(1);
+      } else {
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }).start();
+      }
+    });
+    return () => {
+      mounted = false;
+    };
   }, [anim]);
 
+  const announcement = detail ? `${title} ${detail}` : title;
   useEffect(() => {
     AccessibilityInfo.announceForAccessibility(announcement);
   }, [announcement]);
 
-  const tint = statusSurface(t, intent);
+  const tint = statusBackground(t, intent);
 
   return (
     <Animated.View

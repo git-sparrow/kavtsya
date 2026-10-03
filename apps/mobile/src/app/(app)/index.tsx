@@ -110,9 +110,7 @@ export default function Home() {
       {endedNotice && mode !== "scanner" && (
         <NoticeBanner
           intent="info"
-          lifetime="transient"
           title={`Зміну в «${endedNotice}» завершено.`}
-          announcement={`Зміну в «${endedNotice}» завершено.`}
           onDismiss={dismissEndedNotice}
         />
       )}
@@ -129,10 +127,8 @@ export default function Home() {
         <NoticeBanner
           testID="home.shift-check-failed"
           intent="danger"
-          lifetime="persistent"
           title={shiftCheck.error}
           detail={SHIFT_CHECK_FAILED_DETAIL}
-          announcement={`${shiftCheck.error} ${SHIFT_CHECK_FAILED_DETAIL}`}
           onDismiss={shiftCheck.clear}
           action={
             <Button

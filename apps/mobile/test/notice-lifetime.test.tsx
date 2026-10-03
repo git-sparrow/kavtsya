@@ -1,7 +1,10 @@
 import { act, cleanup, renderHook } from "./support/render-hook";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useNoticeLifetime } from "@/lib/use-notice-lifetime";
+import {
+  TRANSIENT_NOTICE_MS,
+  useNoticeLifetime,
+} from "@/lib/use-notice-lifetime";
 
 /**
  * The two lifetimes a floating notice can have (#219). The shell animates; this
@@ -37,7 +40,7 @@ describe("useNoticeLifetime", () => {
       useNoticeLifetime({ lifetime: "transient", onDismiss, exit }),
     );
 
-    act(() => vi.advanceTimersByTime(4999));
+    act(() => vi.advanceTimersByTime(TRANSIENT_NOTICE_MS - 1));
     expect(exit).not.toHaveBeenCalled();
 
     act(() => vi.advanceTimersByTime(1));
@@ -55,7 +58,7 @@ describe("useNoticeLifetime", () => {
       useNoticeLifetime({ lifetime: "persistent", onDismiss, exit }),
     );
 
-    act(() => vi.advanceTimersByTime(60_000));
+    act(() => vi.advanceTimersByTime(TRANSIENT_NOTICE_MS * 12));
 
     expect(exit).not.toHaveBeenCalled();
     expect(onDismiss).not.toHaveBeenCalled();
@@ -70,7 +73,7 @@ describe("useNoticeLifetime", () => {
 
     act(() => result.current());
     act(() => result.current());
-    act(() => vi.advanceTimersByTime(5000));
+    act(() => vi.advanceTimersByTime(TRANSIENT_NOTICE_MS));
     finish();
 
     expect(exit).toHaveBeenCalledTimes(1);
@@ -92,7 +95,7 @@ describe("useNoticeLifetime", () => {
 
   it("does not restart the countdown when the caller re-renders", () => {
     // A caller passing an inline `onDismiss` hands over a new function every
-    // render; that must not buy the notice another five seconds on screen.
+    // render; that must not buy the notice a fresh countdown on screen.
     const { exit } = pendingExit();
     const { rerender } = renderHook<
       ReturnType<typeof useNoticeLifetime>,
@@ -103,9 +106,9 @@ describe("useNoticeLifetime", () => {
       { initialProps: { onDismiss: () => {} } },
     );
 
-    act(() => vi.advanceTimersByTime(3000));
+    act(() => vi.advanceTimersByTime(TRANSIENT_NOTICE_MS - 1));
     rerender({ onDismiss: () => {} });
-    act(() => vi.advanceTimersByTime(2000));
+    act(() => vi.advanceTimersByTime(1));
 
     expect(exit).toHaveBeenCalledTimes(1);
   });
@@ -124,7 +127,7 @@ describe("useNoticeLifetime", () => {
     );
 
     rerender({ onDismiss: latest });
-    act(() => vi.advanceTimersByTime(5000));
+    act(() => vi.advanceTimersByTime(TRANSIENT_NOTICE_MS));
     finish();
 
     expect(first).not.toHaveBeenCalled();
@@ -138,7 +141,7 @@ describe("useNoticeLifetime", () => {
     );
 
     unmount();
-    act(() => vi.advanceTimersByTime(5000));
+    act(() => vi.advanceTimersByTime(TRANSIENT_NOTICE_MS));
 
     expect(exit).not.toHaveBeenCalled();
   });
