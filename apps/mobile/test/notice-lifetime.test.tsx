@@ -134,6 +134,23 @@ describe("useNoticeLifetime", () => {
     expect(latest).toHaveBeenCalledTimes(1);
   });
 
+  it("drops a dismissal whose notice is gone before the exit finishes", () => {
+    // The ✕ starts a 180ms exit; if a different message replaces the notice in
+    // that window, the old exit finishing must not dismiss the new one (PR #279
+    // review). The banner remounts per message, so "replaced" is an unmount.
+    const onDismiss = vi.fn();
+    const { exit, finish } = pendingExit();
+    const { result, unmount } = renderHook(() =>
+      useNoticeLifetime({ lifetime: "persistent", onDismiss, exit }),
+    );
+
+    act(() => result.current());
+    unmount();
+    finish();
+
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
   it("stops the countdown when the notice unmounts first", () => {
     const { exit } = pendingExit();
     const { unmount } = renderHook(() =>

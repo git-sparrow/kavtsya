@@ -25,6 +25,11 @@ export const TRANSIENT_NOTICE_MS = 5000;
  * The countdown starts on mount and only then: `onDismiss` and `exit` are read
  * through refs, so a caller re-rendering with fresh callbacks neither restarts
  * it nor gets its stale callback called.
+ *
+ * A dismissal belongs to the mount that started it. If the notice unmounts
+ * while its exit is still running — replaced by a different message, which the
+ * banner remounts for — the exit finishing is dropped rather than dismissing
+ * whatever the caller is showing by then.
  */
 export function useNoticeLifetime({
   lifetime,
@@ -36,15 +41,24 @@ export function useNoticeLifetime({
   exit: (done: () => void) => void;
 }): () => void {
   const leaving = useRef(false);
+  const mounted = useRef(true);
   const latest = useRef({ onDismiss, exit });
   useEffect(() => {
     latest.current = { onDismiss, exit };
   });
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const dismiss = useCallback(() => {
     if (leaving.current) return;
     leaving.current = true;
-    latest.current.exit(() => latest.current.onDismiss());
+    latest.current.exit(() => {
+      if (mounted.current) latest.current.onDismiss();
+    });
   }, []);
 
   useEffect(() => {

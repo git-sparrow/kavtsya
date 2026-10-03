@@ -35,15 +35,18 @@ import { useTheme } from "@/theme";
  *
  * Two notices that want the slot at once are the caller's call — there is no
  * queue here on purpose (#219: a host is deferred until a third caller).
+ *
+ * A notice is its message: when the title or detail changes, the card remounts.
+ * The new message is news — it enters and is announced afresh — and a ✕ exit
+ * still running for the old one cannot dismiss it on finishing (PR #279).
  */
-export function NoticeBanner({
-  intent,
-  title,
-  detail,
-  onDismiss,
-  action,
-  testID,
-}: {
+export function NoticeBanner(props: NoticeProps) {
+  return (
+    <NoticeCard key={`${props.title}\n${props.detail ?? ""}`} {...props} />
+  );
+}
+
+type NoticeProps = {
   intent: StatusIntent;
   title: string;
   detail?: string;
@@ -51,7 +54,16 @@ export function NoticeBanner({
   /** A control under the copy — typically a secondary «Спробувати знову». */
   action?: ReactNode;
   testID?: string;
-}) {
+};
+
+function NoticeCard({
+  intent,
+  title,
+  detail,
+  onDismiss,
+  action,
+  testID,
+}: NoticeProps) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   // Lazy init so the driver value is created once, not a ref read in render.
