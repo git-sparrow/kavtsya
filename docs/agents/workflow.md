@@ -75,6 +75,26 @@ to merge or expands the task the user authorized.
 4. Address valid findings, repeat affected checks, run `pnpm verify`, and inspect
    the current PR's CI. Merge only when separately authorized.
 
+### What PR #279 taught us
+
+In [PR #279](https://github.com/git-sparrow/kavtsya/pull/279), an independent review
+[found](https://github.com/git-sparrow/kavtsya/pull/279#discussion_r4172324326)
+that dismissing a shift-check error could also clear a newer error during the
+notice's exit animation. The implementer changed the banner and added a hook
+test; a follow-up review accepted that fix. A simulator reproduction then
+[showed](https://github.com/git-sparrow/kavtsya/pull/279#discussion_r4172366104)
+that stopping the old animation called back before effect cleanup, so the
+newer error could still disappear. The next commit checked whether the exit
+actually finished.
+
+For a fix involving native animation or lifecycle timing, the handoff should
+name what each check proves. The hook test covered a callback *after* unmount
+cleanup; it did not cover callback ordering *during* unmount. Reproduce the
+transition on the app surface, record the device/build, steps and result in the
+PR, then review the new head. Revise an earlier approval when runtime evidence
+disproves it. This is one documented case of useful cross-agent review and
+correction, not a measured claim about overall code quality.
+
 Chat history and personal memory are not the handoff. Use issues, commits, PRs and
 linked evidence for durable decisions; do not maintain another product-status file.
 
