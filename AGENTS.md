@@ -31,6 +31,8 @@ See the Tech stack table in `PROJECT_BRIEF.md` and `docs/adr/` for full rational
 - Keep it simple: no redundant functionality or documentation. Tasks state intended
   behavior; code and tests are the source of truth for implemented behavior. Reserve
   docs for durable decisions and procedures that cannot be inferred from them.
+  Prefer clear names, types, and tests over comments. Keep comments for non-obvious
+  contracts, constraints, or reasons; avoid restating code or issue history.
 - Shared skills live in `.agents/skills/`. Matt Pocock's 25 skills are pinned, unmodified under `.agents/plugins/mattpocock-skills/`; Codex discovers relative symlinks and Claude loads the existing plugin. Setup, invocation and deliberate updates: `.agents/plugins/README.md` and `docs/agents/workflow.md`.
 - Before starting or handing off work, read `docs/agents/workflow.md`. One active editor per checkout; use separate worktrees for concurrent implementation. Coordinate test databases, dev servers and devices explicitly.
 - Run the shared `verify` skill before committing or opening a PR. `pnpm agents:check` validates the repository agent wiring and is included in `pnpm verify`.
