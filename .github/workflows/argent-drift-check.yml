@@ -1,0 +1,78 @@
+name: Argent drift check
+
+# Dependabot is deliberately blind to @swmansion/argent (.github/dependabot.yml):
+# the package and its vendored skills move together, only via `argent init
+# --local`. So nothing else will ever say a newer release exists — the pin sat
+# five releases behind before #263 noticed by hand.
+#
+# A MONITOR ONLY, on the expo-sdk-check.yml pattern: compare the exact pin with
+# the registry's `latest` and turn a mismatch into one tracking issue. The
+# registry lookup is network state, so it stays out of `pnpm verify` and never
+# gates a PR or a merge (#264).
+
+on:
+  schedule:
+    # Monthly, matching the Dependabot cadence. Argent releases roughly weekly,
+    # but an open drift issue already covers every later release (dedupe below),
+    # so checking more often would only re-confirm it. 04:00 UTC, same as the
+    # Expo monitor; do not chase the DST hour.
+    - cron: "0 4 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  argent-drift:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # continue-on-error throughout: a registry outage must not turn this red,
+      # and with no `drift` output the issue step simply does not run.
+      - name: Compare pin with the published release
+        id: compare
+        continue-on-error: true
+        run: |
+          pinned=$(node -p "require('./package.json').devDependencies['@swmansion/argent']")
+          published=$(npm view @swmansion/argent@latest version)
+          echo "Pinned: $pinned · published (latest): $published"
+          {
+            echo "pinned=$pinned"
+            echo "published=$published"
+            echo "drift=$([ "$pinned" != "$published" ] && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open a drift issue
+        if: steps.compare.outputs.drift == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Version-free on purpose: the dedupe matches on title, and one open
+          # issue should absorb every release that lands while it is open.
+          TITLE: "Argent drift: the pinned @swmansion/argent is not the latest release"
+          PINNED: ${{ steps.compare.outputs.pinned }}
+          PUBLISHED: ${{ steps.compare.outputs.published }}
+        run: |
+          existing=$(gh issue list --state open --label dependencies \
+            --search "\"$TITLE\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "Drift issue #$existing is already open — leaving it alone."
+            exit 0
+          fi
+          {
+            echo "\`package.json\` pins \`@swmansion/argent\` **$PINNED**; the registry's \`latest\` is **$PUBLISHED**."
+            echo
+            echo "Decide **upgrade** or **retain with a recorded reason**, the way #263 did: pick the"
+            echo "candidate from the stable release line, read the changelog against how this repo"
+            echo "actually uses Argent, and record the decision here."
+            echo
+            echo "An upgrade is its own PR, following [Updating Argent](https://github.com/$GITHUB_REPOSITORY/blob/main/docs/argent-howto.md#updating-argent):"
+            echo "bump the pin **and** re-vendor with \`argent init --local\`, never one without the other."
+            echo
+            echo "_Opened automatically by \`.github/workflows/argent-drift-check.yml\` ([run](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID))._"
+          } > "$RUNNER_TEMP/issue.md"
+          gh issue create --title "$TITLE" --label dependencies --body-file "$RUNNER_TEMP/issue.md"
