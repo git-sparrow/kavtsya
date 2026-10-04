@@ -424,6 +424,11 @@ blinding the Expo track itself. Never silence the packages; move the check.
    fallen behind the installed SDK (one issue at a time; it stays open until the track is
    run). A full SDK release still arrives the usual way — via Expo's own announcements —
    and follows the `expo:upgrading-expo` skill.
+3. **When an Argent drift issue appears,** decide upgrade or retain, as #263 did.
+   Dependabot ignores `@swmansion/argent`, so `.github/workflows/argent-drift-check.yml`
+   compares the pin with npm's `latest` monthly and opens the issue. Closing it records
+   the decision for that release. Upgrade per
+   [Updating Argent](../argent-howto.md#updating-argent).
 
 <a id="expo-track"></a>
 
