@@ -15,7 +15,7 @@ things, in priority order:
 Local mode, same philosophy as our vendored skills — everything travels with the repo, no
 per-machine global installs:
 
-- **`@swmansion/argent`** pinned **exactly** (`0.25.2`, pre-1.0 API churn) in the root
+- **`@swmansion/argent`** pinned **exactly** (`0.27.0`, pre-1.0 API churn) in the root
   `devDependencies`. `pnpm install` is the whole setup on a fresh clone.
 - **`.mcp.json`** (committed) registers the MCP server for Claude Code. It runs the project-local
   copy (`node node_modules/@swmansion/argent/dist/cli.js mcp`) — nothing machine-specific in it.
@@ -104,10 +104,10 @@ merge is restrictive, so no machine-level setting can turn it back on. `argent t
 then reports `source: config.json (project and global)`.
 
 Unlike the skill prune above, this one **does not need re-applying after a bump**: verified on
-0.25.2 (2026-09-23) by running a plain `argent init --local` afterwards and re-reading the file and
-`telemetry status` — both unchanged. Telemetry is on by the wizard default otherwise, and excludes
-source code, paths, and tool inputs; 0.22 moved its transport from PostHog to OpenTelemetry OTLP
-(v0.22.0 release notes, read 2026-09-23).
+0.25.2 (2026-09-23) and 0.27.0 (2026-10-05) by running a plain `argent init --local` afterwards
+and re-reading the file and `telemetry status` — both unchanged. Telemetry is on by the wizard
+default otherwise, and excludes source code, paths, and tool inputs; 0.22 moved its transport
+from PostHog to OpenTelemetry OTLP (v0.22.0 release notes, read 2026-09-23).
 
 ## Running a session
 
