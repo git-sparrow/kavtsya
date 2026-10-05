@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { applyRedemption, redemptionEligibility } from "../src/redemptions";
 
-// The two pure Redemption rules (#22, CONTEXT → Redemption), unit-tested at
+// The two pure Redemption rules (#22, GLOSSARY → Redemption), unit-tested at
 // their own seam; the full confirm path is covered in redemptions.test.ts.
 
 // --- eligibility ------------------------------------------------------------------

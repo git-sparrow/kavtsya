@@ -38,6 +38,6 @@ Disagreements are settled over a second coffee.
   desktop app.
 - Mari's design decisions that affect code (colors, components, flows) are captured
   briefly as GitHub issues labeled `design`; Claude carries them into code.
-- The glossary in `CONTEXT.md` is the shared language for everyone: Зернятко,
+- The glossary in `GLOSSARY.md` is the shared language for everyone: Зернятко,
   Ворожка, CafeOwner (Кавовар), Purchase, Reward.
 - Mari's onboarding page (artifact): "Кавця — знайомство для Марі".

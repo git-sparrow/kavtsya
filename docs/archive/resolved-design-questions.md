@@ -1,12 +1,12 @@
 # Archive — resolved design questions
 
-> Moved out of [`PROJECT_BRIEF.md`](../../PROJECT_BRIEF.md) on 2026-07-18 (#118): every question here is resolved and its resolution lives in an ADR, CONTEXT.md, or a frozen issue spec. Kept verbatim as the historical record of _when_ and _why_ each call was made.
+> Moved out of [`PROJECT_BRIEF.md`](../../PROJECT_BRIEF.md) on 2026-07-18 (#118): every question here is resolved and its resolution lives in an ADR, GLOSSARY.md, or a frozen issue spec. Kept verbatim as the historical record of _when_ and _why_ each call was made.
 
 ## ✓ Resolved design questions (were blocking the PRD)
 
 Surfaced during the architecture review on 2026-06-15; all four resolved on 2026-06-16. The PRD is unblocked.
 
-1. ~~**Redemption mechanic (highest priority — core loop is unspecified).**~~ ✓ **Resolved 2026-06-16** — Subtract-the-threshold, confirmed via a **single scan**. One QR scan identifies the Customer; the CafeOwner can issue a Зернятко and/or confirm a Redemption as distinct actions off that one scan (no second scan — refined 2026-06-17). The balance subtracts the threshold (does not reset to 0), so beans toward the next Reward are preserved and a 2× balance can bank multiple Redemptions. See **Redemption** in `CONTEXT.md` and `docs/adr/0006`, `docs/adr/0010`.
+1. ~~**Redemption mechanic (highest priority — core loop is unspecified).**~~ ✓ **Resolved 2026-06-16** — Subtract-the-threshold, confirmed via a **single scan**. One QR scan identifies the Customer; the CafeOwner can issue a Зернятко and/or confirm a Redemption as distinct actions off that one scan (no second scan — refined 2026-06-17). The balance subtracts the threshold (does not reset to 0), so beans toward the next Reward are preserved and a 2× balance can bank multiple Redemptions. See **Redemption** in `GLOSSARY.md` and `docs/adr/0006`, `docs/adr/0010`.
 2. ~~**"Instant signup reward" vs "credited at first Purchase" contradiction.**~~ ✓ **Resolved 2026-06-16** — Signup Reward postponed out of v1 to the Backlog. Removes the contradiction entirely; revisit after the core loop ships.
 3. ~~**Зернятко issuance must not depend on Ворожка.**~~ ✓ **Resolved 2026-06-16** — Confirmed, and the mechanism changed to make it structural: Ворожка is now a daily AI-generated batch served randomly per scan (see AI scope), so the Purchase scan makes **no live AI call at all**. Зернятко issuance is therefore trivially independent of the fortune. Captured as `docs/adr/0009`.
 4. ~~**Single-use QR token?**~~ ✓ **Resolved 2026-06-16** — Confirmed single-use. Each rotating token is consumed on first successful scan (by `jti`); re-scans are rejected. Closes the double-issuance / farming window. Captured in `docs/adr/0006`.

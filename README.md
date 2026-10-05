@@ -12,7 +12,7 @@ React Native + Expo · Hono on Node.js · PostgreSQL with raw SQL · Anthropic C
 > **Where to look for what**
 > Scope, roadmap and **current status** live in [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md) —
 > that file is their single home, so nothing here restates them. The domain glossary is
-> in [`CONTEXT.md`](CONTEXT.md), architecture decisions in [`docs/adr/`](docs/adr/), and
+> in [`GLOSSARY.md`](GLOSSARY.md), architecture decisions in [`docs/adr/`](docs/adr/), and
 > guidance for AI sessions in [`AGENTS.md`](AGENTS.md).
 > **This README covers what the project is and how to run it.**
 
@@ -43,7 +43,7 @@ checked it, inline. It exists because unchecked confidence is the actual failure
 ## 📖 Domain in one minute
 
 Terms below are used verbatim in the UI, the code and the docs — see
-[`CONTEXT.md`](CONTEXT.md) for the full glossary.
+[`GLOSSARY.md`](GLOSSARY.md) for the full glossary.
 
 | Term | Meaning |
 | --- | --- |

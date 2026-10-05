@@ -28,7 +28,7 @@ type CacheEntry = { value: unknown; expiresAt: number };
 
 /**
  * Reader for the Platform-owned key/value store (`platform_config`,
- * CONTEXT → Platform): business-level config the Platform tunes without a code
+ * GLOSSARY → Platform): business-level config the Platform tunes without a code
  * deploy. One accessor per key, so no caller picks its own schema or fallback.
  */
 export interface PlatformConfig {

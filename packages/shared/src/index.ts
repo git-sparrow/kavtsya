@@ -13,7 +13,7 @@ import { z } from "zod";
  *
  * That this is a platform-wide constant rather than a per-Café or
  * Platform-tunable setting is a deliberate v1 decision; the reasoning has one
- * home, **Business day** in `CONTEXT.md`.
+ * home, **Business day** in `GLOSSARY.md`.
  */
 export const KYIV_TIME_ZONE = "Europe/Kyiv";
 
@@ -61,7 +61,7 @@ export const createCafeBodySchema = z.object({
 export type CreateCafeBody = z.infer<typeof createCafeBodySchema>;
 
 /**
- * A Café's Plan (#24, ADR 0011 — per-Café pricing, CONTEXT → Plan). Default
+ * A Café's Plan (#24, ADR 0011 — per-Café pricing, GLOSSARY → Plan). Default
  * `free`; in v1 only the Platform's hand flips it (billing deferred). Read at
  * exactly one server boundary — the requires-Pro guard — never in the loyalty
  * loop.
@@ -92,7 +92,7 @@ export const ownerCafeSchema = cafeSchema.extend({
 export type OwnerCafe = z.infer<typeof ownerCafeSchema>;
 
 /**
- * The platform-default Reward types a Café can choose from (CONTEXT → Reward).
+ * The platform-default Reward types a Café can choose from (GLOSSARY → Reward).
  * The set of types is fixed in code, but *which* of them a Café may pick is
  * gated by the platform-default set stored in `platform_config` (story 38), so
  * the Platform can retire a type without a code deploy.
@@ -128,7 +128,7 @@ export const rewardSchema = z.discriminatedUnion("type", [
 export type Reward = z.infer<typeof rewardSchema>;
 
 /**
- * A Café's loyalty program (CONTEXT → Зернятко, Reward): the Зернятко threshold
+ * A Café's loyalty program (GLOSSARY → Зернятко, Reward): the Зернятко threshold
  * a Customer reaches to redeem, and the chosen Reward. `reward` is null until
  * the CafeOwner picks one. The threshold defaults to 10.
  */
@@ -139,7 +139,7 @@ export const loyaltyProgramSchema = z.object({
 export type LoyaltyProgram = z.infer<typeof loyaltyProgramSchema>;
 
 /**
- * The redemption-readiness rule (CONTEXT → Redemption): a Customer can claim a
+ * The redemption-readiness rule (GLOSSARY → Redemption): a Customer can claim a
  * Reward when the balance meets the Café's threshold and the Café has actually
  * configured a Reward to claim. One predicate, called by the API's authoritative
  * eligibility check and by every mobile display that shows a «готово» state — so

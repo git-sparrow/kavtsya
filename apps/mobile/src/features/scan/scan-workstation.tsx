@@ -35,7 +35,7 @@ import { fontFamily, toShadowStyle, useTheme } from "@/theme";
 const CameraView = CameraViewBase as unknown as ComponentType<CameraViewProps>;
 
 /**
- * Whether the confirm-Redemption action is offered (#22, CONTEXT → Redemption):
+ * Whether the confirm-Redemption action is offered (#22, GLOSSARY → Redemption):
  * the balance covers the Café's threshold and there is a Reward to claim. Thin
  * type-narrowing wrapper over the shared predicate (#113) — the readiness rule
  * itself lives in one place, so the barista's screen and the Customer's home can

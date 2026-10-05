@@ -11,6 +11,10 @@ Issues and PRDs for this repo live as GitHub issues. Use the `gh` CLI for all op
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
 
+Implemented work closes through a merged PR whose body says `Closes #<number>`;
+never close an issue directly for code or docs that have not merged. Direct
+`gh issue close` is for triage outcomes (duplicate, `wontfix`, out of scope).
+
 Infer the repo from `git remote -v` — `gh` does this automatically when run inside a clone.
 
 ## When a skill says "publish to the issue tracker"

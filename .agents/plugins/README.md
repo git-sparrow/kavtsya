@@ -85,10 +85,10 @@ unimplemented because we decided against it, not because it does not work.
 | | |
 | --- | --- |
 | Upstream | [`mattpocock/skills`](https://github.com/mattpocock/skills) |
-| Version | `1.2.3` |
-| Commit | `84fdeffd12f2ee307994d1eb6feb48173b6e0502` (2026-08-06) |
-| Vendored | 2026-08-12, per [#194](https://github.com/git-sparrow/kavtsya/issues/194) |
-| Contents | `.claude-plugin/`, `LICENSE`, and exactly the 25 skill directories `plugin.json` lists |
+| Version | `1.3.1` |
+| Commit | `24fe0ef7737efae15c87225755e9f6f5965e4888` (2026-10-04) |
+| Vendored | 2026-10-05, per [#294](https://github.com/git-sparrow/kavtsya/issues/294) (first: #194) |
+| Contents | `.claude-plugin/`, `LICENSE`, and exactly the 27 skill directories `plugin.json` lists |
 
 Matt's workflow skills — `/tdd`, `/to-spec`, `/to-tickets`, `/triage`, `/domain-modeling`, … These
 replaced 21 hand-vendored copies under `.agents/skills/` plus their `.claude/skills/` symlinks and
@@ -96,7 +96,7 @@ replaced 21 hand-vendored copies under `.agents/skills/` plus their `.claude/ski
 skills, and keeping it faithful is what makes an update a clean re-copy rather than a merge.
 
 Upstream ships more skills than the plugin does (`skills/in-progress/`, most of `skills/misc/`);
-only the 25 in `plugin.json` are vendored, which is what the plugin would have loaded anyway.
+only the 27 in `plugin.json` are vendored, which is what the plugin would have loaded anyway.
 
 ### Why vendored rather than installed from the marketplace
 
@@ -117,13 +117,15 @@ The exception is **`code-review`, which collides with Claude Code's built-in `/c
 built-in wins the bare name against a plugin. So bare `/code-review` is the built-in (effort levels,
 `ultra`, `--fix`, `--comment`) and Matt's two-axis Standards/Spec review is
 **`/mattpocock-skills:code-review`**. Before #194 the vendored copy shadowed the built-in and bare
-`/code-review` was Matt's — that is the one behavioural change from the migration.
+`/code-review` was Matt's — that is the one behavioural change from the migration. A skill that
+says "call the Skill tool with `code-review`" (e.g. `implement-spec`'s close-out) gets the built-in
+too; run Matt's by its namespaced name instead.
 
 ### Updating
 
 Deliberate, never automatic — the same treatment argent gets:
 
-1. Clone upstream and check out the release you want:
+1. Clone upstream and check out the release tag you want (not `main`, which carries unreleased work):
    `git clone https://github.com/mattpocock/skills && git checkout <tag-or-sha>`
 2. Delete `.agents/plugins/mattpocock-skills/` and re-copy `.claude-plugin/`, `LICENSE`, and the
    skill directories named in the new `plugin.json` (drop any that left the manifest, add any new
