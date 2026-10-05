@@ -104,10 +104,10 @@ merge is restrictive, so no machine-level setting can turn it back on. `argent t
 then reports `source: config.json (project and global)`.
 
 Unlike the skill prune above, this one **does not need re-applying after a bump**: verified on
-0.25.2 (2026-09-23) and again on 0.27.0 (2026-10-05) by running a plain `argent init --local -y` afterwards and re-reading the file and
-`telemetry status` — both unchanged. Telemetry is on by the wizard default otherwise, and excludes
-source code, paths, and tool inputs; 0.22 moved its transport from PostHog to OpenTelemetry OTLP
-(v0.22.0 release notes, read 2026-09-23).
+0.25.2 (2026-09-23) and 0.27.0 (2026-10-05) by running a plain `argent init --local` afterwards
+and re-reading the file and `telemetry status` — both unchanged. Telemetry is on by the wizard
+default otherwise, and excludes source code, paths, and tool inputs; 0.22 moved its transport
+from PostHog to OpenTelemetry OTLP (v0.22.0 release notes, read 2026-09-23).
 
 ## Running a session
 
