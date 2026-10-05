@@ -42,7 +42,7 @@ application's AI provider or share subscription credentials between tools.
 
 In Codex, invoke a discovered skill by its displayed name, for example
 `$mattpocock-skills:tdd` or `$verify`. An isolated `skills/list` smoke check with
-Codex CLI 0.155.1 on 2026-09-19 returned Matt's skills with the
+Codex CLI 0.160.0 on 2026-10-05 returned all 27 of Matt's skills with the
 `mattpocock-skills:` prefix, despite their unprefixed `SKILL.md` names.
 In Claude, use `/verify` or the plugin's canonical `/mattpocock-skills:tdd`.
 For Matt's review specifically, select `mattpocock-skills:code-review` from the repository skill
@@ -50,6 +50,13 @@ list in Codex, or `/mattpocock-skills:code-review` in Claude. Do not assume that
 a client's built-in review command runs the pinned skill. If a pinned skill
 mentions a client-specific command, follow its intent using available tools and
 report any unavailable capability; do not rewrite the vendored copy.
+
+`implement-spec` is pinned but **not adopted**. Its parallel implementers would all
+run `tdd` against the shared `kavtsya_test` database (see below), and its close-out
+asks for `code-review` by bare name, which in Claude resolves to the built-in
+review rather than Matt's. Implement tickets one at a time with `implement` or
+`tdd` until per-task test databases are provisioned; then run
+`mattpocock-skills:code-review` explicitly.
 
 The Expo plugin remains configured for Claude in `.claude/settings.json`. It is
 not installed for Codex by this change. For Codex Expo work, use the shared Argent

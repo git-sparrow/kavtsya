@@ -22,7 +22,7 @@ export function fixedClock(instant: Date): Clock {
 /**
  * The business day is the Europe/Kyiv calendar day, not the server/UTC one:
  * Ukrainian cafés must not see a day roll over mid-evening (see **Business day**
- * in `CONTEXT.md`). Shared by the Ворожка pool (ADR 0009) and the manual-entry
+ * in `GLOSSARY.md`). Shared by the Ворожка pool (ADR 0009) and the manual-entry
  * ceiling (#21).
  *
  * The rule is encoded twice — in JS here and in SQL further down — because both

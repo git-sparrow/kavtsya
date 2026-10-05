@@ -106,7 +106,7 @@ test("a Redemption subtracts the threshold, preserving leftover Зернятка
   );
 
   expect(res.status).toBe(201);
-  // CONTEXT → Redemption: balance 4, threshold 3 → 1; subtract, not reset to 0.
+  // GLOSSARY → Redemption: balance 4, threshold 3 → 1; subtract, not reset to 0.
   expect(redemptionResultSchema.parse(await res.json())).toEqual({
     balance: 1,
     beansSpent: 3,

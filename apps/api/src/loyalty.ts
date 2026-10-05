@@ -3,7 +3,7 @@ import { loyaltyProgramSchema } from "@kavtsya/shared";
 import type { Database } from "./db";
 
 /**
- * The loyalty program a Café runs (CONTEXT → Зернятко, Reward) and the
+ * The loyalty program a Café runs (GLOSSARY → Зернятко, Reward) and the
  * platform-default Reward set it chooses from.
  *
  * The program lives on the `cafes` row (1:1 in v1): the Зернятко `threshold`

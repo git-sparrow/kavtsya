@@ -1,7 +1,7 @@
 import type { Database, Queryable } from "../../src/db";
 
 /**
- * Everything the harness knows about `platform_config` (CONTEXT → Platform):
+ * Everything the harness knows about `platform_config` (GLOSSARY → Platform):
  * the shipped defaults, the run-scoped reset that restores them, and the
  * with-config helpers a test uses to tune a knob for one body.
  *

@@ -56,7 +56,7 @@ drift check reads the registry, so an offline push can land there too.
    ```
 
 2. **Make the change.** Match the surrounding code. Use the domain glossary in
-   [`CONTEXT.md`](CONTEXT.md) exactly — **Зернятко** not "point/stamp",
+   [`GLOSSARY.md`](GLOSSARY.md) exactly — **Зернятко** not "point/stamp",
    **CafeOwner** not "owner", **Purchase** not "transaction", **Ворожка** for
    the coffee fortune. Product bar and priorities live in
    [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md) and [`AGENTS.md`](AGENTS.md).

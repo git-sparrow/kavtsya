@@ -14,4 +14,4 @@ Two snapshots keep history correct as configuration drifts: a Redemption stores 
 
 This is also the more instructive thing to build for the project's backend-fundamentals goal, and it is pure SQL — squarely in the spirit of ADR 0005 (raw SQL, no ORM). The trade-off is more rows and a derivation query instead of a single column read; the `cached_balance` covers the hot path, and a periodic check that `cached_balance` equals the derived value is a strong invariant test.
 
-We use two tables (`purchases`, `redemptions`) rather than one signed-`delta` ledger because Purchase and Redemption are distinct first-class terms in CONTEXT.md and their queries differ; keeping them separate makes the schema read like the domain.
+We use two tables (`purchases`, `redemptions`) rather than one signed-`delta` ledger because Purchase and Redemption are distinct first-class terms in GLOSSARY.md and their queries differ; keeping them separate makes the schema read like the domain.

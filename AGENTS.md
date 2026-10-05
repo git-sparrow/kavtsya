@@ -4,7 +4,7 @@
 
 ## Status
 
-**Build phase** — scope and architecture are locked. Current status — what's merged and what's next — has exactly **one home**: the Status line + Roadmap in [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md). Don't restate it here or anywhere else (#118); update it there when a slice lands. See `CONTEXT.md` for the domain glossary and `docs/adr/` for architecture decisions.
+**Build phase** — scope and architecture are locked. Current status — what's merged and what's next — has exactly **one home**: the Status line + Roadmap in [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md). Don't restate it here or anywhere else (#118); update it there when a slice lands. See `GLOSSARY.md` for the domain glossary and `docs/adr/` for architecture decisions.
 
 ## What this is
 
@@ -27,13 +27,13 @@ See the Tech stack table in `PROJECT_BRIEF.md` and `docs/adr/` for full rational
 ## Working agreement
 
 - **Deliver via PR, never commit to `main`.** Every feature/fix/doc change goes on a branch and merges through a GitHub PR — this holds for agents too, no direct commits to the default branch. A `.husky/pre-push` guard blocks direct pushes locally; GitHub-side branch protection switches on once the repo is public or on a paid plan. Full workflow (branch naming, the `pnpm verify` gate, commit style) is in `CONTRIBUTING.md`.
-- Use the domain glossary in `CONTEXT.md` consistently — **Зернятко** not "stamp/point", **CafeOwner** not "owner", **Purchase** not "transaction".
+- Use the domain glossary in `GLOSSARY.md` consistently — **Зернятко** not "stamp/point", **CafeOwner** not "owner", **Purchase** not "transaction".
 - Keep it simple: no redundant functionality or documentation. Tasks state intended
   behavior; code and tests are the source of truth for implemented behavior. Reserve
   docs for durable decisions and procedures that cannot be inferred from them.
   Prefer clear names, types, and tests over comments. Keep comments for non-obvious
   contracts, constraints, or reasons; avoid restating code or issue history.
-- Shared skills live in `.agents/skills/`. Matt Pocock's 25 skills are pinned, unmodified under `.agents/plugins/mattpocock-skills/`; Codex discovers relative symlinks and Claude loads the existing plugin. Setup, invocation and deliberate updates: `.agents/plugins/README.md` and `docs/agents/workflow.md`.
+- Shared skills live in `.agents/skills/`. Matt Pocock's 27 skills are pinned, unmodified under `.agents/plugins/mattpocock-skills/`; Codex discovers relative symlinks and Claude loads the existing plugin. Setup, invocation and deliberate updates: `.agents/plugins/README.md` and `docs/agents/workflow.md`.
 - Before starting or handing off work, read `docs/agents/workflow.md`. One active editor per checkout; use separate worktrees for concurrent implementation. Coordinate test databases, dev servers and devices explicitly.
 - Run the shared `verify` skill before committing or opening a PR. `pnpm agents:check` validates the repository agent wiring and is included in `pnpm verify`.
 
@@ -50,7 +50,7 @@ The bar for every change. When these collide, resolve in priority order: **secur
 ## Key files
 
 - `PROJECT_BRIEF.md` — source of truth for scope, decisions, naming, roadmap.
-- `CONTEXT.md` — domain glossary (Зернятко, CafeOwner, Ворожка, Purchase, Reward, Plan, …).
+- `GLOSSARY.md` — domain glossary (Зернятко, CafeOwner, Ворожка, Purchase, Reward, Plan, …).
 - `docs/adr/` — architecture decision records.
 - `docs/agents/workflow.md` — setup, tool-specific configuration, resource ownership and handoffs.
 
@@ -66,7 +66,7 @@ Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, 
 
 ### Domain docs
 
-Single-context layout — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context layout — one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
 ### Dependency updates
 

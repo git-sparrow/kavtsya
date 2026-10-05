@@ -48,7 +48,7 @@ export type ConfirmRedemptionOutcome =
   | { ok: false; reason: ConfirmRedemptionRejection };
 
 /**
- * Whether a confirm is allowed (CONTEXT → Redemption): the balance must meet
+ * Whether a confirm is allowed (GLOSSARY → Redemption): the balance must meet
  * the Café's threshold and the Café must have a Reward to claim. Carries the
  * Reward through on success, so an eligible Redemption provably has one.
  */
@@ -79,7 +79,7 @@ export function redemptionEligibility({
 }
 
 /**
- * The subtract-threshold rule (CONTEXT → Redemption): a confirm spends exactly
+ * The subtract-threshold rule (GLOSSARY → Redemption): a confirm spends exactly
  * the threshold at confirm time — that is the snapshot `beans_spent` — and the
  * leftover Зернятка remain (balance 23, threshold 10 → 13; never reset to 0).
  */
