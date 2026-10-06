@@ -68,6 +68,16 @@ The existing GitHub `@claude` workflow remains as configured. Local Codex use do
 not require a second GitHub AI workflow. Neither setup grants an agent permission
 to merge or expands the task the user authorized.
 
+### GitHub access from a sandboxed agent
+
+If `gh` reports that it cannot connect to `api.github.com`, check the cause before
+retrying: compare `curl -I --max-time 8 https://api.github.com` inside and outside
+the sandbox, then run `gh auth status` without printing a token. A sandbox DNS
+failure calls for the approved network escalation; an invalid `gh` credential is
+a separate sign-in problem that escalation cannot fix. A signed-in browser may
+still provide access. If no route yields the requested reviews, report the exact
+blocker and do not present a partial review as complete.
+
 ## Taking turns: implementation and review
 
 1. Start from an issue with acceptance criteria; follow `CONTRIBUTING.md` for
