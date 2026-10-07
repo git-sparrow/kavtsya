@@ -36,6 +36,7 @@ See the Tech stack table in `PROJECT_BRIEF.md` and `docs/adr/` for full rational
 - Shared skills live in `.agents/skills/`. Matt Pocock's 27 skills are pinned, unmodified under `.agents/plugins/mattpocock-skills/`; Codex discovers relative symlinks and Claude loads the existing plugin. Setup, invocation and deliberate updates: `.agents/plugins/README.md` and `docs/agents/workflow.md`.
 - Before starting or handing off work, read `docs/agents/workflow.md`. One active editor per checkout; use separate worktrees for concurrent implementation. Coordinate test databases, dev servers and devices explicitly.
 - Run the shared `verify` skill before committing or opening a PR. `pnpm agents:check` validates the repository agent wiring and is included in `pnpm verify`.
+- Code review, by any reviewer, applies `CODING_STANDARDS.md`.
 
 ## Product principles
 
