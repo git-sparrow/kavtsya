@@ -1,6 +1,6 @@
 # Coding standards
 
-The reviewer agent applies these during code review (the Standards axis of `mattpocock-skills:code-review`). This file holds only **judgement calls**. Anything a tool can check belongs in ESLint, TypeScript, a test or CI, and the reviewer skips findings those tools already report.
+Reviewers, human or agent, apply these during code review. This file holds only **judgement calls**. Anything a tool can check belongs in ESLint, TypeScript, a test or CI, and the reviewer skips findings those tools already report.
 
 Each rule says what to look for in a diff and what the fix is. Report a likely breach with the hunk you are quoting, as a judgement call.
 
