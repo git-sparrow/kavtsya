@@ -71,12 +71,13 @@ to merge or expands the task the user authorized.
 ### GitHub access from a sandboxed agent
 
 Inside a network-restricted sandbox, `gh` cannot reach `api.github.com`, and
-`gh auth status` then reports a valid token as "invalid". Do not conclude the
-credential is bad from a sandboxed run: re-run the `gh` command with the approved
-network escalation. Only an "invalid" result from `gh auth status` **outside** the
-sandbox means the user needs to re-authenticate (`gh auth login`). If no route
-yields the requested GitHub work, report the exact blocker and do not present a
-partial review as complete.
+`gh auth status` may report a valid token as "invalid". Re-run the requested
+`gh` command with the approved network escalation before diagnosing the
+credential. If `gh auth status` still reports "invalid", confirm GitHub is
+reachable outside the sandbox before asking the user to re-authenticate
+(`gh auth login`): a blocked network can produce the same message there. If no
+route yields the requested GitHub work, report the exact blocker and do not
+present a partial review as complete.
 
 ## Taking turns: implementation and review
 
