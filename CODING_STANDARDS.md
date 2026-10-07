@@ -14,7 +14,7 @@ Each rule says what to look for in a diff and what the fix is. Report a likely b
 
 ### Kept promises
 
-A **stated guarantee** is an ADR, doc comment or code comment that promises behaviour, such as "never blocked", "at most 31 days after expiry" or "only the owner can confirm".
+A **stated guarantee** is an ADR, doc comment or code comment that promises behaviour, such as "never blocked", "sent at most once a day" or "only the owner can confirm".
 
 - **Look for:** a diff that changes, or fails to deliver, behaviour a guarantee describes. This includes widening who can reach a guarded code path.
 - **Fix:** restore the promised behaviour, or change the governing ADR or comment on purpose and say why in the diff. Either way, a test asserts the behaviour the guarantee now states.
