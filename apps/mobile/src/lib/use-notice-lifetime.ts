@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 
 /**
- * How long a floating notice stays on screen (#219).
+ * How long a floating notice stays on screen.
  *
  * - `transient` — informational, leaves on its own after a few seconds
  *   («зміну завершено»: the Mode already changed; this only says why).
@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef } from "react";
  */
 export type NoticeLifetime = "transient" | "persistent";
 
-/** How long a transient notice stays before it leaves by itself (#99). */
+/** How long a transient notice stays before it leaves by itself. */
 export const TRANSIENT_NOTICE_MS = 5000;
 
 /**

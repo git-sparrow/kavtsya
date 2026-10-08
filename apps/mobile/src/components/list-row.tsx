@@ -8,11 +8,8 @@ import { Toggle } from "@/components/toggle";
 import { fontFamily, toShadowStyle, useTheme } from "@/theme";
 
 /**
- * A grouped list container (shared-component catalog §16): a `surface` card with
- * a hairline `border`, holding `ListRow`s / `ToggleRow`s separated by hairline
- * dividers. The card clips its rows so a row's press highlight never spills past
- * the rounded corners. Used for the owner home's management / growth menus (3a)
- * and Settings groups (4a).
+ * A grouped list card. It clips its rows so a row's press highlight never spills
+ * past the rounded corners.
  */
 export function ListGroup({ children }: { children: ReactNode }) {
   const t = useTheme();
@@ -44,14 +41,12 @@ export function ListGroup({ children }: { children: ReactNode }) {
 }
 
 /**
- * How a row reads: `default`, or `danger` for the one row in Settings that
- * destroys something («Видалити акаунт», #143 screen 4a). Danger colours the
- * title and the leading glyph — the row still only *opens* the confirm dialog,
- * so the colour is a warning, not the action.
+ * `danger` marks a row that destroys something («Видалити акаунт»). The row
+ * still only *opens* the confirm dialog, so the colour is a warning, not the
+ * action.
  */
 export type RowTone = "default" | "danger";
 
-/** Shared row frame: 52pt min height, leading icon, pressed highlight. */
 function rowStyle(t: ReturnType<typeof useTheme>) {
   return ({ pressed }: { pressed: boolean }) => ({
     flexDirection: "row" as const,
@@ -64,7 +59,6 @@ function rowStyle(t: ReturnType<typeof useTheme>) {
   });
 }
 
-/** Title (+ optional caption) column shared by both row kinds. */
 function RowText({
   title,
   caption,
@@ -102,12 +96,10 @@ function RowText({
 }
 
 /**
- * One navigation / action row inside a `ListGroup` (§16): a leading line icon, a
- * title, an optional caption + **PRO** badge, and a trailing chevron. The whole
- * 52pt row is the touch target. `chevron={false}` drops the disclosure arrow for
- * an action row that stays on-screen (e.g. «Зареєструвати ще одну»). When
- * `badge` is set the accessible name folds it in (the pill is decorative), so a
- * screen-reader hears «Аналітика, PRO».
+ * A navigation / action row inside a `ListGroup`. `chevron={false}` drops the
+ * disclosure arrow for an action row that stays on-screen (e.g. «Зареєструвати
+ * ще одну»). When `badge` is set the accessible name folds it in (the pill is
+ * decorative), so a screen-reader hears «Аналітика, PRO».
  */
 export function ListRow({
   icon,
@@ -126,12 +118,7 @@ export function ListRow({
   badge?: string;
   chevron?: boolean;
   tone?: RowTone;
-  /**
-   * Freeze the row while its action is in flight — same contract as `ToggleRow`.
-   * It dims AND announces itself as unavailable, so the wait is visible to a
-   * sighted user and to a screen-reader user alike, rather than the row simply
-   * swallowing taps.
-   */
+  /** Freeze the row while its action is in flight. */
   disabled?: boolean;
   onPress: () => void;
   testID?: string;
@@ -163,10 +150,9 @@ export function ListRow({
 }
 
 /**
- * A single-choice group of `RadioRow`s inside a `ListGroup` (§16 + §05): the
- * container is announced as ONE radio group, labelled by the section kicker
- * above it, so a screen-reader user hears «ВИГЛЯД, 1 з 3» rather than three
- * unrelated controls. Used for Settings → ВИГЛЯД (#162).
+ * A single-choice group of `RadioRow`s inside a `ListGroup`: the container is
+ * announced as ONE radio group, labelled by the section kicker above it, so a
+ * screen-reader user hears «ВИГЛЯД, 1 з 3» rather than three unrelated controls.
  */
 export function RadioRowGroup({
   label,
@@ -183,12 +169,11 @@ export function RadioRowGroup({
 }
 
 /**
- * A settings choice row (§16 + the §05 radio card's selection cue): a leading
- * line icon, a title, an optional caption, and the trailing 22px radio. The
- * whole 52pt row is the `radio` — one accessible node carrying the label,
- * caption, and checked state, so the dot itself stays decorative and the entire
- * row is the target. Tapping an already-selected row is a no-op by design: a
- * radio group is left through another option, never emptied.
+ * A settings choice row. The whole row is the `radio` — one accessible node
+ * carrying the label, caption, and checked state, so the dot itself stays
+ * decorative and the entire row is the target. Tapping an already-selected row
+ * is a no-op by design: a radio group is left through another option, never
+ * emptied.
  */
 export function RadioRow({
   icon,
@@ -223,12 +208,10 @@ export function RadioRow({
 }
 
 /**
- * A settings toggle row (§16 toggle variant + §17): title, scope caption, and a
- * trailing `Toggle` knob. The **whole row is the `switch`** — one accessible
- * node carrying the label, caption, and on/off state, announced увімкнено /
- * вимкнено — so the entire 52pt row toggles and a screen-reader hears a single
- * control rather than a switch nested in a button (the knob itself is
- * decorative). `disabled` freezes it while the choice is saving.
+ * A settings toggle row. The **whole row is the `switch`** — one accessible node
+ * carrying the label, caption, and on/off state, announced увімкнено / вимкнено —
+ * so the entire row toggles and a screen-reader hears a single control rather
+ * than a switch nested in a button (the knob itself is decorative).
  */
 export function ToggleRow({
   title,

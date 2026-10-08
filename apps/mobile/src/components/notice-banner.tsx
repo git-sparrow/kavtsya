@@ -17,28 +17,25 @@ import { useNoticeLifetime } from "@/lib/use-notice-lifetime";
 import { useTheme } from "@/theme";
 
 /**
- * A floating notice over a Mode surface (catalog §9b, #219). Not a new anatomy:
- * it is `StatusStrip` in a different placement — anchored under the safe area,
- * elevated over the Mode's own layout so it never pushes it around.
+ * A floating notice over a Mode surface: `StatusStrip` in a different placement —
+ * anchored under the safe area, elevated over the Mode's own layout so it never
+ * pushes it around.
  *
  * The shell adds only what the placement needs:
- * - a `surface`-backed card with a `border-strong` outline, painted in the
- *   strip's own tint so the strip and its controls read as one card;
  * - a short fade/slide in on mount (skipped under Reduce Motion), and an
  *   announcement of its title + detail — something changed under the reader
  *   that they cannot see;
- * - a ✕ and an optional `action` row (a retry, under the copy);
  * - a lifetime that follows from the intent: `danger` stays until acted on (an
  *   error never auto-dismisses), anything else leaves by itself. Either way the
  *   exit runs before `onDismiss`, so the caller's state outlives what is still
  *   showing.
  *
  * Two notices that want the slot at once are the caller's call — there is no
- * queue here on purpose (#219: a host is deferred until a third caller).
+ * queue here on purpose.
  *
  * A notice is its message: when the title or detail changes, the card remounts.
  * The new message is news — it enters and is announced afresh — and a ✕ exit
- * still running for the old one cannot dismiss it on finishing (PR #279).
+ * still running for the old one cannot dismiss it on finishing.
  */
 export function NoticeBanner(props: NoticeProps) {
   return (
