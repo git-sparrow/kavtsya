@@ -30,6 +30,9 @@ your output must be checked first — no judgement call involved:
 
 - a version number or range (`test-renderer@1.2.0`, "needs vitest >= 4")
 - a third-party API, method, option, or config key (`refetchInterval`, `minimumReleaseAgeExclude`)
+- a config file, project layout, import path or scaffold for a tool — take it from the docs for
+  the installed major, or from the vendor's official scaffolder, never from memory. A new major
+  moves exactly these, and checking the version number does not catch it (#303)
 - a size, benchmark, or performance figure ("~13kb", "3× faster")
 - a claim shaped like "X supports Y" / "X requires Y" / "X deprecated Y"
 - **how the tooling you are operating inside behaves** — Claude Code settings keys, plugin /
@@ -131,6 +134,14 @@ pnpm why <pkg>                                       # what already pulls it in
 ```
 
 Then install it and run the gate before recommending it, not after.
+
+**Use the latest stable version** that the dependency's version authority allows (see the
+version-authority model in `dependency-updates.md`: the Expo SDK, not npm `latest`, sets the
+Expo-governed surface). A previous major, an older minor, or a version held back by pnpm's
+release-age quarantine is a decision, not a default: state the reason and get the maintainer's
+approval before installing. In #303 the version was looked up and then silently overruled
+(`@sveltejs/kit` 2.70.3 installed while 3.0.1 was `latest`), so a check that passes is not enough
+on its own.
 
 ## Confirmed endpoints (checked 2026-06-26)
 
