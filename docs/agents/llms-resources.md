@@ -139,9 +139,7 @@ Then install it and run the gate before recommending it, not after.
 version-authority model in `dependency-updates.md`: the Expo SDK, not npm `latest`, sets the
 Expo-governed surface). A previous major, an older minor, or a version held back by pnpm's
 release-age quarantine is a decision, not a default: state the reason and get the maintainer's
-approval before installing. In #303 the version was looked up and then silently overruled
-(`@sveltejs/kit` 2.70.3 installed while 3.0.1 was `latest`), so a check that passes is not enough
-on its own.
+approval before installing.
 
 ## Confirmed endpoints (checked 2026-06-26)
 
