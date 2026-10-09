@@ -5,12 +5,11 @@ import type { AppEnv } from "./app";
 import type { AuthSession, AuthUser } from "./auth";
 
 /**
- * The protected-route guard (#51). Authentication used to be eight — then
- * twenty-two — copies of the same `if (!user) return 401` at the top of every
- * handler. One missed copy on a future route is a silent authorization hole,
- * and no compiler catches a check that simply is not there.
+ * The protected-route guard. A per-handler `if (!user) return 401` is one missed
+ * copy away from a silent authorization hole, and no compiler catches a check
+ * that simply is not there.
  *
- * So the guard moved to the app-composition seam and inverted: it runs on
+ * So the guard sits at the app-composition seam, inverted: it runs on
  * everything, and the *public* surface is the short list that names itself
  * (see `PUBLIC_PATHS` in `app.ts`). A route added tomorrow is protected before
  * anyone thinks about it; a public one forgotten on the list answers 401 —
@@ -19,9 +18,7 @@ import type { AuthSession, AuthUser } from "./auth";
 
 /**
  * The request context downstream of {@link requireUser}: the session is no
- * longer a maybe. Handlers registered on a `Hono<AuthedEnv>` read
- * `c.get("user")` as a plain {@link AuthUser} — no null check to forget, no
- * cast, no `!`. It extends {@link AppEnv} rather than replacing it so the
+ * longer a maybe. It extends {@link AppEnv} rather than replacing it so the
  * narrowed view stays assignable to the app it is a view of.
  */
 export type AuthedEnv = {
@@ -31,7 +28,7 @@ export type AuthedEnv = {
   };
 };
 
-/** The 401 body an unauthenticated request gets — the only 401 the guard sends. */
+/** The only 401 the guard sends. */
 const unauthorized = { error: "unauthorized" } as const;
 
 /**
@@ -64,8 +61,7 @@ export function requireUser(
   publicPaths: readonly string[],
 ): MiddlewareHandler<AuthedEnv> {
   // `except` is declared over a loose `MiddlewareHandler`, which erases the env
-  // it wraps. The return type above restates it — and it is exactly what
-  // `guard` is typed to deliver, so nothing is being claimed that isn't proven
-  // a few lines up.
+  // it wraps. The return type above restates it — exactly what `guard` is typed
+  // to deliver.
   return except([...publicPaths], guard);
 }

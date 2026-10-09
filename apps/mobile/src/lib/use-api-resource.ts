@@ -2,7 +2,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * One API read, as a screen sees it (#53). Every data-loading hook in the app is
+ * One API read, as a screen sees it. Every data-loading hook in the app is
  * built on this, so "loading", "failed", and "cancelled after I left" mean the
  * same thing everywhere instead of being re-derived per hook.
  */
@@ -42,16 +42,12 @@ type State<T> = Pick<ApiResource<T>, "data" | "error" | "loading"> & {
   churn: number;
 };
 
-/**
- * Where every resource starts, and where it returns whenever the question
- * changes: nothing known, nothing wrong, still waiting.
- */
 function nothingKnownYet<T>(answers: () => Promise<T>, churn = 0): State<T> {
   return { data: null, error: null, loading: true, answers, churn };
 }
 
 /**
- * Loads an API resource once on mount and hands back its state (#53).
+ * Loads an API resource once on mount and hands back its state.
  *
  * `load` must be stable — wrap it in `useCallback` keyed by whatever identifies
  * the resource (a `cafeId`, a period). Its identity IS the identity of the
@@ -66,10 +62,9 @@ function nothingKnownYet<T>(answers: () => Promise<T>, churn = 0): State<T> {
  *   frame — would paint one Café's numbers under another's name.
  *
  * Forgetting `useCallback` therefore reads as "a brand new resource on every
- * render", and that now fails loudly rather than quietly. The first response
- * starts a reset-and-re-render loop, which React ends by throwing at its own
- * re-render limit — after a single request, with `warnOnRunawayReloads` getting
- * a line in first that names the fix.
+ * render". The first response starts a reset-and-re-render loop, which React
+ * ends by throwing at its own re-render limit — after a single request, with
+ * `warnOnRunawayReloads` getting a line in first that names the fix.
  *
  * Be clear about the trade: that throw is NOT development-only. Only the warning
  * is. A screen shipped with an unstable `load` crashes on the user's phone
@@ -137,7 +132,7 @@ export function useFocusedApiResource<T>(
 const CHURN_LIMIT = 10;
 
 /**
- * The one way to hold this hook wrong, made loud in development (#190).
+ * The one way to hold this hook wrong, made loud in development.
  *
  * An unstable `load` means every render looks like a different resource, so the
  * hook resets, re-renders, and looks again — forever. React's own re-render
@@ -145,8 +140,7 @@ const CHURN_LIMIT = 10;
  * names neither this hook nor the fix. This gets in first and does.
  *
  * Fires on the crossing rather than on every change, so a loop leaves a line or
- * two to read rather than burying the console. Silent in production, where a
- * `console.warn` helps nobody.
+ * two to read rather than burying the console.
  */
 function warnOnRunawayReloads(churn: number): void {
   if (!__DEV__ || churn !== CHURN_LIMIT) return;
@@ -159,11 +153,6 @@ function warnOnRunawayReloads(churn: number): void {
   );
 }
 
-/**
- * The shared core: the state, the fetch, and the two ways a response can be
- * obsolete by the time it lands. Neither entry point loads anything itself —
- * they only differ in what triggers `reload`.
- */
 function useResource<T>(
   load: () => Promise<T>,
   fallback: string,
