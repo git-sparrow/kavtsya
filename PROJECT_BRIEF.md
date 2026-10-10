@@ -119,18 +119,18 @@ Every design question that once blocked the PRD (2026-06-15 review) or gated the
 
 ## ⏳ Open action items
 
-- [ ] **Reserve the brand** — buy `kavtsya.com` and `kavtsya.app` (consider `.com.ua` too) via [Porkbun](https://porkbun.com) or Namecheap, and grab the `@kavtsya` social handles. _Do this soon — the name is unclaimed but not yet secured._
+- [ ] **Reserve the brand** (#1) — ~~buy `kavtsya.com` and `kavtsya.app`~~ ✓ registered 2026-10-10 at Cloudflare Registrar (auto-renew; DNS on Cloudflare). Remaining: `kavtsya.com.ua` (Ukrainian registrar) and the `@kavtsya` social handles.
 - [x] ~~Remove the stale `~/dev/claude-skills/mattp.skills/.git/index.lock`.~~ ✓ done 2026-06-13
 
 ## Name — **Кавця / "Kavtsya"** ✓
 
 Chosen: **Кавця**, an affectionate diminutive of *кава* ("lil' coffee"). Latin brand spelling **Kavtsya** (pron. KAHV-tsya). The post-Purchase fortune feature is branded **Ворожка** ("the fortune-teller") inside the app.
 
-Availability (checked 2026-06-13): no app named Kavtsya/Кавця on either store, no matching coffee brand/trademark, domains appear free (no live site / search footprint). One adjacent name to note: existing retailer «Кавуська». _To finish manually: grab `kavtsya.com`/`.app` at a registrar; confirm in-store search; optional Ukrpatent/EUIPO check (classes 42/43)._
+Availability (checked 2026-06-13): no app named Kavtsya/Кавця on either store, no matching coffee brand/trademark, domains appear free (no live site / search footprint). One adjacent name to note: existing retailer «Кавуська». _`kavtsya.com`/`.app` registered 2026-10-10. To finish manually: confirm in-store search; optional Ukrpatent/EUIPO check (classes 42/43)._
 
 ## Roadmap
 
-1. ~~Finalize the name.~~ ✓ **Kavtsya** (pending registrar purchase)
+1. ~~Finalize the name.~~ ✓ **Kavtsya** (`kavtsya.com` + `kavtsya.app` registered 2026-10-10)
 2. ~~Finalize feature scope + AI scope.~~ ✓ done 2026-06-15 (see Feature tiers above)
 3. ~~Tech / architecture plan.~~ ✓ done 2026-06-15 (see Tech stack above + `docs/adr/`)
 4. ~~PRD → issues.~~ ✓ done — tracked in [GitHub Issues](https://github.com/git-sparrow/kavtsya/issues).
