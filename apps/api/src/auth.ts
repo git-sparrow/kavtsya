@@ -53,5 +53,8 @@ export function createAuth({
     // auth rate limiter keys on it (checked against 1.7.5, see ADR 0018).
     // Expired sessions carrying the IP are deleted after
     // `SESSION_RETENTION_DAYS` by `session-retention.ts`.
+    // Railway's edge sets the client IP in `X-Real-IP`; the default
+    // `x-forwarded-for` would leave every client in one rate-limit bucket.
+    advanced: { ipAddress: { ipAddressHeaders: ["x-real-ip"] } },
   });
 }

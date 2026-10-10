@@ -97,3 +97,17 @@ test("login with a wrong password is rejected", async () => {
 
   expect(login.status).toBe(401);
 });
+
+test("the session records the client IP from Railway's X-Real-IP header", async () => {
+  const res = await app().request("/api/auth/sign-up/email", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-real-ip": "203.0.113.7" },
+    body: JSON.stringify(CUSTOMER),
+  });
+  expect(res.status).toBe(200);
+
+  const rows = await db<{ ipAddress: string }[]>`
+    select "ipAddress" from "session"
+  `;
+  expect(rows).toEqual([{ ipAddress: "203.0.113.7" }]);
+});
