@@ -11,11 +11,11 @@ packages:
 # Expo SDK via `expo install` and managed on the deliberate Expo track.
 catalog:
   typescript: ~6.0.3
-  vitest: ^5.0.1
-  vite: ^8.3.0
+  vitest: ^5.0.3
+  vite: ^8.3.3
   zod: ^4.6.5
-  better-auth: ^1.7.5
-  "@better-auth/expo": ^1.7.5
+  better-auth: ^1.7.7
+  "@better-auth/expo": ^1.7.7
 allowBuilds:
   # @swmansion/argent and its native deps (node-pty, tree-sitter*, webtransport)
   "@fails-components/webtransport-transport-http3-quiche": true

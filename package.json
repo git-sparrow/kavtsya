@@ -31,10 +31,10 @@
     "eslint-config-expo": "^57.0.0",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
-    "lint-staged": "^17.5.1",
-    "prettier": "^3.9.8",
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.9.9",
     "railway": "^3.13.1",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.70.0"
+    "typescript-eslint": "^8.71.1"
   }
 }
