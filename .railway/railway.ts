@@ -41,7 +41,6 @@ export default defineRailway(() => {
     replicas: { [REGION]: 1 },
     preDeploy: "node --import tsx scripts/migrate.ts",
     healthcheck: "/health",
-    domains: ["api.kavtsya.com"],
     env: {
       DATABASE_URL: db.env.DATABASE_URL,
       BETTER_AUTH_URL: "https://api.kavtsya.com",
@@ -50,8 +49,8 @@ export default defineRailway(() => {
     },
   });
 
-  // Railway cron runs in UTC; each job exits when done and is idempotent, so a
-  // retry is harmless. Europe/Kyiv midnight is 21:00 UTC (summer) or 22:00
+  // Railway cron runs in UTC and keeps cron services on restart policy NEVER;
+  // each job exits when done and is idempotent, so the next run is the retry. Europe/Kyiv midnight is 21:00 UTC (summer) or 22:00
   // UTC (winter).
   const cron = (
     script: string,
@@ -63,11 +62,7 @@ export default defineRailway(() => {
       build,
       replicas: { [REGION]: 1 },
       start: `node --import tsx scripts/${script}.ts`,
-      deploy: {
-        cronSchedule,
-        restartPolicyType: "ON_FAILURE",
-        restartPolicyMaxRetries: 3,
-      },
+      deploy: { cronSchedule, restartPolicyType: "NEVER" },
       env: { DATABASE_URL: db.env.DATABASE_URL, ...env },
     });
 
