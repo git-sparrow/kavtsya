@@ -9,7 +9,7 @@ Honest framing first: the real competitor is not Expirenza — it is the **paper
 3. **Founding-café pilot.** First 5–10 Cafés get Pro free forever, in one neighborhood, in exchange for feedback + a table tent on every table. What we're buying is the **repeat-visit-rate** number — the only metric that sells Café #11.
 4. **Validate Ворожка before the app carries it.** A web/Instagram «ворожіння на кавовій гущі» costs a weekend, builds the brand's social footprint, and tests whether people actually share fortunes — de-risking the shareable-card backlog item for free.
 5. **Reframe the Pro pitch from "analytics" to "she came back".** Owners don't buy dashboards; they buy "Kavtsya brought Олена back after 3 weeks" — the AI win-back story ADR 0011 already names as the hero. The first Pro artifact should be a concrete win-back message, not a chart. (Related trial-design caveat: a 14-day trial of analytics over 14 days of data shows almost nothing — the trial should showcase outreach, which works from day one. See also #119, the weekly owner digest.)
-6. **Buy the domains** (#1) — the cheapest risk-elimination on the board.
+6. **Buy the domains** (#1) — the cheapest risk-elimination on the board. _(`kavtsya.com` + `kavtsya.app` registered 2026-10-10; `.com.ua` and social handles still open.)_
 
 Added 2026-07-07 (second brainstorm):
 
