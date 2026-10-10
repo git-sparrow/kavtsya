@@ -21,10 +21,14 @@ const build: BuildConfig = {
   builder: "DOCKERFILE",
   dockerfilePath: "apps/api/Dockerfile",
   watchPatterns: [
-    "apps/api/**",
-    "packages/shared/**",
-    "pnpm-lock.yaml",
-    ".dockerignore",
+    "/apps/api/**",
+    "/packages/shared/**",
+    "/package.json",
+    "/pnpm-lock.yaml",
+    "/pnpm-workspace.yaml",
+    "/.npmrc",
+    "/tsconfig.base.json",
+    "/.dockerignore",
   ],
 };
 
