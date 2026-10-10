@@ -1,0 +1,6 @@
+# Build context for apps/api/Dockerfile — only the API's workspace slice.
+**/node_modules
+.git
+apps/mobile
+**/.env
+**/.env.*
