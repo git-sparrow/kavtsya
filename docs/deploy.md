@@ -29,6 +29,21 @@ Railway doesn't read `.railway/` during deploys — an edit takes effect only
 when applied. Never change service settings in the dashboard; the next apply
 reverts them.
 
+Re-run `railway config plan` after every apply until it reports no changes:
+on 2026-10-10 the first apply created the database in the default region
+(US East) despite `region`, and skipped `checkSuites` on new services; a second
+apply fixed both. For an apply that needs confirmation, pin the reviewed plan:
+
+```bash
+railway config plan --out plan.json
+railway config apply --plan plan.json
+```
+
+`api.kavtsya.com` can't be registered from the file. Attach it only after
+security Gate A in [#310](https://github.com/git-sparrow/kavtsya/issues/310)
+is cleared: add it once with `railway domain api.kavtsya.com -s api`, then
+declare it in `domains`.
+
 ## Secrets
 
 Secrets are set once with the CLI and stay on Railway; the IaC file only marks

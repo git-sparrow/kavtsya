@@ -28,12 +28,12 @@
     "hono": "^4.13.8",
     "pg": "^8.23.0",
     "postgres": "^3.4.5",
+    "tsx": "^4.23.15",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "^26",
     "@types/pg": "^8.23.1",
-    "tsx": "^4.23.15",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
