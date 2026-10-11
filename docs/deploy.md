@@ -39,8 +39,10 @@ railway config plan --out plan.json
 railway config apply --plan plan.json
 ```
 
-`api.kavtsya.com` can't be registered from the file. Add it once with
-`railway domain api.kavtsya.com -s api`, then declare it in `domains`.
+`api.kavtsya.com` can't be registered from the file. Attach it only after
+security Gate A in [#310](https://github.com/git-sparrow/kavtsya/issues/310)
+is cleared: add it once with `railway domain api.kavtsya.com -s api`, then
+declare it in `domains`.
 
 ## Secrets
 

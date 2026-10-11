@@ -1,6 +1,6 @@
 # Production image for the API and its cron jobs (#65). Build context is the
-# repo root. Installs only the API's production dependencies, so the Expo app,
-# the root agent tooling and test tooling never enter the image.
+# repo root. Installs only the API's production dependencies, so the Expo app
+# and every workspace devDependency stay out of the image.
 FROM node:24-trixie-slim AS deps
 
 WORKDIR /app
