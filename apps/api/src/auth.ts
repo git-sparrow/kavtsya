@@ -33,11 +33,21 @@ export interface AuthOptions {
   trustedOrigins?: string[];
 }
 
+/**
+ * `exp://` matches any host, and the Expo plugin hands the session cookie to a
+ * trusted non-web redirect, so production must not trust it.
+ */
+function defaultTrustedOrigins(): string[] {
+  return process.env.NODE_ENV === "production"
+    ? ["kavtsya://"]
+    : ["kavtsya://", "exp://"];
+}
+
 export function createAuth({
   database,
   secret,
   baseURL,
-  trustedOrigins = ["kavtsya://", "exp://"],
+  trustedOrigins = defaultTrustedOrigins(),
 }: AuthOptions) {
   return betterAuth({
     database,
