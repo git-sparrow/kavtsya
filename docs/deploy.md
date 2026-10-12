@@ -39,10 +39,13 @@ railway config plan --out plan.json
 railway config apply --plan plan.json
 ```
 
-A custom domain can't be created from the file. Add it once with
-`railway domain <host> -s api --port 8080` (the port Railway gives the API),
-add the DNS records it prints (see DNS below), then declare it in `domains`
-so `config plan` keeps it.
+`api.kavtsya.com` can't be created from the file. Add it once with
+`railway domain api.kavtsya.com -s api --port 8080` (`API_PORT` in the file),
+add the DNS records it prints (see DNS below), then declare it in `domains`;
+`config plan` then reports no changes for it. Don't publish the URL or point a
+build at it until the release's security checks pass. To take it down, run
+`railway domain delete api.kavtsya.com -s api`, remove it from `domains`, and
+delete its Cloudflare records.
 
 ## Secrets
 
@@ -64,8 +67,9 @@ invalidates QR codes for at most one TTL.
 custom domain, set to **DNS only** (grey cloud). Proxying it through Cloudflare
 would replace the client IP that Railway passes in `X-Real-IP`, and the auth
 rate limiter would see Cloudflare's addresses instead of users.
-The `_railway-verify.api` TXT record Railway prints alongside it proves
-ownership; the certificate isn't issued until Railway sees it.
+Keep the `_railway-verify.api` TXT record Railway prints alongside it: on
+2026-10-12 the certificate stayed in `VALIDATING_OWNERSHIP` until the record
+resolved, then turned valid within two minutes.
 
 ## Backups
 

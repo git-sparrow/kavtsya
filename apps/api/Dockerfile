@@ -21,6 +21,11 @@ RUN pnpm --filter @kavtsya/api build
 
 FROM node:24-trixie-slim
 
+# Debian security fixes reach the archive before the base image is
+# republished, so apply them at build time.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
 # Package managers aren't needed at runtime; dropping them shrinks the attack
 # surface the scanners report on.
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
