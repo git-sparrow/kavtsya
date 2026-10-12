@@ -33,6 +33,7 @@ export function setupTestAuth(): { auth: Auth; pool: Pool } {
     database: pool,
     secret: "test-secret-at-least-32-characters-long",
     baseURL: "http://localhost:3000",
+    production: false,
   });
   return { auth, pool };
 }

@@ -27,27 +27,17 @@ export interface AuthOptions {
   secret: string;
   baseURL: string;
   /**
-   * Origins allowed to hold a session. The mobile app talks to the API over its
-   * custom scheme (`kavtsya://`) and, in Expo dev, over `exp://`.
+   * Production trusts only the app's own scheme. Elsewhere Expo Go's `exp://`
+   * is trusted too, so the app can sign in from a dev build.
    */
-  trustedOrigins?: string[];
-}
-
-/**
- * `exp://` matches any host, and the Expo plugin hands the session cookie to a
- * trusted non-web redirect, so production must not trust it.
- */
-function defaultTrustedOrigins(): string[] {
-  return process.env.NODE_ENV === "production"
-    ? ["kavtsya://"]
-    : ["kavtsya://", "exp://"];
+  production: boolean;
 }
 
 export function createAuth({
   database,
   secret,
   baseURL,
-  trustedOrigins = defaultTrustedOrigins(),
+  production,
 }: AuthOptions) {
   return betterAuth({
     database,
@@ -58,7 +48,7 @@ export function createAuth({
     // Expo plugin handles the native cookie/secure-store session and adds the
     // app scheme to the OAuth/redirect allow-list.
     plugins: [expo()],
-    trustedOrigins,
+    trustedOrigins: production ? ["kavtsya://"] : ["kavtsya://", "exp://"],
     // IP tracking stays on (no `advanced.ipAddress.disableIpTracking`): the
     // auth rate limiter keys on it (checked against 1.7.5, see ADR 0018).
     // Expired sessions carrying the IP are deleted after
@@ -67,4 +57,19 @@ export function createAuth({
     // `x-forwarded-for` would leave every client in one rate-limit bucket.
     advanced: { ipAddress: { ipAddressHeaders: ["x-real-ip"] } },
   });
+}
+
+/**
+ * `exp://` matches any host, and the Expo plugin hands the session cookie to a
+ * trusted non-web redirect — so a production process that trusts it, by any
+ * route (`BETTER_AUTH_TRUSTED_ORIGINS`, a plugin), must refuse to start.
+ */
+export async function assertProductionOrigins(auth: Auth): Promise<void> {
+  const { trustedOrigins } = await auth.$context;
+  const expoGo = trustedOrigins.filter((o) => o.startsWith("exp://"));
+  if (expoGo.length > 0) {
+    throw new Error(
+      `Production must not trust Expo Go origins: ${expoGo.join(", ")}`,
+    );
+  }
 }

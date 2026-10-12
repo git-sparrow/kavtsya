@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/build.mjs",
+    "build": "tsx scripts/build.ts",
     "predev": "pnpm run migrate",
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
@@ -29,13 +29,13 @@
     "hono": "^4.13.8",
     "pg": "^8.23.0",
     "postgres": "^3.4.5",
-    "tsx": "^4.23.15",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "^26",
     "@types/pg": "^8.23.1",
     "esbuild": "^0.28.2",
+    "tsx": "^4.23.15",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

@@ -1,7 +1,6 @@
 # Production image for the API and its cron jobs (#65). Build context is the
-# repo root. The build stage bundles each entrypoint (scripts/build.mjs); the
-# runtime stage ships only those bundles and the SQL migrations, so no
-# node_modules — and no package the code never imports — reach production.
+# repo root; the runtime stage gets the bundles from scripts/build.ts and the
+# SQL migrations, nothing else.
 FROM node:24-trixie-slim AS build
 
 WORKDIR /app
@@ -27,7 +26,7 @@ FROM node:24-trixie-slim
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 # No setuid/setgid binaries (su, mount, passwd…): the process never needs root,
-# so a code-execution bug can't climb through one (#310).
+# so a code-execution bug can't climb through one.
 RUN find / -xdev -perm /6000 -type f -exec chmod a-s {} +
 
 WORKDIR /app

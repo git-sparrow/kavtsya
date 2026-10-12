@@ -3,6 +3,9 @@ import { dirname, join } from "node:path";
 import { z } from "zod";
 
 const envSchema = z.object({
+  NODE_ENV: z
+    .enum(["development", "test", "production"])
+    .default("development"),
   DATABASE_URL: z.string().url(),
   PORT: z.coerce.number().int().positive().default(3000),
   // Better Auth signs sessions with this; must be high-entropy (≥32 chars).
