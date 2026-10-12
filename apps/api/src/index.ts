@@ -1,7 +1,7 @@
 import { serve } from "@hono/node-server";
 import { Pool } from "pg";
 import { createApp } from "./app";
-import { createAuth } from "./auth";
+import { assertProductionOrigins, createAuth } from "./auth";
 import { systemClock } from "./clock";
 import { createDb } from "./db";
 import { loadDotEnv, loadEnv } from "./env";
@@ -18,7 +18,9 @@ const auth = createAuth({
   database: authPool,
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
+  production: env.NODE_ENV === "production",
 });
+if (env.NODE_ENV === "production") await assertProductionOrigins(auth);
 const app = createApp({
   db,
   clock: systemClock,
