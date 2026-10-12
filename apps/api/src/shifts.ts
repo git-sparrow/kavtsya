@@ -57,8 +57,9 @@ function activeGrant(sql: Queryable, now: Date, alias?: string): SqlFragment {
  */
 export type CounterRejection = "cafe_not_owned" | "self_scan" | "own_cafe";
 
-export type AuthorizeCounterOutcome<R extends CounterRejection> =
-  { ok: true; program: LoyaltyProgram } | { ok: false; reason: R };
+export type AuthorizeCounterOutcome =
+  | { ok: true; program: LoyaltyProgram }
+  | { ok: false; reason: CounterRejection };
 
 export interface AuthorizeCounterInput {
   /** The Café the scan happens at. */
@@ -74,7 +75,7 @@ export interface AuthorizeCounterInput {
 export async function authorizeCounter(
   db: Database,
   { cafeId, actorUserId, customerId, now }: AuthorizeCounterInput,
-): Promise<AuthorizeCounterOutcome<CounterRejection>> {
+): Promise<AuthorizeCounterOutcome> {
   const [cafe] = await db<
     { owner_user_id: string; zernyatko_threshold: number; reward: unknown }[]
   >`
@@ -95,8 +96,7 @@ export async function authorizeCounter(
   }
 
   // The self-farm guards are additive (ADR 0013). Scanner ≠ scanned on both
-  // counter powers: nobody issues to, or confirms a Redemption for, themselves
-  // (#251) — a colleague or the owner serves them, as any Customer…
+  // counter powers: nobody issues to, or confirms a Redemption for, themselves…
   if (customerId === actorUserId) {
     return { ok: false, reason: "self_scan" };
   }

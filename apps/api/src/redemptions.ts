@@ -107,8 +107,6 @@ export async function confirmRedemption(
     now,
   }: ConfirmRedemptionInput,
 ): Promise<ConfirmRedemptionOutcome> {
-  // Confirm is the shift's second counter power (ADR 0013): the same
-  // counter-authorization rule as issuing, decided once in the Shift module.
   const auth = await authorizeCounter(db, {
     cafeId,
     actorUserId,
