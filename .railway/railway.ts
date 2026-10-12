@@ -39,7 +39,7 @@ export default defineRailway(() => {
     source,
     build,
     replicas: { [REGION]: 1 },
-    preDeploy: "node --import tsx scripts/migrate.ts",
+    preDeploy: "node dist/migrate.mjs",
     healthcheck: "/health",
     env: {
       DATABASE_URL: db.env.DATABASE_URL,
@@ -61,7 +61,7 @@ export default defineRailway(() => {
       source,
       build,
       replicas: { [REGION]: 1 },
-      start: `node --import tsx scripts/${script}.ts`,
+      start: `node dist/${script}.mjs`,
       deploy: { cronSchedule, restartPolicyType: "NEVER" },
       env: { DATABASE_URL: db.env.DATABASE_URL, ...env },
     });
