@@ -70,6 +70,11 @@ const PUBLIC_PATHS = ["/health", "/api/auth/*"] as const;
 export function createApp(deps: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
+  app.use("*", async (c, next) => {
+    await next();
+    c.header("X-Content-Type-Options", "nosniff");
+  });
+
   // Resolve the session from request cookies once per request and stash it in
   // context. Resolving is all this does — whether a route *requires* one is the
   // next middleware's job.
