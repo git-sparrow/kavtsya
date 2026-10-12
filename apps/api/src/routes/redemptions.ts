@@ -19,6 +19,7 @@ import type { AuthedEnv } from "../require-user";
 /** The one place a domain reason picks its wire code, as the scan does (#50). */
 const wireCodes: Record<ConfirmRedemptionRejection, RedemptionRejection> = {
   cafe_not_owned: "not_found",
+  self_scan: "self_scan",
   own_cafe: "own_cafe",
   insufficient_balance: "insufficient_balance",
   no_reward: "no_reward",

@@ -350,6 +350,59 @@ test("the grant holder confirms a Redemption off the same single scan", async ()
   });
 });
 
+test("nobody confirms their own Redemption: a barista's earned reward is self_scan", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
+  const { owner, cafeId, barista } = await shiftOnDuty(app);
+  await app.request(`/api/cafes/${cafeId}/program`, {
+    method: "PUT",
+    headers: { "content-type": "application/json", cookie: owner },
+    body: JSON.stringify({ threshold: 2, reward: { type: "free_drink" } }),
+  });
+  let baristaId = "";
+  for (let i = 0; i < 2; i++) {
+    const scan = await issuePurchase(
+      app,
+      { cafeId, qrToken: await qrTokenFor(app, barista) },
+      owner,
+    );
+    expect(scan.status).toBe(201);
+    baristaId = purchaseResultSchema.parse(await scan.json()).customerId;
+  }
+
+  const res = await app.request("/api/redemptions", {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie: barista },
+    body: JSON.stringify({
+      cafeId,
+      customerId: baristaId,
+      idempotencyKey: "self-confirm",
+    }),
+  });
+
+  expect(res.status).toBe(403);
+  expect(await res.json()).toEqual({ error: "self_scan" });
+});
+
+test("a barista confirming for the owner still hits own_cafe", async () => {
+  const app = makeApp({ db, auth, clock: fixedClock(OPEN_AT) });
+  const { owner, cafeId, barista } = await shiftOnDuty(app);
+  const me = await app.request("/api/me", { headers: { cookie: owner } });
+  const { id: ownerId } = (await me.json()) as { id: string };
+
+  const res = await app.request("/api/redemptions", {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie: barista },
+    body: JSON.stringify({
+      cafeId,
+      customerId: ownerId,
+      idempotencyKey: "for-owner",
+    }),
+  });
+
+  expect(res.status).toBe(403);
+  expect(await res.json()).toEqual({ error: "own_cafe" });
+});
+
 // --- scope: scan + confirm is ALL the shift grants ---------------------------------
 
 test("the grant holder cannot touch the loyalty config — owner endpoints stay owner-only", async () => {

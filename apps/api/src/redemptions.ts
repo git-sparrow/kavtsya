@@ -34,7 +34,11 @@ export interface ConfirmRedemptionInput {
 
 /** Why confirming was refused — the wire mapping is exhaustive over it (#50). */
 export type ConfirmRedemptionRejection =
-  "cafe_not_owned" | "own_cafe" | "insufficient_balance" | "no_reward";
+  | "cafe_not_owned"
+  | "self_scan"
+  | "own_cafe"
+  | "insufficient_balance"
+  | "no_reward";
 
 export type ConfirmRedemptionOutcome =
   | {
@@ -103,16 +107,11 @@ export async function confirmRedemption(
     now,
   }: ConfirmRedemptionInput,
 ): Promise<ConfirmRedemptionOutcome> {
-  // Confirm is the shift's second counter power (ADR 0013): the same
-  // counter-authorization rule as issuing, decided once in the Shift module
-  // (#111). Confirm leaves scanner ≠ scanned off — a confirm to one's own code
-  // is already caught by the own-café guard, which both paths share.
   const auth = await authorizeCounter(db, {
     cafeId,
     actorUserId,
     customerId,
     now,
-    rejectSelfScan: false,
   });
   if (!auth.ok) return { ok: false, reason: auth.reason };
 

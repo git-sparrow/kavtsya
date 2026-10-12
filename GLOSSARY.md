@@ -41,7 +41,7 @@ A Café's persistent, café-scoped list of approved baristas — a trust relatio
 _Avoid_: Staff list, employee roster, team (as the code term)
 
 **Shift** («Зміна» in the UI):
-One working session of Scanner Mode at a Café. A barista on that Café's Barista Roster scans the Café's **printed wall poster** to start one; a non-rostered scan instead raises a deduped, rate-limited pending approval request. A Shift grants scan + Redemption confirm for that one Café only (no program config, no analytics), is limited to one active per account, and ends when the barista ends it («Завершити зміну»), the owner ends it, or a rolling safety-net cap auto-expires it (`docs/adr/0013`). Free tier. Nobody may scan their own QR (scanner ≠ scanned), but a barista may still earn Зернятка when a colleague scans them.
+One working session of Scanner Mode at a Café. A barista on that Café's Barista Roster scans the Café's **printed wall poster** to start one; a non-rostered scan instead raises a deduped, rate-limited pending approval request. A Shift grants scan + Redemption confirm for that one Café only (no program config, no analytics), is limited to one active per account, and ends when the barista ends it («Завершити зміну»), the owner ends it, or a rolling safety-net cap auto-expires it (`docs/adr/0013`). Free tier. Nobody may scan their own QR or confirm their own Redemption (scanner ≠ scanned), but a barista may still earn and redeem Зернятка when a colleague serves them.
 _Avoid_: Зміна (in code/docs — use Shift), Scanner Grant, staff account, employee login, barista mode (as an account type)
 
 ### Loyalty mechanics
