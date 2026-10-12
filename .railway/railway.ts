@@ -41,6 +41,7 @@ export default defineRailway(() => {
     replicas: { [REGION]: 1 },
     preDeploy: "node dist/migrate.mjs",
     healthcheck: "/health",
+    domains: [{ domain: "api.kavtsya.com", port: 8080 }],
     env: {
       DATABASE_URL: db.env.DATABASE_URL,
       BETTER_AUTH_URL: "https://api.kavtsya.com",
