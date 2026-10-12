@@ -12,7 +12,7 @@ services:
       - kavtsya-db-data:/var/lib/postgresql
       - ./docker/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kavtsya -d kavtsya"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U kavtsya -d kavtsya"]
       interval: 5s
       timeout: 5s
       retries: 10
