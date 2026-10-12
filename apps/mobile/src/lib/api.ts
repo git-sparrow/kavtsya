@@ -263,6 +263,7 @@ const REDEMPTION_REJECTIONS: Record<RedemptionRejection, string> = {
   insufficient_balance: "Недостатньо зернят для винагороди",
   no_reward: "Спершу оберіть винагороду в налаштуваннях програми",
   own_cafe: "У власній кав'ярні винагороди не видаються",
+  self_scan: "Власну винагороду видає колега або власник кав'ярні",
   not_found: "Кав'ярню не знайдено",
 };
 

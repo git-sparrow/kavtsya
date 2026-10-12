@@ -69,35 +69,11 @@ export interface AuthorizeCounterInput {
   customerId: string;
   /** The scan's instant — the grant-expiry check runs on the injected clock. */
   now: Date;
-  /**
-   * Whether to enforce scanner ≠ scanned (`self_scan`) — the one guard the two
-   * counter paths deliberately differ on (ADR 0013, clarified 2026-07-10).
-   * Issuing sets it (nobody mints a Зернятко to their own code); confirming
-   * leaves it off (a confirm to one's own code is already caught by `own_cafe`).
-   * Making it a required argument marks that divergence at every call site.
-   */
-  rejectSelfScan: boolean;
 }
 
-export function authorizeCounter(
-  db: Database,
-  input: AuthorizeCounterInput & { rejectSelfScan: true },
-): Promise<
-  AuthorizeCounterOutcome<"cafe_not_owned" | "self_scan" | "own_cafe">
->;
-export function authorizeCounter(
-  db: Database,
-  input: AuthorizeCounterInput & { rejectSelfScan: false },
-): Promise<AuthorizeCounterOutcome<"cafe_not_owned" | "own_cafe">>;
 export async function authorizeCounter(
   db: Database,
-  {
-    cafeId,
-    actorUserId,
-    customerId,
-    now,
-    rejectSelfScan,
-  }: AuthorizeCounterInput,
+  { cafeId, actorUserId, customerId, now }: AuthorizeCounterInput,
 ): Promise<AuthorizeCounterOutcome<CounterRejection>> {
   const [cafe] = await db<
     { owner_user_id: string; zernyatko_threshold: number; reward: unknown }[]
@@ -118,9 +94,10 @@ export async function authorizeCounter(
     return { ok: false, reason: "cafe_not_owned" };
   }
 
-  // The self-farm guards are additive (ADR 0013, clarified 2026-07-10).
-  // Scanner ≠ scanned: only issuing forbids minting to one's own code…
-  if (rejectSelfScan && customerId === actorUserId) {
+  // The self-farm guards are additive (ADR 0013). Scanner ≠ scanned on both
+  // counter powers: nobody issues to, or confirms a Redemption for, themselves
+  // (#251) — a colleague or the owner serves them, as any Customer…
+  if (customerId === actorUserId) {
     return { ok: false, reason: "self_scan" };
   }
   // …and the owner still earns nothing at their own Café, whoever scans them

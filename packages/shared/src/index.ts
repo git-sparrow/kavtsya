@@ -441,6 +441,8 @@ export type PendingFortuneResponse = z.infer<
 export const redemptionRejectionStatuses = {
   /** Self-farming guard (ADR 0003): Redemption is also rejected at one's own Café. */
   own_cafe: 403,
+  /** Nobody confirms their own Redemption — a colleague or the owner does (#251). */
+  self_scan: 403,
   /** The Café doesn't exist or the caller doesn't own it (indistinguishable). */
   not_found: 404,
   /** The Customer's balance is below the Café's current threshold. */

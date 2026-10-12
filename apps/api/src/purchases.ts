@@ -76,14 +76,12 @@ export async function issuePurchase(
   { cafeId, issuedByUserId, customerId, entry, now }: IssuePurchaseInput,
 ): Promise<IssuePurchaseOutcome> {
   // Who may issue here — the ADR 0013 counter-authorization rule, decided once
-  // in the Shift module and shared with Redemption confirm (#111). Issuing
-  // enforces scanner ≠ scanned; the own-café guard rides along for both paths.
+  // in the Shift module and shared with Redemption confirm (#111).
   const auth = await authorizeCounter(db, {
     cafeId,
     actorUserId: issuedByUserId,
     customerId,
     now,
-    rejectSelfScan: true,
   });
   if (!auth.ok) return { ok: false, reason: auth.reason };
 

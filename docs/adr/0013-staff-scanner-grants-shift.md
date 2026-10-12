@@ -18,4 +18,4 @@ Consequences:
 - **Shift ends** by the barista («Завершити зміну»), the owner (board or removal), or a **rolling ~16h auto-expire** safety net (café-hours-agnostic — a backstop, not a scheduler).
 - **Scanner Mode is a near-kiosk:** scanner + end-shift only; showing one's own QR or signing out requires ending the shift first.
 - Shift stays **Free** tier (ADR 0011); `purchases.issued_by_user_id` remains the audit trail.
-- The **scanner ≠ scanned** self-farm guard is unchanged and additive to ADR 0003's owner-cannot-earn-at-own-Café rule; barista-pair collusion stays an accepted v1 risk, made visible via `issued_by_user_id` rather than prevented.
+- The **scanner ≠ scanned** self-farm guard is unchanged and additive to ADR 0003's owner-cannot-earn-at-own-Café rule. It covers **both** counter powers — issuing and Redemption confirm (decided 2026-10-12, #251): a barista's own reward is served by a colleague or the owner, as any Customer's is; barista-pair collusion stays an accepted v1 risk, made visible via `issued_by_user_id` rather than prevented.

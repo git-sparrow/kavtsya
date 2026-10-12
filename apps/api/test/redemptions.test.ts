@@ -294,7 +294,7 @@ test("a Café with no Reward configured has nothing to claim", async () => {
   expect(await res.json()).toEqual({ error: "no_reward" });
 });
 
-test("a CafeOwner cannot redeem at their own Café (self-farming guard)", async () => {
+test("a CafeOwner cannot confirm their own Redemption — scanner ≠ scanned, as on issuing", async () => {
   const owner = await signUp(app(), "owner@example.com");
   const cafeId = await registerCafe("Кавця", owner);
   const meRes = await app().request("/api/me", { headers: { cookie: owner } });
@@ -306,7 +306,7 @@ test("a CafeOwner cannot redeem at their own Café (self-farming guard)", async 
   );
 
   expect(res.status).toBe(403);
-  expect(await res.json()).toEqual({ error: "own_cafe" });
+  expect(await res.json()).toEqual({ error: "self_scan" });
 });
 
 test("confirming at a Café the caller does not own is not found", async () => {
