@@ -32,7 +32,7 @@ export interface ConfirmRedemptionInput {
   customerId: string;
   /** Minted per confirm tap; a retry reuses it, a banked second confirm doesn't. */
   idempotencyKey: string;
-  /** The confirm's instant — the grant-expiry check runs on the injected clock. */
+  /** Read again after ledger waits for grant expiry and the ledger timestamp. */
   clock: Clock;
 }
 
@@ -154,10 +154,10 @@ export async function confirmRedemption(
       const spent = applyRedemption({ balance, threshold: program.threshold });
       const inserted = await tx`
       insert into redemptions
-        ("cafe_id", "customer_user_id", "beans_spent", "reward", "idempotency_key")
+        ("cafe_id", "customer_user_id", "beans_spent", "reward", "idempotency_key", "created_at")
       values
         (${cafeId}, ${customerId}, ${spent.beansSpent},
-         ${tx.json(eligibility.reward)}, ${idempotencyKey})
+         ${tx.json(eligibility.reward)}, ${idempotencyKey}, ${clock.now()})
       on conflict ("idempotency_key") do nothing
       returning "id"
     `;

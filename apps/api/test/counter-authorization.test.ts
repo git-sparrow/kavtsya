@@ -19,10 +19,10 @@ beforeEach(async () => {
 });
 
 for (const operation of ["manual", "redemption"] as const) {
-  test.each(["revoked", "expired", "deleted", "archived"] as const)(
+  test.each(["revoked", "expired", "deleted", "archived", "midnight"] as const)(
     `${operation} rechecks %s authorization after waiting for its ledger lock`,
     async (state) => {
-      let now = new Date("2026-10-12T12:00:00Z");
+      let now = new Date("2026-10-12T20:59:59Z");
       const app = makeApp({ db, auth, clock: { now: () => now } });
       const owner = await signUp(app, "owner@example.com");
       const barista = await signUp(app, "barista@example.com");
@@ -118,6 +118,8 @@ for (const operation of ["manual", "redemption"] as const) {
           ).toBe(204);
         } else if (state === "expired") {
           now = new Date(now.getTime() + 60_001);
+        } else if (state === "midnight") {
+          now = new Date("2026-10-12T21:00:01Z");
         } else {
           expect(
             (
@@ -132,6 +134,29 @@ for (const operation of ["manual", "redemption"] as const) {
       } finally {
         unlock();
         await blocker;
+      }
+      if (state === "midnight") {
+        expect((await pending).status).toBe(201);
+        const rows =
+          operation === "manual"
+            ? await db`select created_at from purchases where entry_source='member_code'`
+            : await db`select created_at from redemptions`;
+        expect((rows[0]?.created_at as Date).toISOString()).toBe(
+          now.toISOString(),
+        );
+        if (operation === "manual") {
+          for (const status of [201, 201, 429]) {
+            expect(
+              (
+                await request("POST", "/api/purchases", owner, {
+                  cafeId,
+                  memberCode,
+                })
+              ).status,
+            ).toBe(status);
+          }
+        }
+        return;
       }
       expect((await pending).status).toBe(404);
       expect(
