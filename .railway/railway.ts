@@ -12,6 +12,7 @@ import {
 // path is in docs/deploy.md. Every service runs the apps/api image.
 
 const REGION = "europe-west4-drams3a"; // Amsterdam — closest to Ukraine
+const API_DOMAIN = "api.kavtsya.com";
 // One value for the port the API listens on and the port its domain routes to.
 const API_PORT = 8080;
 // Auto-deploys on push to main, once the commit's GitHub checks pass.
@@ -43,11 +44,11 @@ export default defineRailway(() => {
     replicas: { [REGION]: 1 },
     preDeploy: "node dist/migrate.mjs",
     healthcheck: "/health",
-    domains: [{ domain: "api.kavtsya.com", port: API_PORT }],
+    domains: [{ domain: API_DOMAIN, port: API_PORT }],
     env: {
       DATABASE_URL: db.env.DATABASE_URL,
       PORT: String(API_PORT),
-      BETTER_AUTH_URL: "https://api.kavtsya.com",
+      BETTER_AUTH_URL: `https://${API_DOMAIN}`,
       BETTER_AUTH_SECRET: preserve(),
       QR_TOKEN_SECRET: preserve(),
     },

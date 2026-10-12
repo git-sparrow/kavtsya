@@ -16,6 +16,10 @@ Merge to `main`. Railway rebuilds the services whose watch paths changed, once
 the commit's GitHub checks pass. A failing migration stops the deploy and the
 previous version keeps serving.
 
+Each build applies Debian's current security updates, so two builds of one
+commit can differ. Scan the image Railway built, not a local one: check the
+packages a scan flagged with `railway ssh -s api -- dpkg-query -W <package>`.
+
 ## Changing infrastructure
 
 Edit `.railway/railway.ts`, then from the repo root:
@@ -39,13 +43,15 @@ railway config plan --out plan.json
 railway config apply --plan plan.json
 ```
 
-`api.kavtsya.com` can't be created from the file. Add it once with
-`railway domain api.kavtsya.com -s api --port 8080` (`API_PORT` in the file),
-add the DNS records it prints (see DNS below), then declare it in `domains`;
-`config plan` then reports no changes for it. Don't publish the URL or point a
-build at it until the release's security checks pass. To take it down, run
-`railway domain delete api.kavtsya.com -s api`, remove it from `domains`, and
-delete its Cloudflare records.
+A custom domain can't be declared until it exists. Attach a new one only after
+the API passes its security review, and don't publish it or point a build at it
+before then. Create it with `railway domain <API_DOMAIN> -s api --port <API_PORT>`
+(both values from the file), add the DNS records it prints (see DNS below), then
+declare it in `domains`. To take it down, run
+`railway domain delete <API_DOMAIN> -s api`, remove it from `domains`, and
+delete its Cloudflare records. (Checked on 2026-10-12 with Railway CLI 5.64.2:
+`--help` for both commands, and `config plan` reported no changes once the live
+domain was declared.)
 
 ## Secrets
 
@@ -67,9 +73,8 @@ invalidates QR codes for at most one TTL.
 custom domain, set to **DNS only** (grey cloud). Proxying it through Cloudflare
 would replace the client IP that Railway passes in `X-Real-IP`, and the auth
 rate limiter would see Cloudflare's addresses instead of users.
-Keep the `_railway-verify.api` TXT record Railway prints alongside it: on
-2026-10-12 the certificate stayed in `VALIDATING_OWNERSHIP` until the record
-resolved, then turned valid within two minutes.
+Keep the `_railway-verify.api` TXT record Railway prints alongside it; the
+certificate isn't issued until it resolves (observed 2026-10-12).
 
 ## Backups
 
