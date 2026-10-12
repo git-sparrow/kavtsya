@@ -103,6 +103,9 @@ pnpm dev:api          # Hono API
 pnpm dev:mobile       # Expo (mobile)
 ```
 
+If Postgres won't start after its major version changes, see the note on resetting
+the volume under Setup in [README.md](README.md).
+
 Issues are tracked in [GitHub Issues](https://github.com/git-sparrow/kavtsya/issues);
 labels and triage are described under `docs/agents/`.
 
