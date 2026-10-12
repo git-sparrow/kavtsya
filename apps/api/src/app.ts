@@ -68,6 +68,21 @@ export type AppEnv = {
  */
 const PUBLIC_PATHS = ["/health", "/api/auth/*"] as const;
 
+function containsNul(value: unknown): boolean {
+  const pending: unknown[] = [value];
+  while (pending.length > 0) {
+    const item = pending.pop();
+    if (typeof item === "string" && item.includes("\u0000")) return true;
+    if (item !== null && typeof item === "object") {
+      for (const [key, nested] of Object.entries(item)) {
+        if (key.includes("\u0000")) return true;
+        pending.push(nested);
+      }
+    }
+  }
+  return false;
+}
+
 export function createApp(deps: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
@@ -103,6 +118,20 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   // same app seen as `Hono<AuthedEnv>`, so every handler registered on it reads
   // a non-null `user` and none carries, or can forget, its own check.
   const authed = app.use("*", requireUser(PUBLIC_PATHS));
+
+  // PostgreSQL text cannot represent NUL; reject it before any persistence path.
+  app.use("*", async (c, next) => {
+    const payload = c.req.raw.body
+      ? await c.req.raw
+          .clone()
+          .json()
+          .catch(() => null)
+      : null;
+    if (/%00/i.test(c.req.url) || containsNul(payload)) {
+      return c.json({ error: "invalid_request" }, 400);
+    }
+    await next();
+  });
 
   // The public surface, named in PUBLIC_PATHS above. Better Auth owns
   // signup/login/logout/session under /api/auth/*.
