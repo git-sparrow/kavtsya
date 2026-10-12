@@ -9,9 +9,9 @@
   "scripts": {
     "dev:api": "pnpm --filter @kavtsya/api dev",
     "dev:mobile": "pnpm --filter @kavtsya/mobile start",
-    "db:up": "docker compose up -d db",
+    "db:up": "docker compose up -d --wait db",
     "db:down": "docker compose down",
-    "db:reset": "docker compose down -v && docker compose up -d db",
+    "db:reset": "docker compose down -v && docker compose up -d --wait db",
     "db:seed-demo": "pnpm --filter @kavtsya/api seed-demo",
     "db:seed-demo-fresh": "pnpm --filter @kavtsya/api seed-demo-fresh",
     "migrate": "pnpm --filter @kavtsya/api migrate",

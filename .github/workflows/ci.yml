@@ -15,7 +15,7 @@ jobs:
       # (apps/api/test/helpers/testDb.ts) and runs migrations itself, so the
       # container only has to exist with that user and database.
       db:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: kavtsya
           POSTGRES_PASSWORD: kavtsya
