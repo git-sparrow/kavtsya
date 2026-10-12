@@ -45,10 +45,15 @@ describe("assertProductionOrigins", () => {
     );
   });
 
-  test("refuses an Expo Go origin added through the environment", async () => {
-    vi.stubEnv("BETTER_AUTH_TRUSTED_ORIGINS", "exp://");
-    await expect(assertProductionOrigins(authFor(true))).rejects.toThrow(
-      "exp://",
-    );
-  });
+  // Better Auth matches case-insensitively and expands wildcards, so each of
+  // these trusts exp://attacker.example — as does any origin we didn't intend.
+  test.each(["exp://", "EXP://", "exp:", "*", "https://attacker.example"])(
+    "refuses an extra origin added through the environment: %s",
+    async (origin) => {
+      vi.stubEnv("BETTER_AUTH_TRUSTED_ORIGINS", origin);
+      await expect(assertProductionOrigins(authFor(true))).rejects.toThrow(
+        "Production trusts unexpected origins",
+      );
+    },
+  );
 });

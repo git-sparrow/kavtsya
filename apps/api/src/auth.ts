@@ -33,6 +33,9 @@ export interface AuthOptions {
   production: boolean;
 }
 
+/** The mobile app's own scheme (`app.json` → `scheme`). */
+const APP_ORIGIN = "kavtsya://";
+
 export function createAuth({
   database,
   secret,
@@ -48,7 +51,7 @@ export function createAuth({
     // Expo plugin handles the native cookie/secure-store session and adds the
     // app scheme to the OAuth/redirect allow-list.
     plugins: [expo()],
-    trustedOrigins: production ? ["kavtsya://"] : ["kavtsya://", "exp://"],
+    trustedOrigins: production ? [APP_ORIGIN] : [APP_ORIGIN, "exp://"],
     // IP tracking stays on (no `advanced.ipAddress.disableIpTracking`): the
     // auth rate limiter keys on it (checked against 1.7.5, see ADR 0018).
     // Expired sessions carrying the IP are deleted after
@@ -60,16 +63,23 @@ export function createAuth({
 }
 
 /**
- * `exp://` matches any host, and the Expo plugin hands the session cookie to a
- * trusted non-web redirect — so a production process that trusts it, by any
- * route (`BETTER_AUTH_TRUSTED_ORIGINS`, a plugin), must refuse to start.
+ * A trusted non-web origin receives the session cookie from the Expo plugin,
+ * and Better Auth matches origins case-insensitively and expands wildcards —
+ * so `exp://`, `EXP://`, `exp:` or `*` would each trust any Expo Go URL. A
+ * production process therefore trusts exactly its own origin and the app
+ * scheme, and refuses to start if any route (`BETTER_AUTH_TRUSTED_ORIGINS`, a
+ * plugin) adds more.
  */
 export async function assertProductionOrigins(auth: Auth): Promise<void> {
-  const { trustedOrigins } = await auth.$context;
-  const expoGo = trustedOrigins.filter((o) => o.startsWith("exp://"));
-  if (expoGo.length > 0) {
+  const { trustedOrigins, options } = await auth.$context;
+  const allowed = new Set([APP_ORIGIN]);
+  if (typeof options.baseURL === "string") {
+    allowed.add(new URL(options.baseURL).origin);
+  }
+  const unexpected = trustedOrigins.filter((o) => !allowed.has(o));
+  if (unexpected.length > 0) {
     throw new Error(
-      `Production must not trust Expo Go origins: ${expoGo.join(", ")}`,
+      `Production trusts unexpected origins: ${unexpected.join(", ")}`,
     );
   }
 }
