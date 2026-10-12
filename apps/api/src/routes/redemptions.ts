@@ -43,7 +43,7 @@ export function registerRedemptionRoutes(
       actorUserId: user.id,
       customerId: parsed.data.customerId,
       idempotencyKey: parsed.data.idempotencyKey,
-      now: clock.now(),
+      clock,
     });
     if (!outcome.ok) {
       const code = wireCodes[outcome.reason];

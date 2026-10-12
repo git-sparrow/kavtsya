@@ -1,5 +1,5 @@
 import type { LoyaltyProgram } from "@kavtsya/shared";
-import { kyivDayOf, kyivDaySql } from "./clock";
+import { kyivDayOf, kyivDaySql, type Clock } from "./clock";
 import type { Database, Queryable, SqlFragment } from "./db";
 import { programFromRow } from "./loyalty";
 
@@ -73,7 +73,7 @@ export interface AuthorizeCounterInput {
 }
 
 export async function authorizeCounter(
-  db: Database,
+  db: Queryable,
   { cafeId, actorUserId, customerId, now }: AuthorizeCounterInput,
 ): Promise<AuthorizeCounterOutcome> {
   const [cafe] = await db<
@@ -107,6 +107,37 @@ export async function authorizeCounter(
   }
 
   return { ok: true, program: programFromRow(cafe) };
+}
+
+export class CounterAuthorizationError extends Error {
+  constructor(readonly reason: CounterRejection) {
+    super(reason);
+  }
+}
+
+/** Recheck after ledger waits; hold deletion, closure and revocation off until commit. */
+export async function authorizeCounterWrite(
+  tx: Queryable,
+  input: Omit<AuthorizeCounterInput, "now">,
+  clock: Clock,
+): Promise<LoyaltyProgram> {
+  const users = await tx<{ id: string; deleted_at: Date | null }[]>`
+    select "id", "deleted_at" from "user"
+    where "id" in (${input.actorUserId}, ${input.customerId})
+    order by "id" for share
+  `;
+  if (users.length !== 2 || users.some((user) => user.deleted_at !== null)) {
+    throw new CounterAuthorizationError("cafe_not_owned");
+  }
+  await tx`select 1 from cafes where "id"=${input.cafeId} for share`;
+  await tx`
+    select 1 from cafe_scanner_grants
+    where "cafe_id"=${input.cafeId} and "user_id"=${input.actorUserId}
+    order by "id" for share
+  `;
+  const outcome = await authorizeCounter(tx, { ...input, now: clock.now() });
+  if (!outcome.ok) throw new CounterAuthorizationError(outcome.reason);
+  return outcome.program;
 }
 
 /**
@@ -174,7 +205,7 @@ export async function startShift(
  * (`roster.ts`), so a removed barista fails this check on their very next scan.
  */
 export async function hasActiveScannerGrant(
-  db: Database,
+  db: Queryable,
   cafeId: string,
   userId: string,
   now: Date,

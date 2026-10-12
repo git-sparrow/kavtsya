@@ -1,8 +1,13 @@
 import type { Reward } from "@kavtsya/shared";
 import { isRedemptionReady, rewardSchema } from "@kavtsya/shared";
+import type { Clock } from "./clock";
 import type { Database, Queryable } from "./db";
 import { balanceFor } from "./purchases";
-import { authorizeCounter } from "./shifts";
+import {
+  authorizeCounter,
+  authorizeCounterWrite,
+  CounterAuthorizationError,
+} from "./shifts";
 
 /**
  * Confirming a Redemption — the spend side of the ledger (#22, ADR 0010). One
@@ -28,7 +33,7 @@ export interface ConfirmRedemptionInput {
   /** Minted per confirm tap; a retry reuses it, a banked second confirm doesn't. */
   idempotencyKey: string;
   /** The confirm's instant — the grant-expiry check runs on the injected clock. */
-  now: Date;
+  clock: Clock;
 }
 
 /** Why confirming was refused — the wire mapping is exhaustive over it (#50). */
@@ -104,44 +109,50 @@ export async function confirmRedemption(
     actorUserId,
     customerId,
     idempotencyKey,
-    now,
+    clock,
   }: ConfirmRedemptionInput,
 ): Promise<ConfirmRedemptionOutcome> {
   const auth = await authorizeCounter(db, {
     cafeId,
     actorUserId,
     customerId,
-    now,
+    now: clock.now(),
   });
   if (!auth.ok) return { ok: false, reason: auth.reason };
 
-  const program = auth.program;
-
-  return db.begin(async (tx): Promise<ConfirmRedemptionOutcome> => {
-    // The lock target (ADR 0010). No membership row means no Purchase ever
-    // landed here, so the balance is 0 — nothing to lock, nothing to spend.
-    const [membership] = await tx`
+  try {
+    return await db.begin(async (tx): Promise<ConfirmRedemptionOutcome> => {
+      // The lock target (ADR 0010). No membership row means no Purchase ever
+      // landed here, so the balance is 0 — nothing to lock, nothing to spend.
+      const [membership] = await tx`
       select 1 as locked from cafe_memberships
       where "cafe_id" = ${cafeId} and "customer_user_id" = ${customerId}
       for update
     `;
-    if (!membership) return { ok: false, reason: "insufficient_balance" };
+      if (!membership) return { ok: false, reason: "insufficient_balance" };
 
-    // Replay check under the lock: a retry that lost the race to its original
-    // sees the committed row here (READ COMMITTED re-reads after the wait).
-    const prior = await replayFor(tx, idempotencyKey, customerId, cafeId);
-    if (prior) return prior;
+      const program = await authorizeCounterWrite(
+        tx,
+        { cafeId, actorUserId, customerId },
+        clock,
+      );
 
-    const balance = await balanceFor(tx, customerId, cafeId);
-    const eligibility = redemptionEligibility({
-      balance,
-      threshold: program.threshold,
-      reward: program.reward,
-    });
-    if (!eligibility.eligible) return { ok: false, reason: eligibility.reason };
+      // Replay check under the lock: a retry that lost the race to its original
+      // sees the committed row here (READ COMMITTED re-reads after the wait).
+      const prior = await replayFor(tx, idempotencyKey, customerId, cafeId);
+      if (prior) return prior;
 
-    const spent = applyRedemption({ balance, threshold: program.threshold });
-    const inserted = await tx`
+      const balance = await balanceFor(tx, customerId, cafeId);
+      const eligibility = redemptionEligibility({
+        balance,
+        threshold: program.threshold,
+        reward: program.reward,
+      });
+      if (!eligibility.eligible)
+        return { ok: false, reason: eligibility.reason };
+
+      const spent = applyRedemption({ balance, threshold: program.threshold });
+      const inserted = await tx`
       insert into redemptions
         ("cafe_id", "customer_user_id", "beans_spent", "reward", "idempotency_key")
       values
@@ -150,19 +161,24 @@ export async function confirmRedemption(
       on conflict ("idempotency_key") do nothing
       returning "id"
     `;
-    if (inserted.length === 0) {
-      const replay = await replayFor(tx, idempotencyKey, customerId, cafeId);
-      return replay ?? { ok: false, reason: "idempotency_conflict" };
-    }
+      if (inserted.length === 0) {
+        const replay = await replayFor(tx, idempotencyKey, customerId, cafeId);
+        return replay ?? { ok: false, reason: "idempotency_conflict" };
+      }
 
-    return {
-      ok: true,
-      replayed: false,
-      balance: spent.balance,
-      beansSpent: spent.beansSpent,
-      reward: eligibility.reward,
-    };
-  });
+      return {
+        ok: true,
+        replayed: false,
+        balance: spent.balance,
+        beansSpent: spent.beansSpent,
+        reward: eligibility.reward,
+      };
+    });
+  } catch (err) {
+    if (err instanceof CounterAuthorizationError)
+      return { ok: false, reason: err.reason };
+    throw err;
+  }
 }
 
 /**
