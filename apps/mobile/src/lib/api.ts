@@ -260,6 +260,7 @@ export async function fetchMemberCode(): Promise<string> {
  * distinguishes (#22) — same compile-checked pattern as the scan copy above.
  */
 const REDEMPTION_REJECTIONS: Record<RedemptionRejection, string> = {
+  idempotency_conflict: "Підтвердження вже використано. Спробуйте ще раз",
   insufficient_balance: "Недостатньо зернят для винагороди",
   no_reward: "Спершу оберіть винагороду в налаштуваннях програми",
   own_cafe: "У власній кав'ярні винагороди не видаються",

@@ -371,3 +371,39 @@ test("deleting an account no longer cascades away the Café's ledger", async () 
     db`delete from "user" where "id" = ${scan.customerId}`,
   ).rejects.toMatchObject({ code: "23503" });
 });
+
+test("a key reused for another eligible Customer is a conflict with no spend or error log", async () => {
+  const owner = await signUp(app(), "owner@example.com");
+  const cafeId = await registerCafe("Кавця", owner);
+  await setProgram(cafeId, owner, {
+    threshold: 1,
+    reward: { type: "free_drink" },
+  });
+  const first = await signUp(app(), "first@example.com");
+  const second = await signUp(app(), "second@example.com");
+  const firstScan = await earn(cafeId, owner, first);
+  const secondScan = await earn(cafeId, owner, second);
+  expect(
+    (
+      await confirmRedemption(
+        {
+          cafeId,
+          customerId: firstScan.customerId,
+          idempotencyKey: "shared-key",
+        },
+        owner,
+      )
+    ).status,
+  ).toBe(201);
+  const res = await confirmRedemption(
+    { cafeId, customerId: secondScan.customerId, idempotencyKey: "shared-key" },
+    owner,
+  );
+  expect(res.status).toBe(409);
+  expect(await res.json()).toEqual({ error: "idempotency_conflict" });
+  expect((await db`select count(*)::int as n from redemptions`)[0]?.n).toBe(1);
+  expect(
+    (await app().request("/api/me/balances", { headers: { cookie: second } }))
+      .status,
+  ).toBe(200);
+});

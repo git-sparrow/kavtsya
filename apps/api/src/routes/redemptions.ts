@@ -23,6 +23,7 @@ const wireCodes: Record<ConfirmRedemptionRejection, RedemptionRejection> = {
   own_cafe: "own_cafe",
   insufficient_balance: "insufficient_balance",
   no_reward: "no_reward",
+  idempotency_conflict: "idempotency_conflict",
 };
 
 export function registerRedemptionRoutes(

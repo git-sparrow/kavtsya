@@ -1,7 +1,6 @@
 import type { Reward } from "@kavtsya/shared";
 import { isRedemptionReady, rewardSchema } from "@kavtsya/shared";
 import type { Database, Queryable } from "./db";
-import { isUniqueViolation } from "./db";
 import { balanceFor } from "./purchases";
 import { authorizeCounter } from "./shifts";
 
@@ -38,7 +37,8 @@ export type ConfirmRedemptionRejection =
   | "self_scan"
   | "own_cafe"
   | "insufficient_balance"
-  | "no_reward";
+  | "no_reward"
+  | "idempotency_conflict";
 
 export type ConfirmRedemptionOutcome =
   | {
@@ -141,22 +141,18 @@ export async function confirmRedemption(
     if (!eligibility.eligible) return { ok: false, reason: eligibility.reason };
 
     const spent = applyRedemption({ balance, threshold: program.threshold });
-    try {
-      await tx`
-        insert into redemptions
-          ("cafe_id", "customer_user_id", "beans_spent", "reward", "idempotency_key")
-        values
-          (${cafeId}, ${customerId}, ${spent.beansSpent},
-           ${tx.json(eligibility.reward)}, ${idempotencyKey})
-      `;
-    } catch (err) {
-      // Same key raced past the replay check in another transaction after the
-      // lock ordering above couldn't help (e.g. a different membership row).
-      if (isUniqueViolation(err)) {
-        const replay = await replayFor(tx, idempotencyKey, customerId, cafeId);
-        if (replay) return replay;
-      }
-      throw err;
+    const inserted = await tx`
+      insert into redemptions
+        ("cafe_id", "customer_user_id", "beans_spent", "reward", "idempotency_key")
+      values
+        (${cafeId}, ${customerId}, ${spent.beansSpent},
+         ${tx.json(eligibility.reward)}, ${idempotencyKey})
+      on conflict ("idempotency_key") do nothing
+      returning "id"
+    `;
+    if (inserted.length === 0) {
+      const replay = await replayFor(tx, idempotencyKey, customerId, cafeId);
+      return replay ?? { ok: false, reason: "idempotency_conflict" };
     }
 
     return {
