@@ -50,7 +50,7 @@ export interface IssuePurchaseInput {
   customerId: string;
   /** How the Customer was identified — recorded on the Purchase row. */
   entry: PurchaseEntry;
-  /** The scan's instant — the grant-expiry check runs on the injected clock. */
+  /** Read again after ledger waits for grant expiry and the Kyiv-day limit. */
   clock: Clock;
 }
 
@@ -118,32 +118,33 @@ export async function issuePurchase(
         { cafeId, actorUserId: issuedByUserId, customerId },
         clock,
       );
+      const issuedAt = clock.now();
       if (entry.source === "member_code") {
         const [today] = await tx<{ manual_count: number }[]>`
           select count(*)::int as manual_count from purchases
           where "customer_user_id" = ${customerId}
             and "cafe_id" = ${cafeId}
             and "entry_source" = 'member_code'
-            and ${kyivDaySql(tx, "created_at")} = ${kyivDayOf(clock.now())}::date
+            and ${kyivDaySql(tx, "created_at")} = ${kyivDayOf(issuedAt)}::date
         `;
         if ((today?.manual_count ?? 0) >= entry.dailyLimit)
           return { limited: true, program: currentProgram };
         await tx`
           insert into purchases
             ("cafe_id", "customer_user_id", "qr_jti", "entry_source",
-             "issued_by_user_id")
+             "issued_by_user_id", "created_at")
           values
             (${cafeId}, ${customerId}, null, 'member_code',
-             ${issuedByUserId})
+             ${issuedByUserId}, ${issuedAt})
         `;
       } else {
         await tx`
           insert into purchases
             ("cafe_id", "customer_user_id", "qr_jti", "entry_source",
-             "issued_by_user_id")
+             "issued_by_user_id", "created_at")
           values
             (${cafeId}, ${customerId}, ${entry.jti}, 'qr',
-             ${issuedByUserId})
+             ${issuedByUserId}, ${issuedAt})
         `;
       }
       return { limited: false, program: currentProgram };
