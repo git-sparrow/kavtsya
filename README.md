@@ -106,6 +106,10 @@ pnpm migrate              # apply migrations
 `pnpm dev:api` runs `migrate` itself via its `predev` hook, so the explicit call above is
 only needed the first time, or to migrate without booting the server.
 
+Local Postgres runs the same major version as production (18). A volume created by an
+older major won't start, and the container logs say why — run `pnpm db:reset`, then
+`pnpm db:seed-demo`. Dev data is disposable.
+
 ## ▶️ Run
 
 ```bash

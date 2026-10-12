@@ -32,7 +32,7 @@ jobs:
     # Same Postgres the API suite uses in ci.yml; this run gets its own database.
     services:
       db:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: kavtsya
           POSTGRES_PASSWORD: kavtsya
