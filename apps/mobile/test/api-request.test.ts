@@ -237,3 +237,10 @@ describe("request: named rejections", () => {
     );
   });
 });
+
+it("shows a shared validation message for invalid_request", async () => {
+  apiFetch.mockResolvedValueOnce(fail({ error: "invalid_request" }));
+  await expect(api.registerCafe("Кавця")).rejects.toThrow(
+    "Перевірте введені дані та спробуйте ще раз",
+  );
+});

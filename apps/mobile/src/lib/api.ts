@@ -116,6 +116,9 @@ function toError(
   rejections?: RejectionMapper,
 ): Error {
   const code = (error as { error?: string }).error;
+  if (code === "invalid_request") {
+    return new Error("Перевірте введені дані та спробуйте ще раз");
+  }
   const named = code ? rejections?.(code) : undefined;
   return named ?? new Error(error.message ?? fallback);
 }
