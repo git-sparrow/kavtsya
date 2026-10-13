@@ -129,13 +129,12 @@ export async function confirmRedemption(
       where "cafe_id" = ${cafeId} and "customer_user_id" = ${customerId}
       for update
     `;
-      if (!membership) return { ok: false, reason: "insufficient_balance" };
-
-      const program = await authorizeCounterWrite(
+      const { program, authorizedAt } = await authorizeCounterWrite(
         tx,
         { cafeId, actorUserId, customerId },
         clock,
       );
+      if (!membership) return { ok: false, reason: "insufficient_balance" };
 
       // Replay check under the lock: a retry that lost the race to its original
       // sees the committed row here (READ COMMITTED re-reads after the wait).
@@ -157,7 +156,7 @@ export async function confirmRedemption(
         ("cafe_id", "customer_user_id", "beans_spent", "reward", "idempotency_key", "created_at")
       values
         (${cafeId}, ${customerId}, ${spent.beansSpent},
-         ${tx.json(eligibility.reward)}, ${idempotencyKey}, ${clock.now()})
+         ${tx.json(eligibility.reward)}, ${idempotencyKey}, ${authorizedAt})
       on conflict ("idempotency_key") do nothing
       returning "id"
     `;

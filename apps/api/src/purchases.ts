@@ -113,12 +113,12 @@ export async function issuePurchase(
         where "cafe_id" = ${cafeId} and "customer_user_id" = ${customerId}
         for update
       `;
-      const currentProgram = await authorizeCounterWrite(
-        tx,
-        { cafeId, actorUserId: issuedByUserId, customerId },
-        clock,
-      );
-      const issuedAt = clock.now();
+      const { program: currentProgram, authorizedAt: issuedAt } =
+        await authorizeCounterWrite(
+          tx,
+          { cafeId, actorUserId: issuedByUserId, customerId },
+          clock,
+        );
       if (entry.source === "member_code") {
         const [today] = await tx<{ manual_count: number }[]>`
           select count(*)::int as manual_count from purchases

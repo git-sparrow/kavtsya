@@ -120,7 +120,7 @@ export async function authorizeCounterWrite(
   tx: Queryable,
   input: Omit<AuthorizeCounterInput, "now">,
   clock: Clock,
-): Promise<LoyaltyProgram> {
+): Promise<{ program: LoyaltyProgram; authorizedAt: Date }> {
   const users = await tx<{ id: string; deleted_at: Date | null }[]>`
     select "id", "deleted_at" from "user"
     where "id" in (${input.actorUserId}, ${input.customerId})
@@ -135,9 +135,10 @@ export async function authorizeCounterWrite(
     where "cafe_id"=${input.cafeId} and "user_id"=${input.actorUserId}
     order by "id" for share
   `;
-  const outcome = await authorizeCounter(tx, { ...input, now: clock.now() });
+  const authorizedAt = clock.now();
+  const outcome = await authorizeCounter(tx, { ...input, now: authorizedAt });
   if (!outcome.ok) throw new CounterAuthorizationError(outcome.reason);
-  return outcome.program;
+  return { program: outcome.program, authorizedAt };
 }
 
 /**

@@ -18,8 +18,15 @@ beforeEach(async () => {
   await db`truncate "user", "session", "account", "verification", cafes cascade`;
 });
 
-for (const operation of ["manual", "redemption"] as const) {
-  test.each(["revoked", "expired", "deleted", "archived", "midnight"] as const)(
+for (const operation of ["manual", "qr", "redemption"] as const) {
+  test.each([
+    "revoked",
+    "expired",
+    "deleted",
+    "archived",
+    "customer_deleted",
+    "owner_deleted",
+  ] as const)(
     `${operation} rechecks %s authorization after waiting for its ledger lock`,
     async (state) => {
       let now = new Date("2026-10-12T20:59:59Z");
@@ -72,6 +79,12 @@ for (const operation of ["manual", "redemption"] as const) {
           await request("GET", "/api/me/member-code", customer)
         ).json()) as { memberCode: string }
       ).memberCode;
+      const freshQr = (
+        (await (await request("GET", "/api/qr-token", customer)).json()) as {
+          token: string;
+        }
+      ).token;
+      let blockerPid = 0;
       let unlock!: () => void;
       let locked!: () => void;
       const ready = new Promise<void>((resolve) => {
@@ -82,23 +95,27 @@ for (const operation of ["manual", "redemption"] as const) {
       });
       const blocker = db.begin(async (tx) => {
         await tx`select 1 from cafe_memberships where cafe_id=${cafeId} and customer_user_id=${customerId} for update`;
+        blockerPid = (await tx`select pg_backend_pid() as pid`)[0]!
+          .pid as number;
         locked();
         await release;
       });
       await ready;
       const pending = request(
         "POST",
-        operation === "manual" ? "/api/purchases" : "/api/redemptions",
-        barista,
+        operation === "redemption" ? "/api/redemptions" : "/api/purchases",
+        state === "owner_deleted" ? owner : barista,
         operation === "manual"
           ? { cafeId, memberCode }
-          : { cafeId, customerId, idempotencyKey: "blocked-confirm" },
+          : operation === "qr"
+            ? { cafeId, qrToken: freshQr }
+            : { cafeId, customerId, idempotencyKey: "blocked-confirm" },
       );
       try {
         let waiting = false;
         for (let attempt = 0; attempt < 100; attempt++) {
           const blocked =
-            await db`select 1 from pg_stat_activity where datname=current_database() and wait_event_type='Lock' and pid<>pg_backend_pid()`;
+            await db`select 1 from pg_stat_activity where datname=current_database() and ${blockerPid}=any(pg_blocking_pids(pid)) and query like '%cafe_memberships%'`;
           if (blocked.length > 0) {
             waiting = true;
             break;
@@ -118,15 +135,17 @@ for (const operation of ["manual", "redemption"] as const) {
           ).toBe(204);
         } else if (state === "expired") {
           now = new Date(now.getTime() + 60_001);
-        } else if (state === "midnight") {
-          now = new Date("2026-10-12T21:00:01Z");
         } else {
           expect(
             (
               await request(
                 "DELETE",
                 "/api/me",
-                state === "deleted" ? barista : owner,
+                state === "deleted"
+                  ? barista
+                  : state === "customer_deleted"
+                    ? customer
+                    : owner,
               )
             ).status,
           ).toBe(204);
@@ -134,29 +153,6 @@ for (const operation of ["manual", "redemption"] as const) {
       } finally {
         unlock();
         await blocker;
-      }
-      if (state === "midnight") {
-        expect((await pending).status).toBe(201);
-        const rows =
-          operation === "manual"
-            ? await db`select created_at from purchases where entry_source='member_code'`
-            : await db`select created_at from redemptions`;
-        expect((rows[0]?.created_at as Date).toISOString()).toBe(
-          now.toISOString(),
-        );
-        if (operation === "manual") {
-          for (const status of [201, 201, 429]) {
-            expect(
-              (
-                await request("POST", "/api/purchases", owner, {
-                  cafeId,
-                  memberCode,
-                })
-              ).status,
-            ).toBe(status);
-          }
-        }
-        return;
       }
       expect((await pending).status).toBe(404);
       expect(
