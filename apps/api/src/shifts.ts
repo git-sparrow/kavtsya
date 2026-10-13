@@ -52,7 +52,8 @@ function activeGrant(sql: Queryable, now: Date, alias?: string): SqlFragment {
  * drift apart (#111). The counter is open to the Café's owner OR an account
  * holding an active scanner grant there; a Café that doesn't exist and one the
  * caller may not operate stay indistinguishable (the same "not found" the
- * owner-only check always gave). On success it carries the Café's loyalty program
+ * owner-only check always gave), as does a scan whose actor or Customer is
+ * missing or tombstoned (#81). On success it carries the Café's loyalty program
  * through, so a caller that cleared the gate provably has one to work with.
  */
 export type CounterRejection = "cafe_not_owned" | "self_scan" | "own_cafe";
@@ -94,6 +95,13 @@ export async function authorizeCounter(
   ) {
     return { ok: false, reason: "cafe_not_owned" };
   }
+  const [accounts] = await db<{ live: number }[]>`
+    select count(*)::int as "live" from "user"
+    where "id" in (${actorUserId}, ${customerId}) and "deleted_at" is null
+  `;
+  if (accounts?.live !== new Set([actorUserId, customerId]).size) {
+    return { ok: false, reason: "cafe_not_owned" };
+  }
 
   // The self-farm guards are additive (ADR 0013). Scanner ≠ scanned on both
   // counter powers: nobody issues to, or confirms a Redemption for, themselves…
@@ -121,14 +129,11 @@ export async function authorizeCounterWrite(
   input: Omit<AuthorizeCounterInput, "now">,
   clock: Clock,
 ): Promise<{ program: LoyaltyProgram; authorizedAt: Date }> {
-  const users = await tx<{ id: string; deleted_at: Date | null }[]>`
-    select "id", "deleted_at" from "user"
+  await tx`
+    select 1 from "user"
     where "id" in (${input.actorUserId}, ${input.customerId})
     order by "id" for share
   `;
-  if (users.length !== 2 || users.some((user) => user.deleted_at !== null)) {
-    throw new CounterAuthorizationError("cafe_not_owned");
-  }
   await tx`select 1 from cafes where "id"=${input.cafeId} for share`;
   await tx`
     select 1 from cafe_scanner_grants

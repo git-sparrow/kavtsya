@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import { makeApp, registerCafe, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 import type { Database } from "../src/db";
+import { authorizeCounter } from "../src/shifts";
 
 let db: Database;
 let auth: ReturnType<typeof setupTestAuth>["auth"];
@@ -168,3 +169,45 @@ for (const operation of ["manual", "qr", "redemption"] as const) {
     },
   );
 }
+
+test("the counter gate rejects a missing or tombstoned account and still names a self-scan", async () => {
+  const now = new Date("2026-10-12T12:00:00Z");
+  const app = makeApp({ db, auth, clock: { now: () => now } });
+  const owner = await signUp(app, "owner@example.com");
+  const customer = await signUp(app, "customer@example.com");
+  const cafeId = await registerCafe(app, "Кавця", owner);
+  const idOf = async (cookie: string) =>
+    (
+      (await (
+        await app.request("/api/me", { headers: { cookie } })
+      ).json()) as { id: string }
+    ).id;
+  const ownerId = await idOf(owner);
+  const customerId = await idOf(customer);
+  const gate = (customer: string) =>
+    authorizeCounter(db, {
+      cafeId,
+      actorUserId: ownerId,
+      customerId: customer,
+      now,
+    });
+
+  expect(await gate(customerId)).toMatchObject({ ok: true });
+  expect(await gate(ownerId)).toEqual({ ok: false, reason: "self_scan" });
+  expect(await gate("no-such-user")).toEqual({
+    ok: false,
+    reason: "cafe_not_owned",
+  });
+  expect(
+    (
+      await app.request("/api/me", {
+        method: "DELETE",
+        headers: { cookie: customer },
+      })
+    ).status,
+  ).toBe(204);
+  expect(await gate(customerId)).toEqual({
+    ok: false,
+    reason: "cafe_not_owned",
+  });
+});
