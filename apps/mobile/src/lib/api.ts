@@ -268,6 +268,13 @@ const REDEMPTION_REJECTIONS: Record<RedemptionRejection, string> = {
   not_found: "Кав'ярню не знайдено",
 };
 
+export class RedemptionRejectionError extends Error {
+  constructor(readonly code: RedemptionRejection) {
+    super(REDEMPTION_REJECTIONS[code]);
+    this.name = "RedemptionRejectionError";
+  }
+}
+
 /**
  * The CafeOwner confirms a Redemption (#22) — a distinct action off the one
  * scan (ADR 0006): `customerId` comes from the scan result, no second token.
@@ -283,7 +290,10 @@ export async function confirmRedemption(
     method: "POST",
     body: { cafeId, customerId, idempotencyKey },
     fallback: "Не вдалося видати винагороду",
-    rejections: mapRejections(isRedemptionRejection, REDEMPTION_REJECTIONS),
+    rejections: (code) =>
+      isRedemptionRejection(code)
+        ? new RedemptionRejectionError(code)
+        : undefined,
   });
 }
 

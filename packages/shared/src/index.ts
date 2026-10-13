@@ -439,6 +439,7 @@ export type PendingFortuneResponse = z.infer<
  * Ukrainian copy is a compile error to leave incomplete.
  */
 export const redemptionRejectionStatuses = {
+  /** The retry key already belongs to another Café or Customer. */
   idempotency_conflict: 409,
   /** Self-farming guard (ADR 0003): Redemption is also rejected at one's own Café. */
   own_cafe: 403,

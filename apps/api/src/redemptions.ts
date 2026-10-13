@@ -151,6 +151,7 @@ export async function confirmRedemption(
       returning "id"
     `;
     if (inserted.length === 0) {
+      // A different membership lock can race us to the globally unique key.
       const replay = await replayFor(tx, idempotencyKey, customerId, cafeId);
       return replay ?? { ok: false, reason: "idempotency_conflict" };
     }

@@ -372,7 +372,7 @@ test("deleting an account no longer cascades away the Café's ledger", async () 
   ).rejects.toMatchObject({ code: "23503" });
 });
 
-test("a key reused for another eligible Customer is a conflict with no spend or error log", async () => {
+test("a key reused for another eligible Customer is a conflict with no additional spend", async () => {
   const owner = await signUp(app(), "owner@example.com");
   const cafeId = await registerCafe("Кавця", owner);
   await setProgram(cafeId, owner, {
@@ -407,3 +407,118 @@ test("a key reused for another eligible Customer is a conflict with no spend or 
       .status,
   ).toBe(200);
 });
+
+test("a different authorized counter actor replays the same Redemption body", async () => {
+  const owner = await signUp(app(), "owner@example.com");
+  const cafeId = await registerCafe("Кавця", owner);
+  await setProgram(cafeId, owner, {
+    threshold: 1,
+    reward: { type: "free_drink" },
+  });
+  const customer = await signUp(app(), "customer@example.com");
+  const scan = await earn(cafeId, owner, customer);
+  const colleague = await signUp(app(), "barista@example.com");
+  const [barista] =
+    await db`select id from "user" where email='barista@example.com'`;
+  await db`insert into cafe_scanner_grants(cafe_id,user_id,created_by,expires_at)
+    values(${cafeId},${barista!.id},${barista!.id},${new Date(Date.now() + 60_000)})`;
+  const body = {
+    cafeId,
+    customerId: scan.customerId,
+    idempotencyKey: "colleague",
+  };
+  const original = await confirmRedemption(body, owner);
+  expect(original.status).toBe(201);
+  const replay = await confirmRedemption(body, colleague);
+  expect(replay.status).toBe(200);
+  expect(await replay.json()).toEqual(await original.json());
+  expect((await db`select count(*)::int as n from redemptions`)[0]?.n).toBe(1);
+});
+
+test("two Café actors racing one key create exactly one Redemption", async () => {
+  const customer = await signUp(app(), "customer@example.com");
+  const requests = [];
+  for (const email of ["first@example.com", "second@example.com"]) {
+    const owner = await signUp(app(), email);
+    const cafeId = await registerCafe("Кавця", owner);
+    await setProgram(cafeId, owner, {
+      threshold: 1,
+      reward: { type: "free_drink" },
+    });
+    const scan = await earn(cafeId, owner, customer);
+    requests.push({
+      owner,
+      body: {
+        cafeId,
+        customerId: scan.customerId,
+        idempotencyKey: "racing-key",
+      },
+    });
+  }
+  const results = await Promise.all(
+    requests.map(({ owner, body }) => confirmRedemption(body, owner)),
+  );
+  expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+  const conflict = results.find((r) => r.status === 409)!;
+  expect(await conflict.json()).toEqual({ error: "idempotency_conflict" });
+  expect(
+    (
+      await db`select count(*)::int as n, sum(beans_spent)::int as spent from redemptions`
+    )[0],
+  ).toMatchObject({ n: 1, spent: 1 });
+});
+
+test.each(["no_membership", "no_balance", "no_reward"] as const)(
+  "eligibility precedes a cross-body key conflict for %s",
+  async (state) => {
+    const owner = await signUp(app(), "owner@example.com");
+    const cafeId = await registerCafe("Кавця", owner);
+    await setProgram(cafeId, owner, {
+      threshold: 1,
+      reward: { type: "free_drink" },
+    });
+    const first = await signUp(app(), "first@example.com");
+    const firstScan = await earn(cafeId, owner, first);
+    expect(
+      (
+        await confirmRedemption(
+          {
+            cafeId,
+            customerId: firstScan.customerId,
+            idempotencyKey: "occupied",
+          },
+          owner,
+        )
+      ).status,
+    ).toBe(201);
+    const second = await signUp(app(), "second@example.com");
+    const [secondUser] =
+      await db`select id from "user" where email='second@example.com'`;
+    if (state !== "no_membership") await earn(cafeId, owner, second);
+    if (state === "no_balance")
+      expect(
+        (
+          await confirmRedemption(
+            {
+              cafeId,
+              customerId: secondUser!.id,
+              idempotencyKey: "spend-second",
+            },
+            owner,
+          )
+        ).status,
+      ).toBe(201);
+    if (state === "no_reward")
+      await setProgram(cafeId, owner, { threshold: 1, reward: null });
+    const before = await db`select * from redemptions order by id`;
+    const res = await confirmRedemption(
+      { cafeId, customerId: secondUser!.id, idempotencyKey: "occupied" },
+      owner,
+    );
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: state === "no_reward" ? "no_reward" : "insufficient_balance",
+    });
+    expect(await db`select * from redemptions order by id`).toEqual(before);
+  },
+);
