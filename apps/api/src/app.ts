@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { secureHeaders } from "hono/secure-headers";
 import { isTombstoned } from "./account-deletion";
 import type { Auth, AuthSession, AuthUser } from "./auth";
 import type { Clock } from "./clock";
@@ -70,10 +71,7 @@ const PUBLIC_PATHS = ["/health", "/api/auth/*"] as const;
 export function createApp(deps: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
-  app.use("*", async (c, next) => {
-    await next();
-    c.header("X-Content-Type-Options", "nosniff");
-  });
+  app.use("*", secureHeaders());
 
   // Resolve the session from request cookies once per request and stash it in
   // context. Resolving is all this does — whether a route *requires* one is the

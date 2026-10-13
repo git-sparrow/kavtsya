@@ -66,10 +66,13 @@ test("GET /health surfaces today's fortune-pool count", async () => {
 });
 
 test.each(["/health", "/api/me", "/api/auth/ok"])(
-  "%s declares nosniff on public, rejected and auth responses",
+  "%s declares security headers on public, rejected and auth responses",
   async (path) => {
     const app = makeApp({ db, auth });
     const response = await app.request(path);
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("strict-transport-security")).toBe(
+      "max-age=15552000; includeSubDomains",
+    );
   },
 );
