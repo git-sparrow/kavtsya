@@ -196,16 +196,23 @@ any compliance prompts, and install that build on the physical iPhone.
 Submission uploads the binary; it does not publish an App Store release.
 ([Expo iOS submit](https://docs.expo.dev/submit/ios/), read on 2026-10-14.)
 
-For the device pass, name the maintainer’s iPhone **A** and the second iPhone
-**B**. Give B’s operator access to the same production build through a TestFlight
-tester invitation/group and install it on B as well. Both phones must run that
-build against production; the Customer QR is a live, rotating token.
-([Apple internal TestFlight testers](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers/),
-read on 2026-10-14.) The maintainer performs these steps:
+For the device pass, the maintainer operates both their iPhone **A** and the
+second iPhone **B**. Install the same production TestFlight build on both phones.
+The Apple ID used for TestFlight on B must be an App Store Connect user on the
+team with access to this app, invited to its internal testing group. Both
+phones run against production; the Customer QR is a live, rotating token.
+
+If someone else operates B, add their Apple ID as an App Store Connect user with
+app access for internal testing, or distribute through an external testing group,
+which requires TestFlight Beta App Review. These tester requirements were checked
+against [Apple internal testers](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers/)
+and [external testers](https://developer.apple.com/help/app-store-connect/test-a-beta-version/invite-external-testers/)
+on 2026-10-14. The maintainer performs these steps:
 
 1. On **A**, create/sign in to the **CafeOwner** account and register a Café.
-   On **B**, create/sign in to the separate **Customer** account and display its
-   live QR. Record the Customer’s starting balance on B.
+   On **B**, create a new, separate **Customer** account and display its live QR.
+   Leave café news consent off and do not grant notification permission on **B**.
+   Record the Customer’s starting balance on B.
 2. On **A as CafeOwner**, open the scanner with camera permission not yet granted
    and record the Ukrainian permission copy. Scan B’s Customer QR and verify a
    successful Purchase; on **B as Customer**, verify the balance rises by one
