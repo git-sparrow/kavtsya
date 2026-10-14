@@ -78,7 +78,15 @@ drift check reads the registry, so an offline push can land there too.
    ```
 
 5. **CI must be green and the branch up to date with `main` before merge.**
+   The `ci` check gates merges; `e2e-android` is advisory until promoted (see the
+   header of `.github/workflows/e2e-android.yml`). After the last push or base
+   change, confirm a run actually started for the new head.
    Address review comments by pushing more commits to the same branch.
+
+Open independent fixes as separate PRs off `main`. Stack a PR on another only when
+it needs that PR's code, and say so in its description. Merge a stack bottom-up;
+after a squash merge, rebase the next PR with
+`git rebase --onto origin/main <old parent head>` and retarget it to `main`.
 
 ## Commits
 
