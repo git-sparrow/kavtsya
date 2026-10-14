@@ -199,8 +199,6 @@ test("malformed JSON keeps the route's error contract", async () => {
   expect(await snapshotPublicTables(db)).toEqual(before);
 });
 
-// #323 A1–A4: encodings the NUL guard does not decode still end in a controlled
-// response with no persistence.
 test("multipart NUL to an authenticated auth endpoint is rejected without logging", async () => {
   const app = makeApp({ db, auth });
   const cookie = await signUp(app, "customer@example.com");
@@ -227,11 +225,12 @@ test("multipart NUL to an authenticated auth endpoint is rejected without loggin
 test("a text/plain body is checked for NUL like JSON", async () => {
   const app = makeApp({ db, auth });
   const cookie = await signUp(app, "owner@example.com");
+  const cafeId = await registerCafe(app, "Кавця", cookie);
   const before = await snapshotPublicTables(db);
-  const res = await app.request("/api/cafes", {
+  const res = await app.request(`/api/cafes/${cafeId}/campaigns`, {
     method: "POST",
     headers: { cookie, "content-type": "text/plain" },
-    body: JSON.stringify({ name: "\u0000" }),
+    body: JSON.stringify({ message: "\u0000" }),
   });
   expect(res.status).toBe(400);
   expect(await res.json()).toEqual({ error: "invalid_request" });
@@ -256,6 +255,7 @@ test("a multipart body keeps the route's error contract", async () => {
 
 test("a declared oversized content-length is rejected before an account exists", async () => {
   const app = makeApp({ db, auth });
+  const before = await snapshotPublicTables(db);
   const body = JSON.stringify({
     email: "big@example.com",
     password: "hunter2-very-secret",
@@ -271,5 +271,5 @@ test("a declared oversized content-length is rejected before an account exists",
   });
   expect(res.status).toBe(413);
   expect(await res.json()).toEqual({ error: "invalid_request" });
-  expect((await db`select count(*)::int as n from "user"`)[0]?.n).toBe(0);
+  expect(await snapshotPublicTables(db)).toEqual(before);
 });
