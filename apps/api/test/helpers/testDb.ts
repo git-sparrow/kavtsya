@@ -37,3 +37,16 @@ export function setupTestAuth(): { auth: Auth; pool: Pool } {
   });
   return { auth, pool };
 }
+
+export async function snapshotPublicTables(db: Database) {
+  const tables = await db<{ tablename: string }[]>`
+    select tablename from pg_tables where schemaname='public' order by tablename
+  `;
+  return Promise.all(
+    tables.map(({ tablename }) =>
+      db.unsafe(
+        `select row_to_json(t)::text as row from "${tablename}" t order by row_to_json(t)::text`,
+      ),
+    ),
+  );
+}

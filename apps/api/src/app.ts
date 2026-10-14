@@ -1,4 +1,5 @@
-import { Hono } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
 import { isTombstoned } from "./account-deletion";
 import type { Auth, AuthSession, AuthUser } from "./auth";
@@ -68,6 +69,44 @@ export type AppEnv = {
  */
 const PUBLIC_PATHS = ["/health", "/api/auth/*"] as const;
 
+function containsNul(value: unknown): boolean {
+  const pending: unknown[] = [value];
+  while (pending.length > 0) {
+    const item = pending.pop();
+    if (typeof item === "string" && item.includes("\u0000")) return true;
+    if (item !== null && typeof item === "object") {
+      for (const [key, nested] of Object.entries(item)) {
+        if (key.includes("\u0000")) return true;
+        pending.push(nested);
+      }
+    }
+  }
+  return false;
+}
+
+// PostgreSQL text cannot represent NUL in decoded JSON or form fields.
+function rejectNul(): MiddlewareHandler<AppEnv> {
+  return async (c, next) => {
+    const mediaType = c.req
+      .header("content-type")
+      ?.split(";", 1)[0]
+      ?.trim()
+      .toLowerCase();
+    const payload = c.req.raw.body
+      ? mediaType === "application/x-www-form-urlencoded"
+        ? [...new URLSearchParams(await c.req.raw.clone().text())]
+        : await c.req.raw
+            .clone()
+            .json()
+            .catch(() => null)
+      : null;
+    if (/%00/i.test(c.req.url) || containsNul(payload)) {
+      return c.json({ error: "invalid_request" }, 400);
+    }
+    await next();
+  };
+}
+
 export function createApp(deps: AppDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
@@ -103,6 +142,15 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   // same app seen as `Hono<AuthedEnv>`, so every handler registered on it reads
   // a non-null `user` and none carries, or can forget, its own check.
   const authed = app.use("*", requireUser(PUBLIC_PATHS));
+
+  app.use(
+    "*",
+    bodyLimit({
+      maxSize: 64 * 1024,
+      onError: (c) => c.json({ error: "invalid_request" }, 413),
+    }),
+  );
+  app.use("*", rejectNul());
 
   // The public surface, named in PUBLIC_PATHS above. Better Auth owns
   // signup/login/logout/session under /api/auth/*.
