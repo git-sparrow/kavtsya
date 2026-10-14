@@ -28,7 +28,7 @@ Make a task folder outside the repo: `${TMPDIR:-/tmp}/kavtsya-review/<pr>-<head7
 
 ## 2. Dispatch the reviewer
 
-Fill in the reviewer prompt below and run the reviewer's command in the background, with stdin closed. Give it a **20-minute deadline**. macOS has no `timeout`, so you enforce the deadline yourself: stop a run that is still going at the deadline, and record it as INCOMPLETE (deadline).
+Fill in the reviewer prompt below and run the reviewer's command in the background, with stdin closed. Give it a **20-minute deadline**. macOS has no `timeout` (seen in the #324 pilot, 2026-10-14), so you enforce the deadline yourself: stop a run that is still going at the deadline, and record it as INCOMPLETE (deadline).
 
 - **Codex:**
 
@@ -38,7 +38,7 @@ Fill in the reviewer prompt below and run the reviewer's command in the backgrou
     > <task>/review-r<N>.jsonl 2> <task>/review-r<N>.err
   ```
 
-  Don't add `--ephemeral`: it broke the skill's parallel subagents.
+  Ran on #324 and #325 with codex-cli 0.162.1 (2026-10-14). Don't add `--ephemeral`: in Codex's #310 retro probe it broke the skill's parallel subagents. Without stdin closed, the run waits on `Reading additional input from stdin`.
 
 - **Claude:**
 
@@ -79,7 +79,7 @@ Then give every assertion of the spec's validation contract a disposition: the e
 
 The edit owner fixes the confirmed findings and runs `pnpm verify`. When you are the edit owner, check that each new test goes red once the behaviour it guards is broken. A pushed fix changes the head, which makes the round stale: pin the new head and go back to step 2 with the follow-up prompt.
 
-**Converged** is a follow-up round with no new CONFIRMED finding. After 3 follow-up rounds without converging, stop and escalate to the maintainer as **not converging**: fixes that keep producing findings point to the design or the contract, not to another round.
+**Converged** is a round with no new CONFIRMED finding: a clean discovery round converges on its own head and needs no follow-up. After 3 follow-up rounds without converging, stop and escalate to the maintainer as **not converging**: fixes that keep producing findings point to the design or the contract, not to another round.
 
 **Done when** the final head has converged with no open CONFIRMED finding, or you have escalated.
 
@@ -93,6 +93,6 @@ Write one report to `<task>/report.md`:
 - the runtime evidence: `pnpm verify` exit code and counts, and any mutation checks;
 - measures: messages relayed through the maintainer, heads that went stale, findings by source and verdict, and tooling incidents.
 
-The review is **not ready** while it has any open CONFIRMED finding, any INCOMPLETE round, a final head without a converged follow-up, any contract assertion with an unaccepted gap, or any PLAUSIBLE authorization or data-integrity finding. With `--publish`, post the report with `gh pr comment <n> --body-file`. Merging and risk acceptance stay with the maintainer.
+The review is **not ready** while it has any open CONFIRMED finding, any INCOMPLETE round, a final head without a converged round, any contract assertion with an unaccepted gap, or any PLAUSIBLE authorization or data-integrity finding. With `--publish`, post the report with `gh pr comment <n> --body-file`. Merging and risk acceptance stay with the maintainer.
 
 **Done when** the report exists and, with `--publish`, is posted.
