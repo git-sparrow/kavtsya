@@ -471,6 +471,45 @@ test("a revoked Barista's retry of a committed Redemption is not found, never re
   expect((await db`select count(*)::int as n from redemptions`)[0]?.n).toBe(1);
 });
 
+test("an expired Barista's retry of a committed Redemption is not found, never replayed", async () => {
+  let now = new Date("2026-10-14T10:00:00Z");
+  const clocked = makeApp({ db, auth, clock: { now: () => now } });
+  const owner = await signUp(clocked, "owner@example.com");
+  const cafeId = await registerCafeAt(clocked, "Кавця", owner);
+  await setProgram(cafeId, owner, {
+    threshold: 1,
+    reward: { type: "free_drink" },
+  });
+  const customer = await signUp(clocked, "customer@example.com");
+  const scan = await earn(cafeId, owner, customer);
+  const expired = await signUp(clocked, "barista@example.com");
+  const [barista] =
+    await db`select id from "user" where email='barista@example.com'`;
+  await db`insert into cafe_scanner_grants(cafe_id,user_id,created_by,expires_at)
+    values(${cafeId},${barista!.id},${barista!.id},${new Date(now.getTime() + 60_000)})`;
+  const confirm = () =>
+    clocked.request("/api/redemptions", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: expired },
+      body: JSON.stringify({
+        cafeId,
+        customerId: scan.customerId,
+        idempotencyKey: "before-expiry",
+      }),
+    });
+  expect((await confirm()).status).toBe(201);
+  expect((await confirm()).status).toBe(200);
+  const balance =
+    await db`select * from cafe_memberships where cafe_id=${cafeId}`;
+
+  now = new Date(now.getTime() + 60_001);
+  expect((await confirm()).status).toBe(404);
+  expect((await db`select count(*)::int as n from redemptions`)[0]?.n).toBe(1);
+  expect(
+    await db`select * from cafe_memberships where cafe_id=${cafeId}`,
+  ).toEqual(balance);
+});
+
 test("two Café actors racing one key create exactly one Redemption", async () => {
   const customer = await signUp(app(), "customer@example.com");
   const requests = [];
