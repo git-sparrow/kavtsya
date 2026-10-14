@@ -2,14 +2,14 @@
   "expo": {
     "name": "Kavtsya",
     "slug": "kavtsya",
-    "version": "0.0.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "kavtsya",
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.kavtsya.app",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "icon": {
         "light": "./assets/images/icon.png",
         "dark": "./assets/images/ios-icon-dark.png",
