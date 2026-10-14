@@ -79,7 +79,7 @@ to merge or expands the task the user authorized.
 3. Give the next tool the handoff below. The reviewer reads the actual diff
    against the base and checks the acceptance criteria and verification evidence.
    It starts read-only; transfer edit ownership explicitly before fixes. The
-   `cross-review` skill runs the opposite engine as reviewer directly, so the
+   `cross-review` skill runs Codex as reviewer of Claude's work directly, so the
    maintainer relays nothing.
 4. Address valid findings, repeat affected checks, run `pnpm verify`, and inspect
    the current PR's CI. Merge only when separately authorized.

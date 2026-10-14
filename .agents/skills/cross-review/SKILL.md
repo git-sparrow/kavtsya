@@ -1,18 +1,17 @@
 ---
 name: cross-review
-description: Review a PR (or a stack) with the opposite engine — Codex reviews Claude's work, Claude reviews Codex's — then adjudicate every finding with evidence and re-review the changed head.
+description: Codex reviews a PR or stack read-only; you adjudicate every finding with evidence and re-review each fixed head.
 disable-model-invocation: true
-argument-hint: "<PR numbers> [--reviewer codex|claude] [--rounds N] [--publish]"
+argument-hint: "<PR numbers> [--rounds N] [--publish]"
 ---
 
 # Cross-review
 
-You are the **coordinator**. Another engine is the **reviewer**: it starts fresh, reads only, and never edits. You **adjudicate** what it reports. The maintainer decides merges and accepts risks. A review result is only as good as its **pinned** head: any later head makes it **stale**.
+You are the **coordinator**. Codex is the **reviewer**: it starts fresh, reads only, and never edits. Its value is a second engine's eyes, so when Codex implemented the change, tell the maintainer the review would be same-engine before you start. You **adjudicate** what it reports. The maintainer decides merges and accepts risks. A review result is only as good as its **pinned** head: any later head makes it **stale**.
 
 Arguments:
 
 - **PR numbers** (required): one PR or every PR of a stack.
-- **`--reviewer`**: defaults to the engine that did _not_ implement the change.
 - **`--rounds N`**: fresh discovery rounds, default 1. Repeating a blind review is not reproducing a bug, so use more only for a deliberate high-risk change. Follow-up rounds (step 4) are separate.
 - **`--publish`**: posts the report on the PR. Without it, the report stays a local draft.
 
@@ -28,31 +27,19 @@ Make a task folder outside the repo: `${TMPDIR:-/tmp}/kavtsya-review/<pr>-<head7
 
 ## 2. Dispatch the reviewer
 
-Fill in the reviewer prompt below and run the reviewer's command in the background, with stdin closed. Give it a **20-minute deadline**. macOS has no `timeout` (seen in the #324 pilot, 2026-10-14), so you enforce the deadline yourself: stop a run that is still going at the deadline, and record it as INCOMPLETE (deadline).
+Fill in the reviewer prompt below and run the command in the background, with stdin closed. Give it a **20-minute deadline**. macOS has no `timeout` (seen in the #324 pilot, 2026-10-14), so you enforce the deadline yourself: stop a run that is still going at the deadline, and record it as INCOMPLETE (deadline).
 
-- **Codex:**
+```sh
+codex -a never exec --ignore-user-config -s read-only -C <worktree> --json \
+  -o <task>/review-r<N>.md "<prompt>" < /dev/null \
+  > <task>/review-r<N>.jsonl 2> <task>/review-r<N>.err
+```
 
-  ```sh
-  codex -a never exec --ignore-user-config -s read-only -C <worktree> --json \
-    -o <task>/review-r<N>.md "<prompt>" < /dev/null \
-    > <task>/review-r<N>.jsonl 2> <task>/review-r<N>.err
-  ```
-
-  Ran on #324 and #325 with codex-cli 0.162.1 (2026-10-14). Don't add `--ephemeral`: in Codex's #310 retro probe it broke the skill's parallel subagents. Without stdin closed, the run waits on `Reading additional input from stdin`.
-
-- **Claude:**
-
-  ```sh
-  claude -p --plugin-dir <repo>/.agents/plugins/mattpocock-skills \
-    --tools Read,Glob,Grep,Skill,Agent --permission-mode dontAsk \
-    --permission-prompts none "<prompt>" < /dev/null > <task>/review-r<N>.md
-  ```
-
-  This route has loaded the skill but has not yet completed a full review (2026-10-14). Treat its first runs as unverified.
+Ran on #324 and #325 with codex-cli 0.162.1 (2026-10-14). Without stdin closed, the run waits on `Reading additional input from stdin`. Leave out `--ephemeral`: in Codex's #310 retro probe it broke the skill's parallel subagents.
 
 Reviewer prompt, for a discovery round:
 
-> Begin your report with the line `Reviewed <base>...<head>`. Use the `mattpocock-skills:code-review` skill (Codex: `$mattpocock-skills:code-review`). Fixed point: base `<base>`, head `<head>` (`git diff <base>...<head>`). Spec: `<spec file>`. Standards: `CODING_STANDARDS.md` and the files it points to. Constraints: read-only; do not run tests, touch databases, edit files, fetch, or publish. Report both axes. For every finding give a verdict: CONFIRMED(source) only if the quoted code proves it, otherwise PLAUSIBLE, with the evidence that would confirm it. If you could not complete the review, say INCOMPLETE and why.
+> Begin your report with the line `Reviewed <base>...<head>`. Use the `$mattpocock-skills:code-review` skill. Fixed point: base `<base>`, head `<head>` (`git diff <base>...<head>`). Spec: `<spec file>`. Standards: `CODING_STANDARDS.md` and the files it points to. Constraints: read-only; do not run tests, touch databases, edit files, fetch, or publish. Report both axes. For every finding give a verdict: CONFIRMED(source) only if the quoted code proves it, otherwise PLAUSIBLE, with the evidence that would confirm it. If you could not complete the review, say INCOMPLETE and why.
 
 For a follow-up round, add:
 
@@ -68,8 +55,6 @@ Check each finding yourself at the pinned head. A claimed regression is checked 
 - **CONFIRMED(runtime)**: a test or probe reproduces it. Use your own test database and ports (`docs/agents/workflow.md`).
 - **PLAUSIBLE**: not reproduced; say what would confirm it.
 - **DROPPED**: disproven; say how.
-
-Agreement between reviewers is not evidence, and votes don't decide.
 
 Then give every assertion of the spec's validation contract a disposition: the evidence that establishes it at the pinned head (for a stack, the integration candidate), usually a test that ran, or an explicit gap. A clean review or a green `pnpm verify` doesn't establish an assertion on its own.
 
@@ -93,6 +78,6 @@ Write one report to `<task>/report.md`:
 - the runtime evidence: `pnpm verify` exit code and counts, and any mutation checks;
 - measures: messages relayed through the maintainer, heads that went stale, findings by source and verdict, and tooling incidents.
 
-The review is **not ready** while it has any open CONFIRMED finding, any INCOMPLETE round, a final head without a converged round, any contract assertion with an unaccepted gap, or any PLAUSIBLE authorization or data-integrity finding. With `--publish`, post the report with `gh pr comment <n> --body-file`. Merging and risk acceptance stay with the maintainer.
+The review is **ready** when steps 2–4 are done at the final head without escalation, every gap is accepted by the maintainer, and no authorization or data-integrity finding is left PLAUSIBLE. With `--publish`, post the report with `gh pr comment <n> --body-file`. Merging and risk acceptance stay with the maintainer.
 
 **Done when** the report exists and, with `--publish`, is posted.
