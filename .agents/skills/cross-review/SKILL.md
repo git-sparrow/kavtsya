@@ -13,7 +13,7 @@ Arguments:
 
 - **PR numbers** (required): one PR or every PR of a stack.
 - **`--reviewer`**: defaults to the engine that did _not_ implement the change.
-- **`--rounds N`**: defaults to 1 and is capped at 2 unless the maintainer names a higher number.
+- **`--rounds N`**: fresh discovery rounds, default 1. Repeating a blind review is not reproducing a bug, so use more only for a deliberate high-risk change. Follow-up rounds (step 4) are separate.
 - **`--publish`**: posts the report on the PR. Without it, the report stays a local draft.
 
 ## 1. Pin the target
@@ -50,11 +50,11 @@ Fill in the reviewer prompt below and run the reviewer's command in the backgrou
 
   This route has loaded the skill but has not yet completed a full review (2026-10-14). Treat its first runs as unverified.
 
-Reviewer prompt, for round 1:
+Reviewer prompt, for a discovery round:
 
 > Begin your report with the line `Reviewed <base>...<head>`. Use the `mattpocock-skills:code-review` skill (Codex: `$mattpocock-skills:code-review`). Fixed point: base `<base>`, head `<head>` (`git diff <base>...<head>`). Spec: `<spec file>`. Standards: `CODING_STANDARDS.md` and the files it points to. Constraints: read-only; do not run tests, touch databases, edit files, fetch, or publish. Report both axes. For every finding give a verdict: CONFIRMED(source) only if the quoted code proves it, otherwise PLAUSIBLE, with the evidence that would confirm it. If you could not complete the review, say INCOMPLETE and why.
 
-For round 2 and later, add:
+For a follow-up round, add:
 
 > Previous findings are in `<task>/review-r<N-1>.md`. First review the full diff fresh. Then mark each previous finding FIXED, NOT FIXED or REGRESSED, and report any new finding.
 
@@ -77,9 +77,11 @@ Then give every assertion of the spec's validation contract a disposition: the e
 
 ## 4. Fix, then re-review
 
-The edit owner fixes the confirmed findings and runs `pnpm verify`. When you are the edit owner, check that each new test goes red once the behaviour it guards is broken. A pushed fix changes the head, which makes the round stale: pin the new head and go back to step 2 with the next round's prompt.
+The edit owner fixes the confirmed findings and runs `pnpm verify`. When you are the edit owner, check that each new test goes red once the behaviour it guards is broken. A pushed fix changes the head, which makes the round stale: pin the new head and go back to step 2 with the follow-up prompt.
 
-**Done when** no CONFIRMED finding is open at the final head, or the rounds are used up.
+**Converged** is a follow-up round with no new CONFIRMED finding. After 3 follow-up rounds without converging, stop and escalate to the maintainer as **not converging**: fixes that keep producing findings point to the design or the contract, not to another round.
+
+**Done when** the final head has converged with no open CONFIRMED finding, or you have escalated.
 
 ## 5. Report
 
@@ -91,6 +93,6 @@ Write one report to `<task>/report.md`:
 - the runtime evidence: `pnpm verify` exit code and counts, and any mutation checks;
 - measures: messages relayed through the maintainer, heads that went stale, findings by source and verdict, and tooling incidents.
 
-The review is **not ready** while it has any open CONFIRMED finding, any INCOMPLETE round, any contract assertion with an unaccepted gap, or any PLAUSIBLE authorization or data-integrity finding. With `--publish`, post the report with `gh pr comment <n> --body-file`. Merging and risk acceptance stay with the maintainer.
+The review is **not ready** while it has any open CONFIRMED finding, any INCOMPLETE round, a final head without a converged follow-up, any contract assertion with an unaccepted gap, or any PLAUSIBLE authorization or data-integrity finding. With `--publish`, post the report with `gh pr comment <n> --body-file`. Merging and risk acceptance stay with the maintainer.
 
 **Done when** the report exists and, with `--publish`, is posted.
