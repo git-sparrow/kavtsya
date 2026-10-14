@@ -92,7 +92,7 @@ vendored `handoff` skill can prepare it; link existing artifacts instead of
 duplicating their content. Post an issue/PR comment only when the task authorizes it.
 
 ```text
-Task / issue / validation contract (acceptance criteria that define done, written before the code):
+Task / issue / validation contract (link; each assertion: actor and state → action → expected response and data effects → evidence; blocking, and who may accept a gap):
 Checkout path / branch / PR; base and head SHA for each PR (every PR in a stack):
 Next role (review or implement) / current edit owner:
 Changes and decisions (links):
@@ -104,9 +104,11 @@ Runtime resources owned: database name, server ports, device ID, app/build:
 Remaining work / known failures / next action:
 ```
 
-The receiver confirms the head SHA it read before acting on a handoff; a rebase
-since then makes the handoff stale. Findings carry their evidence: reproduced on
-the head (and on the base, for a claimed regression), or marked unverified.
+Write the contract before implementation, in the issue or spec, and link it. The
+receiver confirms the head SHA it read before acting on a handoff; a later head
+makes the handoff, and any pass recorded in it, stale. Findings carry their
+evidence: reproduced on the head (and on the base, for a claimed regression), or
+marked unverified. Only the maintainer accepts a remaining gap or risk.
 
 Exclude secrets, connection strings containing credentials, cookies and private
 customer data. Record resource identifiers and environment-variable names instead.
