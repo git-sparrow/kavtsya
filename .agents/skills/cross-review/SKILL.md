@@ -28,7 +28,7 @@ Make a task folder outside the repo: `${TMPDIR:-/tmp}/kavtsya-review/<pr>-<head7
 
 ## 2. Dispatch the reviewer
 
-Fill in the reviewer prompt below and run the reviewer's command **in the background**. That bounds the run; macOS has no `timeout`. Always close stdin.
+Fill in the reviewer prompt below and run the reviewer's command in the background, with stdin closed. Give it a **20-minute deadline**. macOS has no `timeout`, so you enforce the deadline yourself: stop a run that is still going at the deadline, and record it as INCOMPLETE (deadline).
 
 - **Codex:**
 
@@ -52,13 +52,13 @@ Fill in the reviewer prompt below and run the reviewer's command **in the backgr
 
 Reviewer prompt, for round 1:
 
-> Use the `mattpocock-skills:code-review` skill (Codex: `$mattpocock-skills:code-review`). Fixed point: base `<base>`, head `<head>` (`git diff <base>...<head>`). Spec: `<spec file>`. Standards: `CODING_STANDARDS.md` and the files it points to. Constraints: read-only; do not run tests, touch databases, edit files, fetch, or publish. Report both axes. For every finding give a verdict: CONFIRMED(source) only if the quoted code proves it, otherwise PLAUSIBLE, with the evidence that would confirm it. If you could not complete the review, say INCOMPLETE and why.
+> Begin your report with the line `Reviewed <base>...<head>`. Use the `mattpocock-skills:code-review` skill (Codex: `$mattpocock-skills:code-review`). Fixed point: base `<base>`, head `<head>` (`git diff <base>...<head>`). Spec: `<spec file>`. Standards: `CODING_STANDARDS.md` and the files it points to. Constraints: read-only; do not run tests, touch databases, edit files, fetch, or publish. Report both axes. For every finding give a verdict: CONFIRMED(source) only if the quoted code proves it, otherwise PLAUSIBLE, with the evidence that would confirm it. If you could not complete the review, say INCOMPLETE and why.
 
 For round 2 and later, add:
 
 > Previous findings are in `<task>/review-r<N-1>.md`. First review the full diff fresh. Then mark each previous finding FIXED, NOT FIXED or REGRESSED, and report any new finding.
 
-**Done when** the command has exited, and you have recorded its exit code and an output file that isn't empty. Anything else is **INCOMPLETE**: record it as that, never as "no findings".
+**Done when** the command has exited 0 before the deadline, and its report starts with `Reviewed <base>...<head>` matching the pin and covers both axes or says INCOMPLETE. Anything else is **INCOMPLETE**: record the reason, never "no findings".
 
 ## 3. Adjudicate every finding
 
@@ -71,7 +71,9 @@ Check each finding yourself at the pinned head. A claimed regression is checked 
 
 Agreement between reviewers is not evidence, and votes don't decide.
 
-**Done when** every finding has a verdict and its evidence.
+Then give every assertion of the spec's validation contract a disposition: the evidence that establishes it at the pinned head, usually a test that ran, or an explicit gap. A clean review or a green `pnpm verify` doesn't establish an assertion on its own.
+
+**Done when** every finding has a verdict with evidence, and every contract assertion has evidence or a recorded gap.
 
 ## 4. Fix, then re-review
 
@@ -85,9 +87,10 @@ Write one report to `<task>/report.md`:
 
 - the pinned base and final head;
 - a table of findings: finding, axis, reviewer verdict, adjudication with evidence, disposition;
+- a table of contract assertions: assertion, evidence or gap;
 - the runtime evidence: `pnpm verify` exit code and counts, and any mutation checks;
 - measures: messages relayed through the maintainer, heads that went stale, findings by source and verdict, and tooling incidents.
 
-The review is **not ready** while it has any open CONFIRMED finding, any INCOMPLETE round, or any PLAUSIBLE authorization or data-integrity finding. With `--publish`, post the report with `gh pr comment <n> --body-file`. Merging and risk acceptance stay with the maintainer.
+The review is **not ready** while it has any open CONFIRMED finding, any INCOMPLETE round, any contract assertion with an unaccepted gap, or any PLAUSIBLE authorization or data-integrity finding. With `--publish`, post the report with `gh pr comment <n> --body-file`. Merging and risk acceptance stay with the maintainer.
 
 **Done when** the report exists and, with `--publish`, is posted.
