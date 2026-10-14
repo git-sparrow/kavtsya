@@ -125,11 +125,12 @@ Any future addition uses `expo install`; SDK 57 governs the native surface.
 
 ### Maintainer setup and credentials
 
-Complete H1–H4 in the [#65 validation contract](https://github.com/git-sparrow/kavtsya/issues/65):
-the owning Expo account, paid individual Apple team, App Store Connect app for
-`com.kavtsya.app`, personal Play account/app, testers, and a physical iPhone plus
-a second account/device for scanning. Store contact email is still a maintainer
-decision in #1; resolve it before completing store listings.
+Before building, the maintainer needs an owning Expo account, a paid individual
+Apple Developer team and App Store Connect app record for `com.kavtsya.app`, and
+a personal Google Play developer account with an app record and 15–20 recruited
+testers. Device checks below use the maintainer’s physical iPhone, a second
+physical iPhone, and separate Customer and CafeOwner accounts. Resolve the store
+contact mailbox before completing store listings.
 
 From the reviewed checkout, after `pnpm install --frozen-lockfile`:
 
@@ -157,10 +158,28 @@ Check EAS environment variables for conflicting API URLs before building.
 EAS CLI 24.13.0 was checked with `npm view eas-cli version peerDependencies deprecated`
 on 2026-10-14; commands/flags and remote credential handling were read in the
 [EAS CLI reference](https://docs.expo.dev/eas/cli/) and
-[eas.json reference](https://docs.expo.dev/eas/json/) that day. No CLI dependency
-or Expo-governed package is changed by this release configuration.
+[eas.json reference](https://docs.expo.dev/eas/json/) that day.
 
-### iOS: build, TestFlight, device pass (M3–M6)
+### Preview: internal distribution
+
+The maintainer runs these from `apps/mobile` after the account/credential setup
+above. For iOS, first register each intended device with `device:create`, then
+select those devices when building so the ad hoc provisioning profile includes
+them. Install using the finished build’s EAS link. Android internal builds
+produce an APK; install it from its EAS link on the intended Android device.
+
+```bash
+npx eas-cli@24.13.0 device:create
+npx eas-cli@24.13.0 build -p ios --profile preview
+npx eas-cli@24.13.0 build -p android --profile preview
+```
+
+Only devices included in the iOS ad hoc profile can install that build; adding a
+device requires a rebuild or re-sign. Checked via the `llms.txt` index and
+[Expo internal distribution](https://docs.expo.dev/build/internal-distribution/)
+on 2026-10-14. These previews still access the production API.
+
+### iOS: build, TestFlight, device pass
 
 The maintainer runs these separately; replace the ID with the successful iOS
 production build's ID, so submission cannot accidentally select a preview build:
@@ -175,32 +194,43 @@ The submit prompt selects the App Store Connect app and credentials. After Apple
 processes the upload, add the maintainer as a TestFlight internal tester, complete
 any compliance prompts, and install that build on the physical iPhone.
 Submission uploads the binary; it does not publish an App Store release.
-([Expo iOS submit](https://docs.expo.dev/submit/ios/), read on 2026-10-14 to resolve
-#65's unverified TestFlight flow.)
+([Expo iOS submit](https://docs.expo.dev/submit/ios/), read on 2026-10-14.)
 
-On that TestFlight build, the maintainer:
+For the device pass, name the maintainer’s iPhone **A** and the second iPhone
+**B**. Give B’s operator access to the same production build through a TestFlight
+tester invitation/group and install it on B as well. Both phones must run that
+build against production; the Customer QR is a live, rotating token.
+([Apple internal TestFlight testers](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers/),
+read on 2026-10-14.) The maintainer performs these steps:
 
-1. Creates a Customer account and a separate CafeOwner account; the CafeOwner
-   registers a Café. Uses the second account/device to display the Customer QR.
-2. Opens the scanner with camera permission not yet granted and records the
-   Ukrainian permission copy. Scans the QR, verifies a successful Purchase and
-   that the Customer balance rises by one Зернятко. Rescans the **same, unexpired**
-   QR and verifies duplicate rejection and no second balance increase.
-3. Records HTTP `201` then `409` evidence as well as the visible results. If
-   response statuses cannot be observed on the release build, records that
-   assertion as a gap rather than inferring it from a success/error screen.
-4. As the Customer, enables café news consent and OS notifications to register
-   the push token. With an eligible Pro Café, sends a test campaign from CafeOwner
-   Mode and confirms receipt on this iPhone. If unavailable, records M6 as a gap;
-   do not change production Plan data just to pass the check.
+1. On **A**, create/sign in to the **CafeOwner** account and register a Café.
+   On **B**, create/sign in to the separate **Customer** account and display its
+   live QR. Record the Customer’s starting balance on B.
+2. On **A as CafeOwner**, open the scanner with camera permission not yet granted
+   and record the Ukrainian permission copy. Scan B’s Customer QR and verify a
+   successful Purchase; on **B as Customer**, verify the balance rises by one
+   Зернятко. On **A as CafeOwner**, rescan the **same, unexpired** QR and verify
+   duplicate rejection; on **B as Customer**, verify no second balance increase.
+3. Record HTTP `201` then `409` evidence for A’s scan requests as well as the
+   visible results. If response statuses cannot be observed on the release
+   build, record that assertion as a gap rather than inferring it from screens.
+4. For the push check, **sign out on both phones**. On **A**, sign in to the same
+   **Customer** account used on B for the scan. On **B**, sign in to the
+   **CafeOwner** account used on A. On **A as Customer**, enable café news consent
+   and OS notifications; push-token registration must happen on **A**, the
+   intended receiving device.
+5. On **B as CafeOwner**, send a test campaign from an eligible Pro Café to that
+   Customer. Confirm the notification arrives on **A as Customer**, using its
+   production TestFlight build. If the Pro campaign path is unavailable, record
+   the push check as a gap; do not change production Plan data just to pass it.
 
-Report the build ID/status, paid signing team confirmation, TestFlight version
-and build number, device/iOS version, sanitized screenshots or notes for each
-step, HTTP evidence and push receipt (or gap) to #65/the PR. This also supplies
-#58's physical-device pass. The agent reads no production data; never attach
-passwords, cookies, QR tokens, push tokens or customer records.
+Record the build ID/status, paid signing team confirmation, TestFlight version
+and build number, both device/iOS versions, sanitized screenshots or notes for
+each step, HTTP evidence and A’s push receipt (or gap) in the release handoff.
+The agent reads no production data; never attach passwords, cookies, QR tokens,
+push tokens or customer records.
 
-### Android: build and start the closed test (M7)
+### Android: build and start the closed test
 
 The maintainer builds a production AAB, then submits that exact build:
 
@@ -214,8 +244,9 @@ Finish Play Console app setup and listing requirements, then create a **closed
 testing** track and select/promote that uploaded bundle into its release. If the
 API upload is unavailable, download the AAB from that EAS build and upload it
 manually to the closed track. Complete review/rollout, configure the tester list
-and distribute the opt-in link. Internal testing and a draft upload do **not**
-satisfy M7. Do not substitute `track: beta`: Google's API documents beta as open
+and distribute the opt-in link. The qualifying closed-test period begins only
+after the closed release is available and the tester cohort is opted in.
+Do not substitute `track: beta`: Google's API documents beta as open
 testing and custom names for closed tracks.
 ([Expo Android submit](https://docs.expo.dev/submit/android/),
 [submission schema](https://docs.expo.dev/eas/json/),
