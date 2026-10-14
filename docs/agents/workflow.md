@@ -2,7 +2,7 @@
 
 Either tool can implement or review. Both follow `AGENTS.md`, the domain docs and
 the same PR gate. The default is one implementer followed by the other tool's
-review; switch roles whenever useful. Product status stays in `PROJECT_BRIEF.md`.
+review; switch roles whenever useful.
 
 ## Repository setup
 
@@ -11,7 +11,7 @@ review; switch roles whenever useful. Product status stays in `PROJECT_BRIEF.md`
 | Project rules | `AGENTS.md` | `CLAUDE.md` imports it | Reads `AGENTS.md` |
 | Project verification | `.agents/skills/verify/` | `.claude/skills/verify/SKILL.md` symlink | Repository skill discovery |
 | Argent skills | `.agents/skills/argent-*/` | `.claude/skills/` symlinks | Repository skill discovery |
-| Matt Pocock skills | `.agents/plugins/mattpocock-skills/` | Existing local plugin | `.agents/skills/` symlinks to the same pin |
+| Matt Pocock skills | `.agents/plugins/mattpocock-skills/` | Local plugin declared in `.claude/settings.json` | `.agents/skills/` symlinks to the same pin |
 | Argent MCP | Local pinned dependency | `.mcp.json` | `.codex/config.toml` |
 | Argent rules | `.claude/rules/argent.md` | Claude rule file | Explicit read directed by `AGENTS.md` |
 | Environment inspector | `.claude/agents/argent-environment-inspector.md` | Claude agent | Thin `.codex/agents/` adapter reads the same instructions |
@@ -29,7 +29,7 @@ application's AI provider or share subscription credentials between tools.
    It requires neither an AI account nor a running simulator.
 3. Open that checkout's root in the chosen client and complete its normal
    sign-in and workspace trust flow. Project Codex MCP settings require a trusted
-   project. Do not copy global settings or tokens into the repo.
+   project. Global settings and tokens stay in the user's configuration.
 4. For Claude's local plugin registration, follow the existing
    [first-run instructions](../../.agents/plugins/README.md#first-run-on-a-new-machine).
    Those instructions describe the versions tested there, not a Codex setup step.
@@ -40,16 +40,21 @@ application's AI provider or share subscription credentials between tools.
 6. Before actual mobile work, read `.claude/rules/argent.md` and the applicable
    setup skill. Select a device only after coordinating ownership below.
 
+**Done when** `pnpm agents:check` exits 0 and the client lists the skills and
+Argent MCP tools from step 5.
+
+## Skills and plugins per client
+
 In Codex, invoke a discovered skill by its displayed name, for example
 `$mattpocock-skills:tdd` or `$verify`. An isolated `skills/list` smoke check with
 Codex CLI 0.160.0 on 2026-10-05 returned all 27 of Matt's skills with the
 `mattpocock-skills:` prefix, despite their unprefixed `SKILL.md` names.
 In Claude, use `/verify` or the plugin's canonical `/mattpocock-skills:tdd`.
-For Matt's review specifically, select `mattpocock-skills:code-review` from the repository skill
-list in Codex, or `/mattpocock-skills:code-review` in Claude. Do not assume that
-a client's built-in review command runs the pinned skill. If a pinned skill
-mentions a client-specific command, follow its intent using available tools and
-report any unavailable capability; do not rewrite the vendored copy.
+For Matt's review, select it by full name: `mattpocock-skills:code-review` from
+the repository skill list in Codex, or `/mattpocock-skills:code-review` in Claude.
+A client's built-in review command is a different review. If a pinned skill
+mentions a client-specific command, follow its intent using available tools,
+report any unavailable capability, and leave the vendored copy unchanged.
 
 `implement-spec` is pinned but **not adopted**. Its parallel implementers would all
 run `tdd` against the shared `kavtsya_test` database (see below), and its close-out
@@ -84,8 +89,8 @@ to merge or expands the task the user authorized.
 4. Address valid findings, repeat affected checks, run `pnpm verify`, and inspect
    the current PR's CI. Merge only when separately authorized.
 
-Chat history and personal memory are not the handoff. Use issues, commits, PRs and
-linked evidence for durable decisions; do not maintain another product-status file.
+Record durable decisions in issues, commits, PRs and linked evidence. Chat history
+and personal memory are not the handoff.
 
 ### Handoff template
 
@@ -131,9 +136,9 @@ pnpm install --frozen-lockfile
 pnpm agents:check
 ```
 
-Choose a unique task branch/path. Provision that checkout's ignored environment
-files using the README instructions. Do not assume dependencies, environment
-files or generated native builds have been provisioned in a new worktree.
+Choose a unique task branch/path. A new worktree starts without dependencies,
+ignored environment files or generated native builds: provision each one it
+needs, environment files per the README.
 
 Worktrees separate source edits; this project's default runtime resources are
 still shared. Agree on these before starting services or checks:
