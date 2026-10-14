@@ -9,6 +9,8 @@ const pluginDir = ".agents/plugins/mattpocock-skills";
 // Argent skills the release ships that we deliberately do not vendor.
 // Asserted absent below, not merely excused — see checkArgentVendoring().
 const PRUNED_SKILLS = ["argent-tv-interact"];
+// Skills this repo owns, shared by Claude and Codex through one file each.
+const FIRST_PARTY_SKILLS = ["verify", "cross-review"];
 const plugin = JSON.parse(
   await read(`${pluginDir}/.claude-plugin/plugin.json`),
 );
@@ -37,16 +39,22 @@ async function checkLink(link, target) {
 
 /**
  * Invariants that hold regardless of which mobile provider we use: the shared
- * instruction files, the shared verify skill, and the pinned Matt Pocock plugin
+ * instruction files, the first-party skills, and the pinned Matt Pocock plugin
  * on both its legs. Returns the pinned skill names.
  */
 async function checkRepoAgentWiring() {
   assert.match(await read("CLAUDE.md"), /^@AGENTS\.md$/m);
   assert((await stat(path.join(root, "AGENTS.md"))).size > 0);
-  await checkLink(
-    ".claude/skills/verify/SKILL.md",
-    ".agents/skills/verify/SKILL.md",
-  );
+  for (const name of FIRST_PARTY_SKILLS) {
+    await checkLink(
+      `.claude/skills/${name}/SKILL.md`,
+      `.agents/skills/${name}/SKILL.md`,
+    );
+    assert.match(
+      await read(`.agents/skills/${name}/SKILL.md`),
+      new RegExp(`^name: ${name}$`, "m"),
+    );
+  }
 
   const expectedSkills = new Set();
   for (const skill of plugin.skills) {
@@ -208,7 +216,7 @@ try {
   const pinnedSkills = await checkRepoAgentWiring();
   const argentSkills = await checkArgentVendoring();
   console.log(
-    `Agent setup OK: ${pinnedSkills.size} pinned skills, ${argentSkills.size} Argent skills, shared verify and Argent wiring.`,
+    `Agent setup OK: ${pinnedSkills.size} pinned skills, ${argentSkills.size} Argent skills, first-party skills (${FIRST_PARTY_SKILLS.join(", ")}) and Argent wiring.`,
   );
 } catch (error) {
   console.error(`Agent setup check failed: ${error.message}`);
