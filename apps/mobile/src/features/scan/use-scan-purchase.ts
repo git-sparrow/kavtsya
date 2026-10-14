@@ -11,6 +11,7 @@ import {
   issuePurchase,
   issuePurchaseByMemberCode,
   ScanRejectionError,
+  RedemptionRejectionError,
 } from "@/lib/api";
 
 export type ScanState =
@@ -49,7 +50,7 @@ export function useScanPurchase(cafeId: string) {
   const inFlight = useRef(false);
   // The current confirm attempt's idempotency key: kept across a failed tap so
   // the retry replays server-side instead of spending twice, cleared on
-  // success so the next confirm (banking) is a genuine new spend.
+  // success or a key collision; transport failures keep it for safe replay.
   const confirmKey = useRef<string | null>(null);
 
   async function send(request: () => Promise<PurchaseResult>) {
@@ -98,6 +99,12 @@ export function useScanPurchase(cafeId: string) {
         redemption,
       });
     } catch (e) {
+      if (
+        e instanceof RedemptionRejectionError &&
+        e.code === "idempotency_conflict"
+      ) {
+        confirmKey.current = null;
+      }
       setState({
         ...before,
         confirmError:

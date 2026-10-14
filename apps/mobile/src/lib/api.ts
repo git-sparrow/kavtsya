@@ -260,12 +260,20 @@ export async function fetchMemberCode(): Promise<string> {
  * distinguishes (#22) — same compile-checked pattern as the scan copy above.
  */
 const REDEMPTION_REJECTIONS: Record<RedemptionRejection, string> = {
+  idempotency_conflict: "Підтвердження вже використано. Спробуйте ще раз",
   insufficient_balance: "Недостатньо зернят для винагороди",
   no_reward: "Спершу оберіть винагороду в налаштуваннях програми",
   own_cafe: "У власній кав'ярні винагороди не видаються",
   self_scan: "Власну винагороду підтвердити не можна",
   not_found: "Кав'ярню не знайдено",
 };
+
+export class RedemptionRejectionError extends Error {
+  constructor(readonly code: RedemptionRejection) {
+    super(REDEMPTION_REJECTIONS[code]);
+    this.name = "RedemptionRejectionError";
+  }
+}
 
 /**
  * The CafeOwner confirms a Redemption (#22) — a distinct action off the one
@@ -282,7 +290,10 @@ export async function confirmRedemption(
     method: "POST",
     body: { cafeId, customerId, idempotencyKey },
     fallback: "Не вдалося видати винагороду",
-    rejections: mapRejections(isRedemptionRejection, REDEMPTION_REJECTIONS),
+    rejections: (code) =>
+      isRedemptionRejection(code)
+        ? new RedemptionRejectionError(code)
+        : undefined,
   });
 }
 

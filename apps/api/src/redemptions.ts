@@ -1,9 +1,13 @@
 import type { Reward } from "@kavtsya/shared";
 import { isRedemptionReady, rewardSchema } from "@kavtsya/shared";
+import type { Clock } from "./clock";
 import type { Database, Queryable } from "./db";
-import { isUniqueViolation } from "./db";
 import { balanceFor } from "./purchases";
-import { authorizeCounter } from "./shifts";
+import {
+  authorizeCounter,
+  authorizeCounterWrite,
+  CounterAuthorizationError,
+} from "./shifts";
 
 /**
  * Confirming a Redemption — the spend side of the ledger (#22, ADR 0010). One
@@ -28,8 +32,8 @@ export interface ConfirmRedemptionInput {
   customerId: string;
   /** Minted per confirm tap; a retry reuses it, a banked second confirm doesn't. */
   idempotencyKey: string;
-  /** The confirm's instant — the grant-expiry check runs on the injected clock. */
-  now: Date;
+  /** Read again after ledger waits for grant expiry and the ledger timestamp. */
+  clock: Clock;
 }
 
 /** Why confirming was refused — the wire mapping is exhaustive over it (#50). */
@@ -38,7 +42,8 @@ export type ConfirmRedemptionRejection =
   | "self_scan"
   | "own_cafe"
   | "insufficient_balance"
-  | "no_reward";
+  | "no_reward"
+  | "idempotency_conflict";
 
 export type ConfirmRedemptionOutcome =
   | {
@@ -104,69 +109,76 @@ export async function confirmRedemption(
     actorUserId,
     customerId,
     idempotencyKey,
-    now,
+    clock,
   }: ConfirmRedemptionInput,
 ): Promise<ConfirmRedemptionOutcome> {
   const auth = await authorizeCounter(db, {
     cafeId,
     actorUserId,
     customerId,
-    now,
+    now: clock.now(),
   });
   if (!auth.ok) return { ok: false, reason: auth.reason };
 
-  const program = auth.program;
-
-  return db.begin(async (tx): Promise<ConfirmRedemptionOutcome> => {
-    // The lock target (ADR 0010). No membership row means no Purchase ever
-    // landed here, so the balance is 0 — nothing to lock, nothing to spend.
-    const [membership] = await tx`
+  try {
+    return await db.begin(async (tx): Promise<ConfirmRedemptionOutcome> => {
+      // The lock target (ADR 0010). No membership row means no Purchase ever
+      // landed here, so the balance is 0 — nothing to lock, nothing to spend.
+      const [membership] = await tx`
       select 1 as locked from cafe_memberships
       where "cafe_id" = ${cafeId} and "customer_user_id" = ${customerId}
       for update
     `;
-    if (!membership) return { ok: false, reason: "insufficient_balance" };
+      const { program, authorizedAt } = await authorizeCounterWrite(
+        tx,
+        { cafeId, actorUserId, customerId },
+        clock,
+      );
+      if (!membership) return { ok: false, reason: "insufficient_balance" };
 
-    // Replay check under the lock: a retry that lost the race to its original
-    // sees the committed row here (READ COMMITTED re-reads after the wait).
-    const prior = await replayFor(tx, idempotencyKey, customerId, cafeId);
-    if (prior) return prior;
+      // Replay check under the lock: a retry that lost the race to its original
+      // sees the committed row here (READ COMMITTED re-reads after the wait).
+      const prior = await replayFor(tx, idempotencyKey, customerId, cafeId);
+      if (prior) return prior;
 
-    const balance = await balanceFor(tx, customerId, cafeId);
-    const eligibility = redemptionEligibility({
-      balance,
-      threshold: program.threshold,
-      reward: program.reward,
-    });
-    if (!eligibility.eligible) return { ok: false, reason: eligibility.reason };
+      const balance = await balanceFor(tx, customerId, cafeId);
+      const eligibility = redemptionEligibility({
+        balance,
+        threshold: program.threshold,
+        reward: program.reward,
+      });
+      if (!eligibility.eligible)
+        return { ok: false, reason: eligibility.reason };
 
-    const spent = applyRedemption({ balance, threshold: program.threshold });
-    try {
-      await tx`
-        insert into redemptions
-          ("cafe_id", "customer_user_id", "beans_spent", "reward", "idempotency_key")
-        values
-          (${cafeId}, ${customerId}, ${spent.beansSpent},
-           ${tx.json(eligibility.reward)}, ${idempotencyKey})
-      `;
-    } catch (err) {
-      // Same key raced past the replay check in another transaction after the
-      // lock ordering above couldn't help (e.g. a different membership row).
-      if (isUniqueViolation(err)) {
+      const spent = applyRedemption({ balance, threshold: program.threshold });
+      const inserted = await tx`
+      insert into redemptions
+        ("cafe_id", "customer_user_id", "beans_spent", "reward", "idempotency_key", "created_at")
+      values
+        (${cafeId}, ${customerId}, ${spent.beansSpent},
+         ${tx.json(eligibility.reward)}, ${idempotencyKey}, ${authorizedAt})
+      on conflict ("idempotency_key") do nothing
+      returning "id"
+    `;
+      if (inserted.length === 0) {
+        // A different membership lock can race us to the globally unique key.
         const replay = await replayFor(tx, idempotencyKey, customerId, cafeId);
-        if (replay) return replay;
+        return replay ?? { ok: false, reason: "idempotency_conflict" };
       }
-      throw err;
-    }
 
-    return {
-      ok: true,
-      replayed: false,
-      balance: spent.balance,
-      beansSpent: spent.beansSpent,
-      reward: eligibility.reward,
-    };
-  });
+      return {
+        ok: true,
+        replayed: false,
+        balance: spent.balance,
+        beansSpent: spent.beansSpent,
+        reward: eligibility.reward,
+      };
+    });
+  } catch (err) {
+    if (err instanceof CounterAuthorizationError)
+      return { ok: false, reason: err.reason };
+    throw err;
+  }
 }
 
 /**

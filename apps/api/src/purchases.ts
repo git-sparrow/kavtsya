@@ -1,9 +1,13 @@
-import type { CafeBalance, Reward } from "@kavtsya/shared";
-import { kyivDaySql } from "./clock";
+import type { CafeBalance, Reward, LoyaltyProgram } from "@kavtsya/shared";
+import { kyivDayOf, kyivDaySql, type Clock } from "./clock";
 import type { Database, Queryable } from "./db";
 import { isUniqueViolation } from "./db";
 import { programFromRow } from "./loyalty";
-import { authorizeCounter } from "./shifts";
+import {
+  authorizeCounter,
+  authorizeCounterWrite,
+  CounterAuthorizationError,
+} from "./shifts";
 
 /**
  * Issuing a Зернятко — the append-only Purchase ledger (#20, ADR 0010). The
@@ -35,8 +39,6 @@ export type PurchaseEntry =
       source: "member_code";
       /** Today's ceiling per (Customer, Café) — Platform-tunable (ADR 0006). */
       dailyLimit: number;
-      /** The Kyiv calendar day the ceiling counts within (same convention as the Ворожка pool). */
-      kyivDay: string;
     };
 
 export interface IssuePurchaseInput {
@@ -48,8 +50,8 @@ export interface IssuePurchaseInput {
   customerId: string;
   /** How the Customer was identified — recorded on the Purchase row. */
   entry: PurchaseEntry;
-  /** The scan's instant — the grant-expiry check runs on the injected clock. */
-  now: Date;
+  /** Read again after ledger waits for grant expiry and the Kyiv-day limit. */
+  clock: Clock;
 }
 
 /** Why issuing was refused — named so the wire mapping (#50) can be exhaustive over it. */
@@ -73,7 +75,7 @@ export type IssuePurchaseOutcome =
 
 export async function issuePurchase(
   db: Database,
-  { cafeId, issuedByUserId, customerId, entry, now }: IssuePurchaseInput,
+  { cafeId, issuedByUserId, customerId, entry, clock }: IssuePurchaseInput,
 ): Promise<IssuePurchaseOutcome> {
   // Who may issue here — the ADR 0013 counter-authorization rule, decided once
   // in the Shift module and shared with Redemption confirm (#111).
@@ -81,7 +83,7 @@ export async function issuePurchase(
     cafeId,
     actorUserId: issuedByUserId,
     customerId,
-    now,
+    now: clock.now(),
   });
   if (!auth.ok) return { ok: false, reason: auth.reason };
 
@@ -98,54 +100,60 @@ export async function issuePurchase(
   // Customer's first manual Purchase here there is nothing to lock yet, and a
   // ceiling check with no lock would let two concurrent first entries both
   // pass — the early insert makes one of them wait.
+  let program: LoyaltyProgram;
   try {
-    const limited = await db.begin(async (tx) => {
+    const result = await db.begin(async (tx) => {
+      await tx`
+        insert into cafe_memberships ("cafe_id", "customer_user_id")
+        values (${cafeId}, ${customerId})
+        on conflict do nothing
+      `;
+      await tx`
+        select 1 from cafe_memberships
+        where "cafe_id" = ${cafeId} and "customer_user_id" = ${customerId}
+        for update
+      `;
+      const { program: currentProgram, authorizedAt: issuedAt } =
+        await authorizeCounterWrite(
+          tx,
+          { cafeId, actorUserId: issuedByUserId, customerId },
+          clock,
+        );
       if (entry.source === "member_code") {
-        await tx`
-          insert into cafe_memberships ("cafe_id", "customer_user_id")
-          values (${cafeId}, ${customerId})
-          on conflict do nothing
-        `;
-        await tx`
-          select 1 from cafe_memberships
-          where "cafe_id" = ${cafeId} and "customer_user_id" = ${customerId}
-          for update
-        `;
         const [today] = await tx<{ manual_count: number }[]>`
           select count(*)::int as manual_count from purchases
           where "customer_user_id" = ${customerId}
             and "cafe_id" = ${cafeId}
             and "entry_source" = 'member_code'
-            and ${kyivDaySql(tx, "created_at")} = ${entry.kyivDay}::date
+            and ${kyivDaySql(tx, "created_at")} = ${kyivDayOf(issuedAt)}::date
         `;
-        if ((today?.manual_count ?? 0) >= entry.dailyLimit) return true;
+        if ((today?.manual_count ?? 0) >= entry.dailyLimit)
+          return { limited: true, program: currentProgram };
         await tx`
           insert into purchases
             ("cafe_id", "customer_user_id", "qr_jti", "entry_source",
-             "issued_by_user_id")
+             "issued_by_user_id", "created_at")
           values
             (${cafeId}, ${customerId}, null, 'member_code',
-             ${issuedByUserId})
+             ${issuedByUserId}, ${issuedAt})
         `;
       } else {
         await tx`
           insert into purchases
             ("cafe_id", "customer_user_id", "qr_jti", "entry_source",
-             "issued_by_user_id")
+             "issued_by_user_id", "created_at")
           values
             (${cafeId}, ${customerId}, ${entry.jti}, 'qr',
-             ${issuedByUserId})
-        `;
-        await tx`
-          insert into cafe_memberships ("cafe_id", "customer_user_id")
-          values (${cafeId}, ${customerId})
-          on conflict do nothing
+             ${issuedByUserId}, ${issuedAt})
         `;
       }
-      return false;
+      return { limited: false, program: currentProgram };
     });
-    if (limited) return { ok: false, reason: "manual_limit_reached" };
+    if (result.limited) return { ok: false, reason: "manual_limit_reached" };
+    program = result.program;
   } catch (err) {
+    if (err instanceof CounterAuthorizationError)
+      return { ok: false, reason: err.reason };
     // Only the QR arm has a unique column to violate (`qr_jti`).
     if (entry.source === "qr" && isUniqueViolation(err)) {
       return { ok: false, reason: "token_used" };
@@ -153,7 +161,6 @@ export async function issuePurchase(
     throw err;
   }
 
-  const program = auth.program;
   const [customer] = await db<{ name: string }[]>`
     select "name" from "user" where "id" = ${customerId}
   `;

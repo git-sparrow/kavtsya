@@ -23,6 +23,7 @@ const wireCodes: Record<ConfirmRedemptionRejection, RedemptionRejection> = {
   own_cafe: "own_cafe",
   insufficient_balance: "insufficient_balance",
   no_reward: "no_reward",
+  idempotency_conflict: "idempotency_conflict",
 };
 
 export function registerRedemptionRoutes(
@@ -42,7 +43,7 @@ export function registerRedemptionRoutes(
       actorUserId: user.id,
       customerId: parsed.data.customerId,
       idempotencyKey: parsed.data.idempotencyKey,
-      now: clock.now(),
+      clock,
     });
     if (!outcome.ok) {
       const code = wireCodes[outcome.reason];

@@ -1,5 +1,5 @@
 import type { LoyaltyProgram } from "@kavtsya/shared";
-import { kyivDayOf, kyivDaySql } from "./clock";
+import { kyivDayOf, kyivDaySql, type Clock } from "./clock";
 import type { Database, Queryable, SqlFragment } from "./db";
 import { programFromRow } from "./loyalty";
 
@@ -52,7 +52,8 @@ function activeGrant(sql: Queryable, now: Date, alias?: string): SqlFragment {
  * drift apart (#111). The counter is open to the Café's owner OR an account
  * holding an active scanner grant there; a Café that doesn't exist and one the
  * caller may not operate stay indistinguishable (the same "not found" the
- * owner-only check always gave). On success it carries the Café's loyalty program
+ * owner-only check always gave), as does a scan whose actor or Customer is
+ * missing or tombstoned (#81). On success it carries the Café's loyalty program
  * through, so a caller that cleared the gate provably has one to work with.
  */
 export type CounterRejection = "cafe_not_owned" | "self_scan" | "own_cafe";
@@ -73,7 +74,7 @@ export interface AuthorizeCounterInput {
 }
 
 export async function authorizeCounter(
-  db: Database,
+  db: Queryable,
   { cafeId, actorUserId, customerId, now }: AuthorizeCounterInput,
 ): Promise<AuthorizeCounterOutcome> {
   const [cafe] = await db<
@@ -94,6 +95,13 @@ export async function authorizeCounter(
   ) {
     return { ok: false, reason: "cafe_not_owned" };
   }
+  const [accounts] = await db<{ live: number }[]>`
+    select count(*)::int as "live" from "user"
+    where "id" in (${actorUserId}, ${customerId}) and "deleted_at" is null
+  `;
+  if (accounts?.live !== new Set([actorUserId, customerId]).size) {
+    return { ok: false, reason: "cafe_not_owned" };
+  }
 
   // The self-farm guards are additive (ADR 0013). Scanner ≠ scanned on both
   // counter powers: nobody issues to, or confirms a Redemption for, themselves…
@@ -107,6 +115,35 @@ export async function authorizeCounter(
   }
 
   return { ok: true, program: programFromRow(cafe) };
+}
+
+export class CounterAuthorizationError extends Error {
+  constructor(readonly reason: CounterRejection) {
+    super(reason);
+  }
+}
+
+/** Recheck after ledger waits; hold deletion, closure and revocation off until commit. */
+export async function authorizeCounterWrite(
+  tx: Queryable,
+  input: Omit<AuthorizeCounterInput, "now">,
+  clock: Clock,
+): Promise<{ program: LoyaltyProgram; authorizedAt: Date }> {
+  await tx`
+    select 1 from "user"
+    where "id" in (${input.actorUserId}, ${input.customerId})
+    order by "id" for share
+  `;
+  await tx`select 1 from cafes where "id"=${input.cafeId} for share`;
+  await tx`
+    select 1 from cafe_scanner_grants
+    where "cafe_id"=${input.cafeId} and "user_id"=${input.actorUserId}
+    order by "id" for share
+  `;
+  const authorizedAt = clock.now();
+  const outcome = await authorizeCounter(tx, { ...input, now: authorizedAt });
+  if (!outcome.ok) throw new CounterAuthorizationError(outcome.reason);
+  return { program: outcome.program, authorizedAt };
 }
 
 /**
@@ -174,7 +211,7 @@ export async function startShift(
  * (`roster.ts`), so a removed barista fails this check on their very next scan.
  */
 export async function hasActiveScannerGrant(
-  db: Database,
+  db: Queryable,
   cafeId: string,
   userId: string,
   now: Date,
