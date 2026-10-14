@@ -18,13 +18,13 @@ Arguments:
 
 ## 1. Pin the target
 
-For each PR, read `gh pr view <n> --json baseRefOid,headRefOid,body,closingIssuesReferences`, `git fetch`, and check that `git diff <base>...<head>` is non-empty. A stack is pinned PR by PR, each against its own base.
+For each PR, read `gh pr view <n> --json baseRefOid,headRefOid,body,closingIssuesReferences`, `git fetch`, and check that `git diff <base>...<head>` is non-empty. A stack is pinned PR by PR, each against its own base. Its top PR's head is the **integration candidate**: the stack's contract evidence is established there.
 
-Find the spec: the closing issue's validation contract (see the handoff template in `docs/agents/workflow.md`), else the PR body. Save it to a local file.
+Find the spec: the closing issue's validation contract (see the handoff template in `docs/agents/workflow.md`), else the PR body. Save it, and every input it links, as local files: the reviewer can't fetch.
 
-Make a task folder outside the repo: `${TMPDIR:-/tmp}/kavtsya-review/<pr>-<head7>/`. Write `manifest.md` there with the PR, base and head SHAs, spec path, edit owner, reviewer, owned resources, and `transport_relays: 0`.
+Make a task folder outside the repo: `${TMPDIR:-/tmp}/kavtsya-review/<pr>-<head7>/`. Write `manifest.md` there with the PR, base and head SHAs, integration candidate (stacks only), spec path, edit owner, reviewer, owned resources, and `transport_relays: 0`.
 
-**Done when** every PR has a pinned base and head, a non-empty diff and a spec file.
+**Done when** every PR has a pinned base and head, a non-empty diff, and a spec whose inputs are all local files.
 
 ## 2. Dispatch the reviewer
 
@@ -71,7 +71,7 @@ Check each finding yourself at the pinned head. A claimed regression is checked 
 
 Agreement between reviewers is not evidence, and votes don't decide.
 
-Then give every assertion of the spec's validation contract a disposition: the evidence that establishes it at the pinned head, usually a test that ran, or an explicit gap. A clean review or a green `pnpm verify` doesn't establish an assertion on its own.
+Then give every assertion of the spec's validation contract a disposition: the evidence that establishes it at the pinned head (for a stack, the integration candidate), usually a test that ran, or an explicit gap. A clean review or a green `pnpm verify` doesn't establish an assertion on its own.
 
 **Done when** every finding has a verdict with evidence, and every contract assertion has evidence or a recorded gap.
 
