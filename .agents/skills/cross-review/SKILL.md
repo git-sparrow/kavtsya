@@ -45,7 +45,7 @@ For a follow-up round, add:
 
 > Previous findings are in `<task>/review-r<N-1>.md`. First review the full diff fresh. Then mark each previous finding FIXED, NOT FIXED or REGRESSED, and report any new finding.
 
-**Done when** the command has exited 0 before the deadline, and its report starts with `Reviewed <base>...<head>` matching the pin and covers both axes or says INCOMPLETE. Anything else is **INCOMPLETE**: record the reason, never "no findings".
+**Done when** the command has exited 0 before the deadline, and its report starts with `Reviewed <base>...<head>` matching the pin and covers both axes. Any other outcome, including a report that says INCOMPLETE, is an **INCOMPLETE** round: record the reason (never "no findings"), then rerun it or escalate to the maintainer.
 
 ## 3. Adjudicate every finding
 
