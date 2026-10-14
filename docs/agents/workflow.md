@@ -92,22 +92,32 @@ vendored `handoff` skill can prepare it; link existing artifacts instead of
 duplicating their content. Post an issue/PR comment only when the task authorizes it.
 
 ```text
-Task / issue / acceptance criteria:
-Checkout path / branch / base / HEAD commit:
+Task / issue / validation contract (link; each assertion: actor and state → action → expected response and data effects → evidence; blocking, and who may accept a gap):
+Checkout path / branch / PR; base and head SHA for each PR (every PR in a stack):
 Next role (review or implement) / current edit owner:
 Changes and decisions (links):
+Pending human decisions (policy, merge, risk acceptance, production access):
+Issues discovered and not fixed:
 Uncommitted or unrelated work to preserve:
-Checks: exact command, commit tested, result; checks not run:
+Checks: exact command, commit tested, exit code; checks not run:
 Runtime resources owned: database name, server ports, device ID, app/build:
 Remaining work / known failures / next action:
 ```
+
+Write the contract before implementation, in the issue or spec, and link it. The
+receiver confirms the head SHA it read before acting on a handoff; a later head
+makes the handoff, and any pass recorded in it, stale. Findings carry their
+evidence: reproduced on the head (and on the base, for a claimed regression), or
+marked unverified. Only the maintainer accepts a remaining gap or risk.
 
 Exclude secrets, connection strings containing credentials, cookies and private
 customer data. Record resource identifiers and environment-variable names instead.
 
 ## Working concurrently
 
-**One active editor per checkout.** Use a separate branch and worktree for each
+**One active editor per checkout and per change set.** A PR, or a stack of PRs,
+has one edit owner at a time; rebases and fixes go through that owner. Reviewers
+work read-only and may run in parallel. Use a separate branch and worktree for each
 independent implementation. Do not switch branches in another tool's working
 directory. Git's worktree documentation is linked below; a typical setup is:
 
