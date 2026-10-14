@@ -198,3 +198,78 @@ test("malformed JSON keeps the route's error contract", async () => {
   expect(await res.json()).toEqual({ error: "invalid_purchase" });
   expect(await snapshotPublicTables(db)).toEqual(before);
 });
+
+// #323 A1–A4: encodings the NUL guard does not decode still end in a controlled
+// response with no persistence.
+test("multipart NUL to an authenticated auth endpoint is rejected without logging", async () => {
+  const app = makeApp({ db, auth });
+  const cookie = await signUp(app, "customer@example.com");
+  const before = await snapshotPublicTables(db);
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    const form = new FormData();
+    form.set("name", "\u0000");
+    const res = await app.request("/api/auth/update-user", {
+      method: "POST",
+      headers: { cookie },
+      body: form,
+    });
+    // Better Auth accepts only JSON on this endpoint (#310 retro: its global
+    // allowedMediaTypes, which update-user does not override).
+    expect(res.status).toBe(415);
+    expect(await snapshotPublicTables(db)).toEqual(before);
+    expect(error).not.toHaveBeenCalled();
+  } finally {
+    error.mockRestore();
+  }
+});
+
+test("a text/plain body is checked for NUL like JSON", async () => {
+  const app = makeApp({ db, auth });
+  const cookie = await signUp(app, "owner@example.com");
+  const before = await snapshotPublicTables(db);
+  const res = await app.request("/api/cafes", {
+    method: "POST",
+    headers: { cookie, "content-type": "text/plain" },
+    body: JSON.stringify({ name: "\u0000" }),
+  });
+  expect(res.status).toBe(400);
+  expect(await res.json()).toEqual({ error: "invalid_request" });
+  expect(await snapshotPublicTables(db)).toEqual(before);
+});
+
+test("a multipart body keeps the route's error contract", async () => {
+  const app = makeApp({ db, auth });
+  const cookie = await signUp(app, "customer@example.com");
+  const before = await snapshotPublicTables(db);
+  const form = new FormData();
+  form.set("memberCode", "\u0000");
+  const res = await app.request("/api/purchases", {
+    method: "POST",
+    headers: { cookie },
+    body: form,
+  });
+  expect(res.status).toBe(400);
+  expect(await res.json()).toEqual({ error: "invalid_purchase" });
+  expect(await snapshotPublicTables(db)).toEqual(before);
+});
+
+test("a declared oversized content-length is rejected before an account exists", async () => {
+  const app = makeApp({ db, auth });
+  const body = JSON.stringify({
+    email: "big@example.com",
+    password: "hunter2-very-secret",
+    name: "x".repeat(128 * 1024),
+  });
+  const res = await app.request("/api/auth/sign-up/email", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "content-length": String(Buffer.byteLength(body)),
+    },
+    body,
+  });
+  expect(res.status).toBe(413);
+  expect(await res.json()).toEqual({ error: "invalid_request" });
+  expect((await db`select count(*)::int as n from "user"`)[0]?.n).toBe(0);
+});
