@@ -435,6 +435,42 @@ test("a different authorized counter actor replays the same Redemption body", as
   expect((await db`select count(*)::int as n from redemptions`)[0]?.n).toBe(1);
 });
 
+test("a revoked Barista's retry of a committed Redemption is not found, never replayed", async () => {
+  const owner = await signUp(app(), "owner@example.com");
+  const cafeId = await registerCafe("Кавця", owner);
+  await setProgram(cafeId, owner, {
+    threshold: 1,
+    reward: { type: "free_drink" },
+  });
+  const customer = await signUp(app(), "customer@example.com");
+  const scan = await earn(cafeId, owner, customer);
+  const revoked = await signUp(app(), "barista@example.com");
+  const [barista] =
+    await db`select id from "user" where email='barista@example.com'`;
+  const [grant] =
+    await db`insert into cafe_scanner_grants(cafe_id,user_id,created_by,expires_at)
+    values(${cafeId},${barista!.id},${barista!.id},${new Date(Date.now() + 60_000)}) returning id`;
+  const body = {
+    cafeId,
+    customerId: scan.customerId,
+    idempotencyKey: "before-revocation",
+  };
+  expect((await confirmRedemption(body, revoked)).status).toBe(201);
+  expect(
+    (
+      await app().request(`/api/cafes/${cafeId}/shifts/${String(grant!.id)}`, {
+        method: "DELETE",
+        headers: { cookie: owner },
+      })
+    ).status,
+  ).toBe(204);
+
+  // Authorization comes before replay: a revoked actor learns nothing about the
+  // Café's ledger, even about a Redemption it confirmed itself.
+  expect((await confirmRedemption(body, revoked)).status).toBe(404);
+  expect((await db`select count(*)::int as n from redemptions`)[0]?.n).toBe(1);
+});
+
 test("two Café actors racing one key create exactly one Redemption", async () => {
   const customer = await signUp(app(), "customer@example.com");
   const requests = [];

@@ -64,3 +64,15 @@ test("GET /health surfaces today's fortune-pool count", async () => {
   const body = healthResponseSchema.parse(await res.json());
   expect(body.fortunePool).toEqual({ day: "2026-06-18", count: 2 });
 });
+
+test.each(["/health", "/api/me", "/api/auth/ok"])(
+  "%s declares security headers on public, rejected and auth responses",
+  async (path) => {
+    const app = makeApp({ db, auth });
+    const response = await app.request(path);
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("strict-transport-security")).toBe(
+      "max-age=15552000; includeSubDomains",
+    );
+  },
+);

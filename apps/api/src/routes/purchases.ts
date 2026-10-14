@@ -5,7 +5,6 @@ import {
   scanRejectionStatuses,
 } from "@kavtsya/shared";
 import type { AppDeps } from "../app";
-import { kyivDayOf } from "../clock";
 import { recordFortune } from "../customer-fortunes";
 import { fortuneForScan } from "../fortunes";
 import { customerIdForMemberCode } from "../member-code";
@@ -100,7 +99,6 @@ export function registerPurchaseRoutes(
         entry: {
           source: "member_code",
           dailyLimit,
-          kyivDay: kyivDayOf(clock.now()),
         },
       };
     }
@@ -108,7 +106,7 @@ export function registerPurchaseRoutes(
     const outcome = await issuePurchase(db, {
       cafeId: parsed.data.cafeId,
       issuedByUserId: user.id,
-      now: clock.now(),
+      clock,
       ...identity,
     });
     if (!outcome.ok) return reject(c, outcome.reason);
