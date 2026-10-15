@@ -320,7 +320,19 @@ app access for internal testing, or distribute through an external testing group
 which requires TestFlight Beta App Review. These tester requirements were checked
 against [Apple internal testers](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers/)
 and [external testers](https://developer.apple.com/help/app-store-connect/test-a-beta-version/invite-external-testers/)
-on 2026-10-14. The maintainer performs these steps:
+on 2026-10-14.
+
+Decide the push-check path before starting: the **test Café created in step 1**
+must itself be on the Pro Plan to send a campaign. New Cafés start Free; in v1,
+only the Platform can change their Plan. That requires **explicit maintainer
+approval of a deliberate production Plan change** for this test Café. Without
+that approval and completed setup, record the push check as a gap up front and
+skip steps 4–5; do not attempt a send. No Plan change is implied by this procedure.
+
+Keep that Café dedicated to the test accounts: a campaign reaches **all** its
+recently active, consenting members with active device tokens, rather than one
+chosen Customer, and consumes its campaign allowance. Never send this test from
+any other live Café. The maintainer performs these steps:
 
 1. On **A**, create/sign in to the **CafeOwner** account and register a Café.
    On **B**, create a new, separate **Customer** account and display its live QR.
@@ -331,6 +343,8 @@ on 2026-10-14. The maintainer performs these steps:
    successful Purchase; on **B as Customer**, verify the balance rises by one
    Зернятко. On **A as CafeOwner**, rescan the **same, unexpired** QR and verify
    duplicate rejection; on **B as Customer**, verify no second balance increase.
+   When the café-news consent card appears on **B** after the first Purchase,
+   decline it. This leaves account-level consent off; step 4 enables it on A.
 3. Record HTTP `201` then `409` evidence for A’s scan requests as well as the
    visible results. If response statuses cannot be observed on the release
    build, record that assertion as a gap rather than inferring it from screens.
@@ -339,10 +353,11 @@ on 2026-10-14. The maintainer performs these steps:
    **CafeOwner** account used on A. On **A as Customer**, enable café news consent
    and OS notifications; push-token registration must happen on **A**, the
    intended receiving device.
-5. On **B as CafeOwner**, send a test campaign from an eligible Pro Café to that
-   Customer. Confirm the notification arrives on **A as Customer**, using its
-   production TestFlight build. If the Pro campaign path is unavailable, record
-   the push check as a gap; do not change production Plan data just to pass it.
+5. Only after the approved Pro setup above, on **B as CafeOwner**, send one test
+   campaign from the **same test Café created in step 1**, where the Customer
+   earned their Purchase. It reaches all that Café’s recently active, consenting
+   members with active tokens. Confirm the notification arrives on **A as
+   Customer**, using its production TestFlight build.
 
 Record the build ID/status, paid signing team confirmation, TestFlight version
 and build number, both device/iOS versions, sanitized screenshots or notes for
