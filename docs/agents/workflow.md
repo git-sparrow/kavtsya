@@ -83,9 +83,10 @@ to merge or expands the task the user authorized.
    work explicitly. Never stash, reset or overwrite unfamiliar changes.
 3. Give the next tool the handoff below. The reviewer reads the actual diff
    against the base and checks the acceptance criteria and verification evidence.
-   It starts read-only; transfer edit ownership explicitly before fixes. The
-   `cross-review` skill runs Codex as reviewer of Claude's work directly, so the
-   maintainer relays nothing.
+   It starts read-only; transfer edit ownership explicitly before fixes. With the
+   `cross-review` skill the edit owner runs the other engine (or both) as
+   read-only reviewers and reads their reports from files, so the maintainer
+   relays nothing.
 4. Address valid findings, repeat affected checks, run `pnpm verify`, and inspect
    the current PR's CI. Merge only when separately authorized.
 
@@ -94,9 +95,11 @@ and personal memory are not the handoff.
 
 ### Handoff template
 
-Paste into the next tool's conversation or a task-owned temporary note. The
-vendored `handoff` skill can prepare it; link existing artifacts instead of
-duplicating their content. Post an issue/PR comment only when the task authorizes it.
+Write it to a task-owned file, `handoff.md` in the task folder, and give the next
+tool that path. Keep one current handoff per task: each change of ownership,
+including the return, rewrites it. The vendored `handoff` skill can prepare it; link existing artifacts
+instead of duplicating their content. Post an issue/PR comment only when the task
+authorizes it.
 
 ```text
 Task / issue / validation contract (link; each assertion: actor and state → action → expected response and data effects → evidence; blocking, and who may accept a gap):
