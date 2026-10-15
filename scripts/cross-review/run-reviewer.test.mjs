@@ -11,6 +11,10 @@ import {
   validateReport,
 } from "./run-reviewer.mjs";
 
+// Hermetic git: fixtures must not inherit the machine's signing, hooks or templates.
+process.env.GIT_CONFIG_GLOBAL = "/dev/null";
+process.env.GIT_CONFIG_NOSYSTEM = "1";
+
 const BASE = "a".repeat(40);
 const GOOD_REPORT = (base, head) =>
   `Reviewed ${base}...${head}\n\n## Standards\nNo findings.\n\n## Spec\nNo findings.\n`;
@@ -175,6 +179,32 @@ describe("runReviewer", () => {
     const failed = await run(json('""', true), { reportSource: "claude-json" });
     assert.equal(failed.outcome.outcome, "INCOMPLETE");
     assert.match(failed.outcome.reason, /error_max_turns/);
+  });
+
+  it("records engine and round in the outcome", async () => {
+    const { outcome } = await run(writeGoodReport, {
+      engine: "codex",
+      round: "2",
+    });
+    assert.equal(outcome.engine, "codex");
+    assert.equal(outcome.round, "2");
+  });
+
+  it("records INCOMPLETE when the result cannot be checked", async () => {
+    const { outcome, prefix } = await run(
+      `require("fs").rmSync(".git", { recursive: true }); ${writeGoodReport}`,
+    );
+    assert.equal(outcome.outcome, "INCOMPLETE");
+    assert.match(outcome.reason, /could not check/);
+    assert.ok(existsSync(`${prefix}.outcome.json`));
+  });
+
+  it("rejects Claude JSON that is not an object", async () => {
+    const { outcome } = await run('process.stdout.write("null")', {
+      reportSource: "claude-json",
+    });
+    assert.equal(outcome.outcome, "INCOMPLETE");
+    assert.match(outcome.reason, /not a JSON object/);
   });
 
   it("rejects a reviewer that changes the worktree", async () => {

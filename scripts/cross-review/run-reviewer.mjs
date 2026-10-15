@@ -162,6 +162,9 @@ function readReport(prefix, reportSource) {
     } catch {
       return { error: "Claude output is not JSON" };
     }
+    if (typeof result !== "object" || result === null) {
+      return { error: "Claude output is not a JSON object" };
+    }
     if (result.is_error)
       return { error: `Claude ended with ${result.subtype}` };
     text = result.result ?? "";
@@ -170,12 +173,25 @@ function readReport(prefix, reportSource) {
   return { text };
 }
 
+/** Why a finished run is unusable, or null when its review is complete. */
+function judgeRun({ worktree, base, head, prefix, reportSource }) {
+  const after = worktreeState(worktree);
+  if (after.head !== head || after.status) {
+    return `worktree changed during the review:\n${after.status}`.trim();
+  }
+  const report = readReport(prefix, reportSource);
+  return report.error ?? validateReport(report.text, { base, head });
+}
+
 /**
  * Runs `argv` in `worktree` and returns the outcome it also writes to
  * `<prefix>.outcome.json`. Throws, without launching, when the worktree is
- * not cleanly at `head` or this prefix already has an outcome.
+ * not cleanly at `head` or this prefix already has an outcome; once launched,
+ * every failure becomes an INCOMPLETE outcome.
  */
 export async function runReviewer({
+  engine,
+  round,
   argv,
   env = process.env,
   worktree,
@@ -229,19 +245,18 @@ export async function runReviewer({
   else if (timedOut) reason = `deadline of ${deadlineMs} ms reached`;
   else if (code !== 0) reason = signal ? `killed by ${signal}` : `exit ${code}`;
   if (!reason) {
-    const after = worktreeState(worktree);
-    if (after.head !== head || after.status) {
-      reason = `worktree changed during the review:\n${after.status}`.trim();
+    try {
+      reason = judgeRun({ worktree, base, head, prefix, reportSource });
+    } catch (checkError) {
+      reason = `runner could not check the result: ${checkError.message}`;
     }
-  }
-  if (!reason) {
-    const report = readReport(prefix, reportSource);
-    reason = report.error ?? validateReport(report.text, { base, head });
   }
 
   const outcome = {
     outcome: reason ? "INCOMPLETE" : "COMPLETE",
     reason,
+    engine,
+    round,
     base,
     head,
     exitCode: code,
@@ -316,6 +331,8 @@ async function main() {
   });
   writeFileSync(`${prefix}.prompt.txt`, prompt, { flag: "wx" });
   const outcome = await runReviewer({
+    engine: values.engine,
+    round: values.round,
     argv,
     worktree,
     base: values.base,
