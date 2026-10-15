@@ -24,7 +24,7 @@ Rationale: the Tech stack table in `PROJECT_BRIEF.md` and `docs/adr/`.
 
 ## Working agreement
 
-- **Deliver via PR; never commit to `main`.** Every change, agents' included, goes on a branch and merges through a GitHub PR; `.husky/pre-push` blocks direct pushes. Branch naming, the `pnpm verify` gate and commit style: `CONTRIBUTING.md`.
+- **Deliver via PR; never commit to `main`.** Every change, agents' included, goes on a branch and merges through a GitHub PR; `.husky/pre-push` blocks direct pushes. Branch naming, the `pnpm verify` gate and commit style: `CONTRIBUTING.md`. Write the PR body with the `pr` skill (`mattpocock-skills:pr`), then the handoff from `docs/agents/workflow.md`. Reference an issue the PR leaves open as `Refs #N`: GitHub links any `close`/`fix`/`resolve #N` in the body as closing, even after "not".
 - Name domain concepts in `GLOSSARY.md` terms: **Зернятко** where you might write stamp/point, **CafeOwner** for owner, **Purchase** for transaction.
 - Keep it simple: no redundant functionality or documentation. Tasks state intended behavior; code and tests are the source of truth for implemented behavior. Reserve docs for durable decisions and procedures that cannot be inferred from them. Prefer clear names, types and tests over comments; keep comments for non-obvious contracts, constraints or reasons, never to restate code or issue history.
 - Before starting, handing off, reviewing or working concurrently, read `docs/agents/workflow.md` (setup, handoff template, edit ownership). One active editor per checkout; run concurrent implementation in separate worktrees, and agree on test databases, dev servers and devices before using them.
