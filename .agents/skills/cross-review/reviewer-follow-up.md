@@ -1,0 +1,1 @@
+This is a follow-up round. The previous round's adjudicated findings are in `{{PREVIOUS}}`. First review the full diff fresh, as above. Then add `## Previous findings`, marking each one FIXED, NOT FIXED or REGRESSED with the code that shows it. Report any new finding under its axis.
