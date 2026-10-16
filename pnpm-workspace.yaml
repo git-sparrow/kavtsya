@@ -16,13 +16,28 @@ catalog:
   zod: ^4.6.5
   better-auth: ^1.7.5
   "@better-auth/expo": ^1.7.5
-# Mirrors apps/mobile's Expo-governed `@types/react` range; move both together on
-# the Expo track. Without it, `@better-auth/expo`'s optional Expo peers resolve in
-# apps/api (which declares no @types/react) against the newest @types/react, forking
-# a second `expo`/`react-native` and failing Expo Doctor's duplicate check (#333).
-# Remove once apps/api no longer resolves the Expo graph (#335).
-overrides:
-  "@types/react": ~19.2.2
+# Peers are linked only where a package declares them, never auto-installed or
+# borrowed from another workspace package. Otherwise apps/api links
+# `@better-auth/expo`'s optional Expo peers from apps/mobile, resolves them apart
+# from it and forks a second `expo`/`react-native`, failing Expo Doctor's duplicate
+# check (#335). A missing-peer warning means: declare the peer where it is needed,
+# or ignore it below with the reason. See docs/agents/dependency-updates.md.
+autoInstallPeers: false
+dedupePeerDependents: false
+peerDependencyRules:
+  ignoreMissing:
+    # better-auth (beside @better-auth/expo in both apps, kept in step by the
+    # catalog) pins @better-auth/core to its own version and carries core's peers.
+    - "@better-auth/core"
+    # Babel plugins' host: supplied by Expo's Metro toolchain (metro,
+    # @expo/metro-config), which owns its version.
+    - "@babel/core"
+    # Web-only DOM UI (`@radix-ui/*`, `vaul`) via expo-router → @expo/ui; the app
+    # ships no web target, and react-dom must never enter the tree (see docs).
+    - react-dom
+    # react-native-worklets lists it as a peer but never imports it; Metro config
+    # comes from expo/metro-config.
+    - "@react-native/metro-config"
 allowBuilds:
   # @swmansion/argent and its native deps (node-pty, tree-sitter*, webtransport)
   "@fails-components/webtransport-transport-http3-quiche": true
