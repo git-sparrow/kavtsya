@@ -222,6 +222,33 @@ root-only tooling, so it lives in the repo-root `package.json` alongside `eslint
 bumped by hand on the Expo track — `expo install --fix` does not reach outside
 `apps/mobile` and will not realign it for you.
 
+### Peers are declared, never auto-installed
+
+`pnpm-workspace.yaml` sets `autoInstallPeers: false` and `dedupePeerDependents: false`:
+a peer is linked only where a package declares it. With either one on, pnpm satisfies an
+optional peer from **another** workspace package. `apps/api` imports only
+`@better-auth/expo`'s server plugin, but it then linked that package's optional Expo peers
+(`expo-constants`, `expo-network`, …) from `apps/mobile` and resolved them separately.
+Every `better-auth` bump forked a second `expo`/`react-native` that way, and Expo Doctor's
+duplicate check failed (#295, #333). Pinning the peer that happened to differ
+(`@types/react`, #336) did not hold: Dependabot's lockfile still forked within the pinned
+range. Measured 2026-10-16 with pnpm 11.7.0 on #333's manifests: only both settings off
+gave one `expo`. That held on the existing lockfile, on a fresh lockfile, and after a
+further `better-auth` bump. `autoInstallPeers: false` alone, `dedupePeerDependents: false`
+alone, and `overrides` that remove the peer (`"@better-auth/expo>expo-constants": "-"`)
+all left `apps/api` on the Expo graph.
+
+When `pnpm install` warns about a peer, run `pnpm peers check` and do one of two things:
+
+- **Declare it** in the workspace package that needs it, under that package's version
+  authority (the Expo SDK for the Expo surface).
+- **Add it to `peerDependencyRules.ignoreMissing`**, with a comment naming who already
+  supplies it or why it is unused. Use this only when the package is supplied by a
+  dependency that owns its version, or is never loaded (web-only, never imported).
+
+Keep `pnpm peers check` clean. Every acceptable miss is listed in `ignoreMissing`, so a new
+entry in its output is a real decision to make.
+
 ### Do not add `react-dom` (or a testing library that needs it)
 
 Mobile hooks are tested with **`test-renderer`**, which builds an in-memory tree and
@@ -231,14 +258,13 @@ trap here.
 
 React refuses to run unless `react-dom` matches `react` **exactly**, so it would have to
 be pinned to whatever `react` the SDK dictates and moved on the Expo track by hand —
-`expo install --fix` does not manage it. Worse, it would need a `pnpm-workspace.yaml`
-override on top: `better-auth` declares `react-dom` as an *optional* peer and
-`autoInstallPeers` fetches a newer one to satisfy it, and because `expo` **also**
-declares it optionally, that second copy silently forks `expo` into two peer resolutions
-until `expo-doctor` fails the install as duplicated.
+and because `better-auth` and `expo` both declare it as an *optional* peer, any second
+copy forks `expo` into two peer resolutions until `expo-doctor` fails the install as
+duplicated.
 
-None of that exists today: nothing in the repo declares `react-dom`, so pnpm resolves the
-single auto-installed copy and `expo-doctor` is clean. Adding `@testing-library/react`,
+None of that exists today: nothing in the repo declares `react-dom`, so nothing installs it.
+Its only wanters are web-only DOM components (`@radix-ui/*`, `vaul`, via expo-router →
+`@expo/ui`), so it is listed in `peerDependencyRules.ignoreMissing`. Adding `@testing-library/react`,
 `jsdom`, or `react-dom` brings the whole chain back. If you need to render React Native
 components (not just hooks), that is a runner decision — see the note on Jest in the ADR,
 not a dependency to add here.
@@ -448,12 +474,6 @@ npx expo-doctor            # validate the whole mobile dependency graph is coher
 # From the repo root — `expo install --fix` does not reach outside apps/mobile:
 pnpm add -w -D eslint-config-expo@^<major>.0.0   # match the new SDK major
 ```
-
-If `expo install --fix` changes the `@types/react` range in `apps/mobile/package.json`,
-copy the same range into the `@types/react` entry under `overrides:` in
-`pnpm-workspace.yaml`. That override stops `apps/api` (via `@better-auth/expo`'s
-optional Expo peers) from resolving a newer `@types/react` and forking a second
-`expo`, which fails Expo Doctor's duplicate check (#333, structural fix in #335).
 
 On a full SDK jump, also regenerate the CNG native output so it is rebuilt against the
 new SDK (`apps/mobile/ios` and `android` are git-ignored build artefacts, not sources):
