@@ -106,6 +106,11 @@ App and no paid infrastructure — Dependabot is GitHub-native and config-only.
   prefixed `chore(deps)` / `chore(deps-dev)` / `chore(ci)`.
 - **Catalog support:** Dependabot updates `catalog:` entries in `pnpm-workspace.yaml`
   directly (GA since 2025-02-04), so catalog'd deps stay fresh automatically.
+- **pnpm ≥ 11.13.0:** Dependabot runs the pnpm in `packageManager`. Its registry proxy
+  answers `304 Not Modified` to unconditional requests. pnpm before 11.13.0 trusts that
+  `304` and fails every job with `ERR_PNPM_CACHE_MISSING_AFTER_304`; Dependabot then
+  closes the open PR as "no longer updatable"
+  ([pnpm/pnpm#12882](https://github.com/pnpm/pnpm/issues/12882)).
 
 <a id="boring-schedule"></a>
 
