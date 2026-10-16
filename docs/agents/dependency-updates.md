@@ -449,6 +449,12 @@ npx expo-doctor            # validate the whole mobile dependency graph is coher
 pnpm add -w -D eslint-config-expo@^<major>.0.0   # match the new SDK major
 ```
 
+If `expo install --fix` changes the `@types/react` range in `apps/mobile/package.json`,
+copy the same range into the `@types/react` entry under `overrides:` in
+`pnpm-workspace.yaml`. That override stops `apps/api` (via `@better-auth/expo`'s
+optional Expo peers) from resolving a newer `@types/react` and forking a second
+`expo`, which fails Expo Doctor's duplicate check (#333, structural fix in #335).
+
 On a full SDK jump, also regenerate the CNG native output so it is rebuilt against the
 new SDK (`apps/mobile/ios` and `android` are git-ignored build artefacts, not sources):
 

@@ -16,6 +16,13 @@ catalog:
   zod: ^4.6.5
   better-auth: ^1.7.5
   "@better-auth/expo": ^1.7.5
+# Mirrors apps/mobile's Expo-governed `@types/react` range; move both together on
+# the Expo track. Without it, `@better-auth/expo`'s optional Expo peers resolve in
+# apps/api (which declares no @types/react) against the newest @types/react, forking
+# a second `expo`/`react-native` and failing Expo Doctor's duplicate check (#333).
+# Remove once apps/api no longer resolves the Expo graph (#335).
+overrides:
+  "@types/react": ~19.2.2
 allowBuilds:
   # @swmansion/argent and its native deps (node-pty, tree-sitter*, webtransport)
   "@fails-components/webtransport-transport-http3-quiche": true
