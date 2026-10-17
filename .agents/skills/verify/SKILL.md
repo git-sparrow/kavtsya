@@ -14,7 +14,7 @@ commit; runtime verification drives the actual surface the diff touches.
 pnpm verify
 ```
 
-One root script = `agents:check && typecheck && lint && format:check && test`
+One root script = `agents:check && deps:check && typecheck && lint && format:check && test`
 (`typecheck`/`test` fan out with `pnpm -r`; `lint` is one repo-wide eslint) —
 also run in `.github/workflows/ci.yml`. CI additionally runs Expo Doctor. Green
 gate ≠ verified — exercise the changed surface next. For agent setup changes,

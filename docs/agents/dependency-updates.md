@@ -288,6 +288,8 @@ merge green:
 
 - `pnpm typecheck`, `pnpm lint`, `pnpm format:check`
 - `pnpm test` — the API suite runs against a **real** Postgres service (no mocks)
+- `pnpm deps:check` — `pnpm peers check` is clean, `apps/api` resolves no `expo` or
+  `react-native`, and the lockfile has no `react-dom` (the sections above say why)
 - **`npx expo-doctor`** (run in `apps/mobile`) — validates that the mobile dependency
   set is coherent, so config, peer-dependency and native-module incompatibility is
   caught automatically before merge.
@@ -445,9 +447,12 @@ blinding the Expo track itself. Never silence the packages; move the check.
 
 ## The maintainer's recurring task
 
-1. When the monthly grouped Dependabot PR arrives, **review it tests-first** (as usual)
-   and merge if the gate is green. Majors arrive as their own PRs — merge or hold each
-   independently.
+1. When the monthly grouped Dependabot PR arrives, read the `Dependabot review` comment
+   on it. Merge when the gate is green and the verdict for the current head says
+   `Ready to merge`, or once you have closed each `Needs:` item
+   ([Acting on the verdict](dependency-pr-review.md#acting-on-the-verdict)). Run the
+   [same procedure](dependency-pr-review.md) by hand when the comment is missing. Majors
+   arrive as their own PRs — merge or hold each independently.
 2. **Separately, when the Expo drift issue appears,** run the Expo track below. This is
    judgment-heavy and stays a human decision, not automation — but you no longer have to
    remember to look: `.github/workflows/expo-sdk-check.yml` runs the full `expo-doctor`

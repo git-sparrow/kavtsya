@@ -84,6 +84,9 @@ jobs:
       - name: Check agent setup
         run: pnpm agents:check
 
+      - name: Check dependency graph
+        run: pnpm deps:check
+
       - name: Typecheck
         run: pnpm typecheck
 
