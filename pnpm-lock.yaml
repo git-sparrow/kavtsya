@@ -206,7 +206,7 @@ importers:
         specifier: ^0.2.4
         version: 0.2.4
       test-renderer:
-        specifier: ^1.2.0
+        specifier: ~1.2.0
         version: 1.2.0(@types/react@19.2.17)(react@19.2.3)
       typescript:
         specifier: 'catalog:'
