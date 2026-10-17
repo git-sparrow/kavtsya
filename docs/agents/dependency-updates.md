@@ -489,6 +489,10 @@ rm -rf ios android .expo && watchman watch-del-all
 npx expo prebuild --clean
 ```
 
+If the new SDK ships React 19.3 or later, also lift the `test-renderer` hold: drop its
+`ignore` entry in `.github/dependabot.yml` and move `apps/mobile` off `~1.2.0` (1.3 needs
+React ≥ 19.3 through `react-reconciler` 0.34).
+
 Then run the full gate (`pnpm typecheck && pnpm lint && pnpm format:check && pnpm test`)
 and, for a real SDK jump, smoke-test the app in the simulator (see `docs/argent-howto.md`).
 

@@ -66,6 +66,11 @@ updates:
       # the low-risk grouped PR. Move it deliberately, in its own PR, alongside
       # the re-vendored skills. Same reasoning as eslint-config-expo above.
       - dependency-name: "@swmansion/argent"
+      # test-renderer 1.3 moved to react-reconciler 0.34, which requires react
+      # ^19.3; the Expo SDK pins React 19.2. Pinned ~1.2.0 in apps/mobile. Lift
+      # both on the Expo track once the SDK ships React >=19.3.
+      - dependency-name: "test-renderer"
+        versions: [">=1.3.0"]
     groups:
       # All minor + patch bumps batch into a single PR. Majors are deliberately
       # left ungrouped so each higher-risk bump opens its own PR for individual
