@@ -448,10 +448,11 @@ blinding the Expo track itself. Never silence the packages; move the check.
 ## The maintainer's recurring task
 
 1. When the monthly grouped Dependabot PR arrives, read the `Dependabot review` comment
-   on it and merge if the gate is green and the verdict says `Ready to merge`. The
-   workflow follows [Reviewing a Dependabot PR](dependency-pr-review.md); run the same
-   procedure by hand when the comment is missing. Majors arrive as their own PRs — merge
-   or hold each independently.
+   on it. Merge when the gate is green and the verdict for the current head says
+   `Ready to merge`, or once you have closed each `Needs:` item
+   ([Acting on the verdict](dependency-pr-review.md#acting-on-the-verdict)). Run the
+   [same procedure](dependency-pr-review.md) by hand when the comment is missing. Majors
+   arrive as their own PRs — merge or hold each independently.
 2. **Separately, when the Expo drift issue appears,** run the Expo track below. This is
    judgment-heavy and stays a human decision, not automation — but you no longer have to
    remember to look: `.github/workflows/expo-sdk-check.yml` runs the full `expo-doctor`

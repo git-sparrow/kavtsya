@@ -1,6 +1,5 @@
 // Dependency-graph invariants that a lockfile change can break while install,
-// typecheck and tests stay green (#333, #339). Policy and history:
-// docs/agents/dependency-updates.md.
+// typecheck and tests stay green. Policy: docs/agents/dependency-updates.md.
 import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -9,7 +8,7 @@ const root = path.resolve(import.meta.dirname, "../..");
 const DOC = "docs/agents/dependency-updates.md";
 
 /** Packages that put a workspace on the Expo graph; apps/api must resolve none. */
-export const EXPO_GRAPH = ["expo", "react-native"];
+const EXPO_GRAPH = ["expo", "react-native"];
 
 /** `why` is the parsed `pnpm why -r <name> --filter @kavtsya/api --json`. */
 export function expoGraphProblem(name, why) {
@@ -27,10 +26,6 @@ export function reactDomProblem(lockfile) {
   return `pnpm-lock.yaml has ${entries} react-dom@ entries; nothing may install react-dom (${DOC}, "Do not add react-dom")`;
 }
 
-function pnpm(...args) {
-  return execFileSync("pnpm", args, { cwd: root, encoding: "utf8" });
-}
-
 function main() {
   const problems = [];
 
@@ -45,7 +40,11 @@ function main() {
   }
   for (const name of EXPO_GRAPH) {
     const why = JSON.parse(
-      pnpm("why", "-r", name, "--filter", "@kavtsya/api", "--json"),
+      execFileSync(
+        "pnpm",
+        ["why", "-r", name, "--filter", "@kavtsya/api", "--json"],
+        { cwd: root, encoding: "utf8" },
+      ),
     );
     problems.push(expoGraphProblem(name, why));
   }
@@ -63,4 +62,7 @@ function main() {
   console.log("deps:check: dependency graph OK");
 }
 
-if (import.meta.main) main();
+// Not `import.meta.main`: engines allows Node 24.0 and 24.1, which lack it.
+if (process.argv[1] && import.meta.filename === path.resolve(process.argv[1])) {
+  main();
+}

@@ -64,7 +64,7 @@ drift check reads the registry, so an offline push can land there too.
 3. **Run the gate locally before you push:**
 
    ```sh
-   pnpm verify   # agent setup + typecheck + lint + format:check + full test suite
+   pnpm verify   # agent setup + dependency graph + typecheck + lint + format:check + full test suite
    ```
 
    The API suite needs Postgres — `pnpm db:up` first (see below). This is the
