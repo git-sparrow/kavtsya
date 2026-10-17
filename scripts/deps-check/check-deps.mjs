@@ -33,7 +33,11 @@ function main() {
     cwd: root,
     stdio: "inherit",
   });
-  if (peers.status !== 0) {
+  if (peers.status === null) {
+    problems.push(
+      `could not run pnpm peers check (${peers.error?.message ?? peers.signal})`,
+    );
+  } else if (peers.status !== 0) {
     problems.push(
       `pnpm peers check reports the issues above; declare each peer or list it in peerDependencyRules.ignoreMissing (${DOC}, "Peers are declared, never auto-installed")`,
     );
@@ -62,7 +66,7 @@ function main() {
   console.log("deps:check: dependency graph OK");
 }
 
-// Not `import.meta.main`: engines allows Node 24.0 and 24.1, which lack it.
+// Not `import.meta.main`: it needs Node 24.2 (doc/api/esm.md), and engines allows ^24.
 if (process.argv[1] && import.meta.filename === path.resolve(process.argv[1])) {
   main();
 }

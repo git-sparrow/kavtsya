@@ -104,7 +104,8 @@ export function versionsBetween(all, from, to) {
  */
 export function changelogSection(text, version, name) {
   const exact = new RegExp(
-    `(?<![\\d.])${version.replaceAll(".", "\\.")}(?![\\d.])`,
+    // A whole version token: `1.2.3` must not match `1.2.30` or `1.2.3-beta.1`.
+    `(?<![\\d.])${version.replaceAll(".", "\\.")}(?![\\w.+-])`,
   );
   const lines = text.split("\n");
   const start = lines.findIndex(
@@ -150,8 +151,8 @@ const bumpHeading = ({ name, from, to }) =>
   `### ${name} ${from ?? "(new)"} → ${to}`;
 
 /** Third-party text, delimited so it cannot pose as a gathered section. */
-const untrusted = (body) =>
-  `<release-notes>\n${body.replaceAll("</release-notes", "<\\/release-notes")}\n</release-notes>`;
+const delimit = (body) =>
+  `<release-notes>\n${body.replace(/<\s*\/\s*release-notes/gi, "<\\/release-notes")}\n</release-notes>`;
 
 async function notesFor(bump) {
   const { name, from, to } = bump;
@@ -167,7 +168,7 @@ async function notesFor(bump) {
     return {
       text: bumpHeading(bump),
       missing: [
-        `${name} ${from} → ${to}: versions not found on the npm registry`,
+        `${name} ${from} → ${to}: no stable version in that range on the npm registry (a prerelease or downgrade?)`,
       ],
     };
   }
@@ -231,7 +232,7 @@ async function notesFor(bump) {
       missing.push(`${name} ${version}: notes cut at ${NOTE_LIMIT} characters`);
     }
     sections.push(
-      `#### ${version} (${repo}, ${source})\n\n${untrusted(body.slice(0, NOTE_LIMIT))}`,
+      `#### ${version} (${repo}, ${source})\n\n${delimit(body.slice(0, NOTE_LIMIT))}`,
     );
   }
   return { text: [bumpHeading(bump), ...sections].join("\n\n"), missing };
@@ -275,7 +276,7 @@ export async function releaseNotesSection(baseLock, prLock) {
   return lines.join("\n");
 }
 
-// Not `import.meta.main`: engines allows Node 24.0 and 24.1, which lack it.
+// Not `import.meta.main`: it needs Node 24.2 (doc/api/esm.md), and engines allows ^24.
 if (process.argv[1] && import.meta.filename === path.resolve(process.argv[1])) {
   const [command, base, pr] = process.argv.slice(2);
   const read = (file) => readFileSync(file, "utf8");

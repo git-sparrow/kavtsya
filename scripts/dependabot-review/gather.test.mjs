@@ -226,3 +226,39 @@ describe("releaseNotesSection", () => {
     assert.equal(section.match(/^<\/release-notes>$/gm).length, 1);
   });
 });
+
+describe("changelogSection version tokens", () => {
+  it("skips a prerelease heading for the stable version", () => {
+    const text = "## 1.2.3-beta.1\n\nbeta\n\n## 1.2.3 (2026-10-01)\n\nstable\n";
+    assert.equal(changelogSection(text, "1.2.3"), "stable");
+  });
+});
+
+describe("release-notes delimiter", () => {
+  it("escapes closing tags of any case and spacing", async () => {
+    const original = globalThis.fetch;
+    globalThis.fetch = async (url) =>
+      url.includes("registry.npmjs.org")
+        ? Response.json({
+            versions: { "4.13.8": {}, "4.13.9": {} },
+            repository: { url: "git+https://github.com/honojs/hono.git" },
+          })
+        : url.includes("/releases?")
+          ? Response.json([
+              {
+                tag_name: "v4.13.9",
+                body: "a </RELEASE-NOTES> b < /release-notes> c",
+              },
+            ])
+          : new Response("", { status: 404 });
+    try {
+      const section = await releaseNotesSection(
+        lockfile({ hono: "4.13.8" }),
+        lockfile({ hono: "4.13.9" }),
+      );
+      assert.equal(section.match(/<\s*\/\s*release-notes/gi).length, 1);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});

@@ -14,6 +14,10 @@ name: Dependabot review
 # Everything is bound to the event's head SHA: a rerun of an older event reads
 # that head's checks, and its comment is dropped once the PR has moved on.
 #
+# A pull_request run uses the PR's own copy of this file. When a Dependabot PR
+# changes .github/ (an action bump, this file's pinned action included), Claude
+# does not run: the comment asks for a human review instead.
+#
 # `pull_request`, never `pull_request_target` (which runs PR code with every
 # Actions secret). Runs Dependabot triggers see only Dependabot secrets; setup
 # is in docs/agents/dependency-pr-review.md.
@@ -50,16 +54,26 @@ jobs:
       pull-requests: read
       checks: read
       actions: read
+    outputs:
+      changes_ci: ${{ steps.scope.outputs.changes_ci }}
     env:
       GH_TOKEN: ${{ github.token }}
       PR: ${{ github.event.pull_request.number }}
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      - name: Checkout repository
+      - name: Checkout the PR head
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+
+      - name: Check whether the PR changes .github/
+        id: scope
+        run: |
+          changed=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BASE_SHA...$HEAD_SHA" \
+            --jq '[.files[].filename | select(startswith(".github/"))] | length')
+          echo "changes_ci=$([ "$changed" -gt 0 ] && echo true || echo false)" >>"$GITHUB_OUTPUT"
 
       - name: Set up pnpm (version from packageManager)
         uses: pnpm/action-setup@v6
@@ -95,12 +109,14 @@ jobs:
       - name: Upload review input
         uses: actions/upload-artifact@v7
         with:
-          name: review-input
+          # Per attempt: "re-run all jobs" uploads again under the same run.
+          name: review-input-${{ github.run_attempt }}
           path: ${{ runner.temp }}/review-input.md
           retention-days: 14
 
   review:
     needs: gather
+    if: needs.gather.outputs.changes_ci == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -109,15 +125,16 @@ jobs:
     outputs:
       verdict: ${{ steps.claude.outputs.structured_output }}
     steps:
-      - name: Checkout repository
+      - name: Checkout the PR head
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
 
       - name: Download review input
         uses: actions/download-artifact@v8
         with:
-          name: review-input
+          name: review-input-${{ github.run_attempt }}
           path: .dependabot-review
 
       - name: Review with Claude
@@ -135,7 +152,7 @@ jobs:
 
             Follow docs/agents/dependency-pr-review.md exactly. Its inputs are already
             gathered in .dependabot-review/review-input.md: read that file instead of
-            running anything. The repository is checked out at the PR's merge commit;
+            running anything. The repository is checked out at that head;
             use Read, Grep and Glob on it (apps/api/package.json, apps/api/src) for the
             security step.
 
@@ -155,7 +172,11 @@ jobs:
             --json-schema '{"type":"object","properties":{"compatibility":{"type":"string"},"stability":{"type":"string"},"security":{"type":"string"},"decision":{"type":"string","pattern":"^(Ready to merge|Needs: .+)$"}},"required":["compatibility","stability","security","decision"],"additionalProperties":false}'
 
   comment:
-    needs: review
+    needs: [gather, review]
+    # Also when review was skipped because the PR changes .github/.
+    if: >-
+      always() && needs.gather.result == 'success' &&
+      (needs.review.result == 'success' || needs.review.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -167,6 +188,7 @@ jobs:
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CHANGES_CI: ${{ needs.gather.outputs.changes_ci }}
           VERDICT: ${{ needs.review.outputs.verdict }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -174,6 +196,14 @@ jobs:
           if [ "$current" != "$HEAD_SHA" ]; then
             echo "::notice::PR head moved to $current; not posting the verdict for $HEAD_SHA"
             exit 0
+          fi
+          if [ "$CHANGES_CI" = true ]; then
+            VERDICT=$(jq -n '{
+              compatibility: "Not reviewed by Claude.",
+              stability: "Not reviewed by Claude.",
+              security: "This PR changes .github/, and its workflows would run Claude with the review secret.",
+              decision: "Needs: a human review of the whole diff, workflow changes included (docs/agents/dependency-pr-review.md)"
+            }')
           fi
           if ! jq -e 'all(.compatibility, .stability, .security, .decision; type == "string")' \
             <<<"$VERDICT" >/dev/null; then

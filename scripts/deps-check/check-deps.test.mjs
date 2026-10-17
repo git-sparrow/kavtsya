@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { expoGraphProblem, reactDomProblem } from "./check-deps.mjs";
 
 // Trimmed `pnpm why -r expo --filter @kavtsya/api --json` from a lockfile in
-// which apps/api picked up @better-auth/expo's optional Expo peers (#333).
+// which apps/api picked up @better-auth/expo's optional Expo peers.
 const API_ON_EXPO_GRAPH = [
   {
     name: "expo",
