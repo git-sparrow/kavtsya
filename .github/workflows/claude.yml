@@ -40,10 +40,15 @@ jobs:
           additional_permissions: |
             actions: read
 
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
+          # Claude reads only the maintainer's comments: anyone can comment on this
+          # public repo, and a comment is text Claude may follow.
+          include_comments_by_actor: git-sparrow
 
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr *)'
+          # Read-only: Claude answers in its comment and never edits, commits or
+          # pushes. Code changes go through a local agent, `pnpm verify` and a PR.
+          # Tag mode adds commit and push tools by default; deny rules beat allow
+          # rules, and a bare tool name removes the tool entirely. WebFetch is for
+          # release notes and docs.
+          claude_args: >-
+            --allowedTools "WebFetch"
+            --disallowedTools "Bash,Edit,Write,MultiEdit,NotebookEdit,mcp__github_file_ops__*"
