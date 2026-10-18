@@ -288,6 +288,8 @@ merge green:
 
 - `pnpm typecheck`, `pnpm lint`, `pnpm format:check`
 - `pnpm test` — the API suite runs against a **real** Postgres service (no mocks)
+- `pnpm deps:check` — `pnpm peers check` is clean, `apps/api` resolves no `expo` or
+  `react-native`, and the lockfile has no `react-dom` (the sections above say why)
 - **`npx expo-doctor`** (run in `apps/mobile`) — validates that the mobile dependency
   set is coherent, so config, peer-dependency and native-module incompatibility is
   caught automatically before merge.
