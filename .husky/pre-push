@@ -1,10 +1,11 @@
-# Two local guardrails, both running before anything leaves the machine:
+# Three local guardrails, all running before anything leaves the machine:
 #   1. the PR-only workflow — never push directly to a protected branch;
-#   2. pnpm-lock.yaml integrity — see the block below for why it needs its own.
-# GitHub-side branch protection isn't available on this repo's plan yet (private
-# + free), so this hook is the local guardrail — see CONTRIBUTING.md. It runs
-# for everyone once `pnpm install` sets husky up. A genuine exception can still
-# push with `git push --no-verify`.
+#   2. branch names carry a CONTRIBUTING.md prefix;
+#   3. pnpm-lock.yaml integrity — see the block below for why it needs its own.
+# GitHub branch protection on `main` requires `ci` but exempts admins, so for the
+# maintainer this hook is the only guard against a direct push — see
+# CONTRIBUTING.md. It runs for everyone once `pnpm install` sets husky up. A
+# genuine exception can still push with `git push --no-verify`.
 
 protected_branches="main"
 lockfile="pnpm-lock.yaml"
@@ -33,6 +34,19 @@ while read -r _local_ref local_sha remote_ref remote_sha; do
   # remote yet. Matched by pattern rather than a literal so this keeps working
   # if the repo ever moves to SHA-256 object names.
   case "$local_sha" in *[!0]*) ;; *) continue ;; esac
+
+  # After the deletion skip, so an old branch with any name can still be deleted.
+  case "$remote_ref" in
+    refs/heads/feat/* | refs/heads/fix/* | refs/heads/chore/* | refs/heads/docs/* | refs/heads/refactor/*) ;;
+    refs/heads/*)
+      echo "" >&2
+      echo "✖ Branch '$branch' has no CONTRIBUTING.md prefix." >&2
+      echo "  Use feat/, fix/, chore/, docs/ or refactor/, e.g.:" >&2
+      echo "    git branch -m chore/${branch##*/}" >&2
+      echo "" >&2
+      exit 1
+      ;;
+  esac
 
   # Which commits are we actually sending? A brand-new remote branch has no
   # remote tip to diff against, so bound the range by what origin already has.
