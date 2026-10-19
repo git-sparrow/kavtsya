@@ -21,6 +21,7 @@ SUITE_LOG="$ARTIFACTS/suite.log"
 READY_TIMEOUT_S=180
 
 infra_failure() {
+  adb logcat -d > "$ARTIFACTS/device-logcat.txt" 2>/dev/null || true
   echo "::error title=E2E infrastructure failure, not an app failure::$1"
   exit 1
 }
@@ -42,12 +43,22 @@ device_online() {
 # A process that stops responding is then killed instead of covering the app with
 # an "isn't responding" dialog. Our own app hanging or crashing still fails its
 # flow, because it dies; the cause is in the flow artifact's device logcat, not
-# on its failure screenshot. The setting leaves a dialog that is already up, so
-# close that too. Both verified on an API 35 emulator, 2026-10-19 (#312).
+# on its failure screenshot. Verified on an API 35 emulator, 2026-10-19 (#312).
 suppress_system_dialogs() {
   adb shell settings put global hide_error_dialogs 1 \
-    && adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null \
     || infra_failure "could not suppress system dialogs on the emulator"
+}
+
+# The setting leaves a dialog already up from boot (AppErrors.handleShowAnrUi
+# returns early while one exists). Force-stopping its process closes it, as the
+# dialog's own "Close app" does; unlike a CLOSE_SYSTEM_DIALOGS broadcast, it does
+# not queue behind the boot broadcasts on a slow host (#348's first run).
+close_anr_dialog() { # <focused window>
+  local package
+  package="$(sed -n 's/.*Application Not Responding: \([^}]*\)}.*/\1/p' <<<"$1")"
+  [[ -n "$package" ]] || return 0
+  echo "▶ closing an ANR dialog for $package"
+  adb shell am force-stop "$package" || true
 }
 
 sleep_or_give_up() { # <start seconds> <last focus>
@@ -68,6 +79,7 @@ wait_until_usable() {
   until device_online; do sleep_or_give_up "$start" "$focus"; done
   suppress_system_dialogs
   until focus="$(focused_window)" && [[ "$focus" == *" u0 "*/* ]]; do
+    close_anr_dialog "$focus"
     sleep_or_give_up "$start" "$focus"
   done
   echo "▶ emulator usable after $(( SECONDS - start ))s (focus: $focus)"
