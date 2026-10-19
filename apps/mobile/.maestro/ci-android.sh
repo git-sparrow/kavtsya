@@ -21,14 +21,17 @@ SUITE_LOG="$ARTIFACTS/suite.log"
 READY_TIMEOUT_S=180
 mkdir -p "$ARTIFACTS"
 
-infra_failure() {
-  adb logcat -d > "$ARTIFACTS/device-logcat.txt" 2>/dev/null || true
-  echo "::error title=E2E infrastructure failure, not an app failure::$1"
-  exit 1
-}
-
 adb_connected() {
   [[ "$(adb get-state 2>/dev/null)" == device ]]
+}
+
+# The verdict comes first and logcat only from a connected device: `adb logcat`
+# waits for a missing device instead of failing, which ran demo runs into the
+# job timeout with no verdict (39225029150, 2026-10-19).
+infra_failure() {
+  echo "::error title=E2E infrastructure failure, not an app failure::$1"
+  if adb_connected; then adb logcat -d > "$ARTIFACTS/device-logcat.txt" 2>/dev/null || true; fi
+  exit 1
 }
 
 focused_window() {
