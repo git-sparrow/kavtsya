@@ -11,10 +11,9 @@ maintainer.** `main` is always releasable, and every change gets a second pair
 of eyes (human or CI) before it merges.
 
 A local `pre-push` hook (`.husky/pre-push`, installed automatically by
-`pnpm install`) refuses a direct push to `main` as a safety net. Server-side
-branch protection on GitHub is the real guarantee and switches on once the repo
-is public or on a paid plan; until then the hook plus this convention are what
-we rely on, so please don't route around them.
+`pnpm install`) refuses a direct push to `main`. GitHub branch protection
+requires `ci` before a merge but exempts admins, so for the maintainer the hook
+is the guard against a direct push. Please don't route around either.
 
 ## The lockfile guard
 
@@ -49,6 +48,8 @@ drift check reads the registry, so an offline push can land there too.
    - `feat/<slug>` — new capability
    - `fix/<slug>` — bug fix
    - `chore/<slug>` / `docs/<slug>` / `refactor/<slug>` — everything else
+
+   The pre-push hook rejects any other prefix.
 
    ```sh
    git switch main && git pull

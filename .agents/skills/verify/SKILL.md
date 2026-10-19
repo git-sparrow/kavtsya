@@ -30,7 +30,7 @@ agent must not reset that database or run its suite concurrently.
 ## 2. Bring up the stack
 
 ```sh
-pnpm db:up             # local Postgres (docker compose)
+pnpm db:up             # local Postgres (docker compose); needs Docker running: open -a Docker
 pnpm db:seed-demo      # idempotent demo world (additive; safe to re-run mid-demo)
 # pnpm db:seed-demo-fresh   # wipe data tables then reseed — clears accreted junk
 pnpm dev:api           # API on :3000 — runs migrations first (predev)

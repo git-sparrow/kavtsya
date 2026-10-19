@@ -5,6 +5,7 @@ Issues and PRDs for this repo live as GitHub issues. Use the `gh` CLI for all op
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
+- **Write the issue as behaviour**: the problem, the intended behaviour and the acceptance criteria. An issue that proposes infrastructure (a workflow, a script, a service) also names the **lightest option** it considered, starting with what `.github/workflows/` and the existing skills already do, and why that falls short. #342 prescribed a CI pipeline, and #344 built ~1000 lines of it, where the existing `@claude` workflow and an on-demand skill fit.
 - **Read an issue**: `gh issue view <number> --comments`, filtering comments by `jq` and also fetching labels.
 - **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
 - **Comment on an issue**: `gh issue comment <number> --body "..."`

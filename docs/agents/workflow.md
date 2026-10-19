@@ -139,7 +139,9 @@ pnpm install --frozen-lockfile
 pnpm agents:check
 ```
 
-Choose a unique task branch/path. A new worktree starts without dependencies,
+Choose a unique task branch, and put the worktree you implement in beside the main
+checkout (`../kavtsya-<slug>`): macOS purges `/tmp`, which deletes a worktree there
+and leaves its branch locked until `git worktree prune`. A new worktree starts without dependencies,
 ignored environment files or generated native builds: provision each one it
 needs, environment files per the README.
 
