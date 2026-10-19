@@ -19,6 +19,7 @@ APK="${APK:?path to the debug APK}"
 ARTIFACTS="${ARTIFACTS:?Maestro artifacts dir}"
 SUITE_LOG="$ARTIFACTS/suite.log"
 READY_TIMEOUT_S=180
+mkdir -p "$ARTIFACTS"
 
 infra_failure() {
   adb logcat -d > "$ARTIFACTS/device-logcat.txt" 2>/dev/null || true
@@ -51,8 +52,8 @@ suppress_system_dialogs() {
 
 # The setting leaves a dialog already up from boot (AppErrors.handleShowAnrUi
 # returns early while one exists). Force-stopping its process closes it, as the
-# dialog's own "Close app" does; unlike a CLOSE_SYSTEM_DIALOGS broadcast, it does
-# not queue behind the boot broadcasts on a slow host (#348's first run).
+# dialog's own "Close app" does: verified on an API 35 emulator and on a hosted
+# run, 2026-10-19. A CLOSE_SYSTEM_DIALOGS broadcast did not, on the hosted run.
 close_anr_dialog() { # <focused window>
   local package
   package="$(sed -n 's/.*Application Not Responding: \([^}]*\)}.*/\1/p' <<<"$1")"
@@ -87,18 +88,25 @@ wait_until_usable() {
 
 wait_until_usable
 
-adb install -r "$APK" || infra_failure "could not install the debug APK on the emulator"
+# A rejected APK (INSTALL_FAILED_*) on a connected device is a build failure,
+# not infrastructure; adb prints the reason.
+if ! adb install -r "$APK"; then
+  adb_connected || infra_failure "adb lost the emulator while installing the debug APK"
+  exit 1
+fi
 # The debug build fetches its JS from Metro and derives the API host from the
 # bundle URL (auth-client.ts). Reverse both ports so either `localhost` or the
 # emulator's host alias resolves to this runner.
 adb reverse tcp:8081 tcp:8081 && adb reverse tcp:3000 tcp:3000 \
   || infra_failure "could not reverse the Metro and API ports to the emulator"
 
-mkdir -p "$ARTIFACTS"
+# capture.sh stops at the first failed flow, so a transport error in its output
+# belongs to the command that failed. A device gone only afterwards proves
+# nothing about that failure, so it is not checked.
 status=0
 CAPTURE_SCANNER=1 "$HERE/capture.sh" 2>&1 | tee "$SUITE_LOG" || status=$?
-if (( status != 0 )) && { ! adb_connected \
-  || grep -qE "DeviceServerDiedException|device offline|device '[^']*' not found" "$SUITE_LOG"; }; then
-  infra_failure "adb lost the emulator during the suite; any flow that failed before that is in suite.log in the e2e-android artifact"
+if (( status != 0 )) \
+  && grep -qE "DeviceServerDiedException|device offline|device '[^']*' not found" "$SUITE_LOG"; then
+  infra_failure "adb lost the emulator during the suite; see suite.log in the e2e-android artifact"
 fi
 exit "$status"

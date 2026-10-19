@@ -126,9 +126,9 @@ which loads its JS from Metro and is allowed cleartext HTTP to the runner's API.
 **Tell an infrastructure failure from an app failure.** The hosted runner is
 sometimes too slow for its emulator. When the emulator never becomes usable, or
 drops out mid-suite, the job fails with an *E2E infrastructure failure, not an app
-failure* annotation in its summary (#312). Re-run that job. Any other red run is
-a flow failure, so read its artifact. Either way the run is red: nothing retries
-to green.
+failure* annotation in its summary (#312). Re-run that job. Any other red run
+failed in the step it names: setup, build, or a flow, whose evidence is in the
+artifact. Either way the run is red: nothing retries to green.
 
 **Reproduce a CI failure locally.** The job uploads an `e2e-android-<run>`
 artifact: `maestro/<flow>/…` holds the failing step's screenshot, view hierarchy
