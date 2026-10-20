@@ -89,14 +89,14 @@ export async function sendCampaign(
       if ((today?.sent_today ?? 0) >= dailyLimit) return { limited: true };
 
       // The audience (#24, grilling 2026-07-10): members of THIS Café with a
-      // Purchase inside the recency window ∩ explicit consent ∩ active device
-      // tokens. Consent-but-no-token members simply produce no rows — skipped,
-      // never an error.
+      // Purchase inside the recency window ∩ explicit consent ∩ deliverable
+      // device tokens. Consent-but-no-token members simply produce no rows —
+      // skipped, never an error.
       const audience = await tx<AudienceRow[]>`
         select u."id" as user_id, t."id" as token_row_id, t."token"
         from cafe_memberships m
         join "user" u on u."id" = m."customer_user_id"
-        join push_tokens t on t."user_id" = u."id" and t."active"
+        join deliverable_push_tokens t on t."user_id" = u."id"
         where m."cafe_id" = ${cafeId}
           and u."push_consent"
           and exists (

@@ -1,5 +1,5 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { ActivityIndicator } from "react-native";
 
 import { Button } from "@/components/button";
@@ -12,6 +12,7 @@ import { CustomerMode } from "@/features/mode/customer-mode";
 import { useMode } from "@/features/mode/mode-context";
 import { OwnerMode } from "@/features/mode/owner-mode";
 import { ScannerMode } from "@/features/mode/scanner-mode";
+import { registerDeviceForPush } from "@/features/push/push-registration";
 import { authClient } from "@/lib/auth-client";
 import { useScreenAction } from "@/lib/use-screen-action";
 import { useTheme } from "@/theme";
@@ -54,6 +55,15 @@ export default function Home() {
   // next failure — and the focus refetch below can't re-raise the one they just
   // dismissed either.
   const shiftCheck = useScreenAction({ error: shiftError });
+
+  // Token upkeep (#24): a consenting account refreshes this device's push token
+  // on arrival, in every Mode. Registering also binds the token to this
+  // session, which is what keeps it delivering after a sign-out and sign-in
+  // (#330), and a rotated token re-homes itself without user action.
+  const consentsToPush = me?.pushConsent ?? false;
+  useEffect(() => {
+    if (consentsToPush) void registerDeviceForPush();
+  }, [consentsToPush]);
 
   useFocusEffect(
     useCallback(() => {

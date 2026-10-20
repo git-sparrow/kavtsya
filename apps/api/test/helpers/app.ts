@@ -95,6 +95,32 @@ export async function signUp(
   return cookieFrom(res);
 }
 
+/** Sign an existing account in again — a second device, or a return — for a new session cookie. */
+export async function signIn(
+  app: Hono<AppEnv>,
+  email: string,
+): Promise<string> {
+  const res = await app.request("/api/auth/sign-in/email", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, password: "hunter2-very-secret" }),
+  });
+  expect(res.status).toBe(200);
+  return cookieFrom(res);
+}
+
+/** Sign out the session this cookie carries, the way the app's button does. */
+export async function signOut(
+  app: Hono<AppEnv>,
+  cookie: string,
+): Promise<void> {
+  const res = await app.request("/api/auth/sign-out", {
+    method: "POST",
+    headers: { cookie },
+  });
+  expect(res.status).toBe(200);
+}
+
 /**
  * Register a Café for the signed-in account and return its id. For suites that
  * need a Café as a fixture — `cafes.test.ts` tests the endpoint itself and

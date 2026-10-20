@@ -40,6 +40,7 @@ export function registerPushRoutes(
     await registerPushToken(
       db,
       user.id,
+      c.get("session").id,
       parsed.data.token,
       parsed.data.deviceId,
     );

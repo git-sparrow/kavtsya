@@ -27,8 +27,9 @@ export interface SessionPruneOutcome {
  * cron script wraps it (same rig as `prune-push-receipts`).
  *
  * Only ever touches `session`: a live session (`expiresAt` in the future) is
- * outside the predicate by construction, nothing references a session row, and
- * the user and ledger rows it points at are left alone. Idempotent — a re-run
+ * outside the predicate by construction, the one reference to a session row
+ * (`push_tokens."session_id"`, #330) is nulled rather than blocking, and the
+ * user and ledger rows it points at are left alone. Idempotent — a re-run
  * finds nothing left past the cutoff.
  */
 export async function pruneExpiredSessions(
