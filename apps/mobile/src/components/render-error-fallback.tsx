@@ -63,7 +63,8 @@ export function RenderErrorFallback({
 
 /**
  * The boundary every screen route exports. It sits inside its navigator, so
- * the rest of the stack survives the error and «Назад» can leave the screen.
+ * the rest of the stack survives the error, and when there is a screen beneath
+ * it «Назад» leaves the broken one.
  */
 export function ScreenErrorBoundary(props: ErrorBoundaryProps) {
   const router = useRouter();

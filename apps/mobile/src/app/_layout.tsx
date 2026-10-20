@@ -36,14 +36,24 @@ export function ErrorBoundary(props: ErrorBoundaryProps) {
   return (
     <ThemePreferenceProvider>
       <SafeAreaProvider>
+        <ThemedStatusBar />
         <RenderErrorFallback {...props} />
       </SafeAreaProvider>
     </ThemePreferenceProvider>
   );
 }
 
-function RootShell() {
+/**
+ * Derived from the app's theme, not `style="auto"`: that would read the OS
+ * scheme and leave dark glyphs on a dark screen whenever the ВИГЛЯД choice
+ * disagrees with the phone (#162).
+ */
+function ThemedStatusBar() {
   const t = useTheme();
+  return <StatusBar style={t.themeName === "dark" ? "light" : "dark"} />;
+}
+
+function RootShell() {
   // useSession reads the SecureStore-cached session first, so a returning
   // Customer lands authenticated without a network round-trip on launch.
   const { data: session, isPending } = authClient.useSession();
@@ -60,10 +70,7 @@ function RootShell() {
 
   return (
     <SafeAreaProvider>
-      {/* Derived from the app's theme, not `style="auto"` — that would read the
-          OS scheme and leave dark glyphs on a dark screen whenever the ВИГЛЯД
-          choice disagrees with the phone (#162). */}
-      <StatusBar style={t.themeName === "dark" ? "light" : "dark"} />
+      <ThemedStatusBar />
       {/* Stack.Protected gates routes on the session: when a group's guard is
           false the router redirects to the first available screen, so signing
           in/out reactively swaps the auth screen for the app and back. */}
