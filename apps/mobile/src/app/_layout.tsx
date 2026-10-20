@@ -1,10 +1,11 @@
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, type ErrorBoundaryProps } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { RenderErrorFallback } from "@/components/render-error-fallback";
 import { authClient } from "@/lib/auth-client";
 import { ThemePreferenceProvider, fontAssets, useTheme } from "@/theme";
 
@@ -26,8 +27,33 @@ export default function RootLayout() {
   );
 }
 
-function RootShell() {
+/**
+ * The last backstop, for a throw in the root shell itself. Expo Router mounts it
+ * in place of `RootLayout`, outside the providers above, so it supplies its own
+ * theme and safe area to render the same fallback as every other route.
+ */
+export function ErrorBoundary(props: ErrorBoundaryProps) {
+  return (
+    <ThemePreferenceProvider>
+      <SafeAreaProvider>
+        <ThemedStatusBar />
+        <RenderErrorFallback {...props} />
+      </SafeAreaProvider>
+    </ThemePreferenceProvider>
+  );
+}
+
+/**
+ * Derived from the app's theme, not `style="auto"`: that would read the OS
+ * scheme and leave dark glyphs on a dark screen whenever the ВИГЛЯД choice
+ * disagrees with the phone (#162).
+ */
+function ThemedStatusBar() {
   const t = useTheme();
+  return <StatusBar style={t.themeName === "dark" ? "light" : "dark"} />;
+}
+
+function RootShell() {
   // useSession reads the SecureStore-cached session first, so a returning
   // Customer lands authenticated without a network round-trip on launch.
   const { data: session, isPending } = authClient.useSession();
@@ -44,10 +70,7 @@ function RootShell() {
 
   return (
     <SafeAreaProvider>
-      {/* Derived from the app's theme, not `style="auto"` — that would read the
-          OS scheme and leave dark glyphs on a dark screen whenever the ВИГЛЯД
-          choice disagrees with the phone (#162). */}
-      <StatusBar style={t.themeName === "dark" ? "light" : "dark"} />
+      <ThemedStatusBar />
       {/* Stack.Protected gates routes on the session: when a group's guard is
           false the router redirects to the first available screen, so signing
           in/out reactively swaps the auth screen for the app and back. */}

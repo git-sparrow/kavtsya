@@ -22,6 +22,8 @@ import { useProgramEditor } from "@/features/loyalty/use-program-editor";
 import { BEAN_FORMS, pluralizeUk } from "@/lib/plural";
 import { fontFamily, useTheme } from "@/theme";
 
+export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-fallback";
+
 /**
  * Loyalty program config for one Café (#18, screens 3b/3e + 3c/3f): the
  * CafeOwner sets the Зернятко threshold with a ± stepper (previewed as the

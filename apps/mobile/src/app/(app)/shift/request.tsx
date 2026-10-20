@@ -22,6 +22,8 @@ import { useMode } from "@/features/mode/mode-context";
 import { scanPoster } from "@/lib/api";
 import { fontFamily, useTheme } from "@/theme";
 
+export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-fallback";
+
 // Same React 19 strict-JSX workaround as scan-workstation.tsx.
 const CameraView = CameraViewBase as unknown as ComponentType<CameraViewProps>;
 

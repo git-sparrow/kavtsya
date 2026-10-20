@@ -28,6 +28,8 @@ import { useFocusedApiResource } from "@/lib/use-api-resource";
 import { useScreenAction } from "@/lib/use-screen-action";
 import { fontFamily, useTheme } from "@/theme";
 
+export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-fallback";
+
 /**
  * The owner's «Зміна» board (#98/#99, ADR 0013; redesign turn 5c): who is behind
  * the counter right now — with when they started and how many Зернятка they've

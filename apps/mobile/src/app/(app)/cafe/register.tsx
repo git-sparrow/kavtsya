@@ -6,6 +6,8 @@ import { useMe } from "@/features/account/me-context";
 import { RegisterCafeForm } from "@/features/cafe/register-cafe-form";
 import { useMode } from "@/features/mode/mode-context";
 
+export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-fallback";
+
 /**
  * «Стати Кавоваром» / «Зареєструвати ще одну» — the register-café subscreen the
  * Settings РОЛІ / МОЇ КАВ'ЯРНІ rows open (redesign turn 4: progressive
