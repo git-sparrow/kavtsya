@@ -18,7 +18,7 @@ import { registerMemberCodeRoutes } from "./routes/member-code";
 import { registerPurchaseRoutes } from "./routes/purchases";
 import { registerQrTokenRoutes } from "./routes/qr-token";
 import { registerCampaignRoutes } from "./routes/campaigns";
-import { registerPushRoutes } from "./routes/push";
+import { registerPushRoutes, registerSignOutRelease } from "./routes/push";
 import { registerRedemptionRoutes } from "./routes/redemptions";
 import { registerRosterRoutes } from "./routes/roster";
 import { registerShiftRoutes } from "./routes/shifts";
@@ -154,6 +154,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
 
   // The public surface, named in PUBLIC_PATHS above. Better Auth owns
   // signup/login/logout/session under /api/auth/*.
+  registerSignOutRelease(app, deps);
   app.on(["POST", "GET"], "/api/auth/*", (c) => deps.auth.handler(c.req.raw));
   registerHealthRoute(app, deps);
 

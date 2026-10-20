@@ -25,7 +25,6 @@ beforeEach(async () => {
 const cases = [
   ["POST", "/api/me/push-token", { token: "\u0000", deviceId: "device" }],
   ["POST", "/api/me/push-token", { token: "token", deviceId: "\u0000" }],
-  ["POST", "/api/me/push-token/release", { deviceId: "\u0000" }],
   ["POST", "/api/poster-scans", { posterCode: "\u0000" }],
   ["POST", "/api/purchases", { memberCode: "\u0000" }],
   ["POST", "/api/redemptions", { customerId: "\u0000", idempotencyKey: "key" }],

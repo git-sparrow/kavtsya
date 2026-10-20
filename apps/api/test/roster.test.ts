@@ -8,7 +8,7 @@ import type { Auth } from "../src/auth";
 import { fixedClock } from "../src/clock";
 import type { Database } from "../src/db";
 import type { PushMessage, PushProvider } from "../src/push";
-import { makeApp, registerCafe, signOutReleasing, signUp } from "./helpers/app";
+import { makeApp, registerCafe, signOutOnDevice, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 /**
@@ -214,7 +214,7 @@ test("a CafeOwner who signed out on that phone is not pushed there (#330)", asyn
   });
   const { owner, posterCode } = await rosterFixture(app);
   await registerToken(app, owner, "ExponentPushToken[owner]");
-  await signOutReleasing(app, owner, "device-1");
+  await signOutOnDevice(app, owner, "device-1");
   const barista = await signUp(app, "barista@example.com");
 
   const res = await scanPoster(app, posterCode, barista);

@@ -1,10 +1,11 @@
 import type { Hono } from "hono";
 import {
+  DEVICE_ID_HEADER,
+  deviceIdSchema,
   pushConsentBodySchema,
   registerPushTokenBodySchema,
-  releasePushTokenBodySchema,
 } from "@kavtsya/shared";
-import type { AppDeps } from "../app";
+import type { AppDeps, AppEnv } from "../app";
 import {
   registerPushToken,
   releasePushToken,
@@ -14,10 +15,9 @@ import type { AuthedEnv } from "../require-user";
 
 /**
  * The Customer's push endpoints (#24): consent (explicit opt-in, togglable any
- * time), per-device token registration, and its release on sign-out (#330).
- * The client registers whenever the OS allows pushes, consent or not, because
- * operational pushes (#97) aren't marketing; the server checks consent at every
- * campaign fan-out — these writes are plumbing, not the gate.
+ * time) and per-device token registration. Registration doesn't need consent,
+ * because operational pushes (#97) aren't marketing; the server checks consent
+ * at every campaign fan-out — these writes are plumbing, not the gate.
  */
 export function registerPushRoutes(
   app: Hono<AuthedEnv>,
@@ -50,19 +50,33 @@ export function registerPushRoutes(
     });
     return c.body(null, 204);
   });
+}
 
-  app.post("/api/me/push-token/release", async (c) => {
-    const user = c.get("user");
-
-    const parsed = releasePushTokenBodySchema.safeParse(
-      await c.req.json().catch(() => null),
-    );
-    if (!parsed.success) return c.json({ error: "invalid_device" }, 400);
-
-    await releasePushToken(db, {
-      userId: user.id,
-      deviceId: parsed.data.deviceId,
-    });
-    return c.body(null, 204);
+/**
+ * Sign-out stops this device's pushes for the account signing out (#330). The
+ * app names its device in {@link DEVICE_ID_HEADER}; once Better Auth has ended
+ * the session, the release runs as that session's own user, so no client value
+ * can reach another account's tokens. Doing both in one request means no later
+ * request from that session can re-register the token: it no longer
+ * authenticates. A sign-out that never reaches the server (offline) is undone
+ * by the next account that signs in on the device and takes the token over.
+ *
+ * Registered before the `/api/auth/*` handler, which it wraps.
+ */
+export function registerSignOutRelease(
+  app: Hono<AppEnv>,
+  { auth, db }: AppDeps,
+): void {
+  app.post("/api/auth/sign-out", async (c) => {
+    const signedOut = c.get("resolvedSession");
+    const response = await auth.handler(c.req.raw);
+    const deviceId = deviceIdSchema.safeParse(c.req.header(DEVICE_ID_HEADER));
+    if (response.ok && signedOut && deviceId.success) {
+      await releasePushToken(db, {
+        userId: signedOut.user.id,
+        deviceId: deviceId.data,
+      });
+    }
+    return response;
   });
 }

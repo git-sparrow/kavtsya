@@ -1,6 +1,6 @@
 import type { Hono } from "hono";
 import { expect } from "vitest";
-import { cafeSchema } from "@kavtsya/shared";
+import { DEVICE_ID_HEADER, cafeSchema } from "@kavtsya/shared";
 import { type AppEnv, createApp } from "../../src/app";
 import type { Auth } from "../../src/auth";
 import { type Clock, systemClock } from "../../src/clock";
@@ -109,31 +109,19 @@ export async function signIn(
   return cookieFrom(res);
 }
 
-/** Release this device's push token for the signed-in account (#330). */
-export async function releaseDevice(
+/**
+ * Sign out the way the app does (#330): the request names this device, so the
+ * sign-out also releases its push token. Returns the response.
+ */
+export async function signOutOnDevice(
   app: Hono<AppEnv>,
   cookie: string,
-  deviceId: string,
+  deviceId?: string,
 ): Promise<Response> {
-  return await app.request("/api/me/push-token/release", {
+  return await app.request("/api/auth/sign-out", {
     method: "POST",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify({ deviceId }),
+    headers: { cookie, ...(deviceId ? { [DEVICE_ID_HEADER]: deviceId } : {}) },
   });
-}
-
-/** Sign out the way the app does: release this device, then end the session. */
-export async function signOutReleasing(
-  app: Hono<AppEnv>,
-  cookie: string,
-  deviceId: string,
-): Promise<void> {
-  expect((await releaseDevice(app, cookie, deviceId)).status).toBe(204);
-  const res = await app.request("/api/auth/sign-out", {
-    method: "POST",
-    headers: { cookie },
-  });
-  expect(res.status).toBe(200);
 }
 
 /**

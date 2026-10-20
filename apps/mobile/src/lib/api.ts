@@ -469,15 +469,6 @@ export async function registerPushToken(
   });
 }
 
-/** Stop THIS device's pushes for the signed-in account, on sign-out (#330). */
-export async function releasePushToken(deviceId: string): Promise<void> {
-  return request("/api/me/push-token/release", NO_BODY, {
-    method: "POST",
-    body: { deviceId },
-    fallback: "Не вдалося вимкнути сповіщення на пристрої",
-  });
-}
-
 /**
  * The barista scans a Café's wall poster (#98/#99, ADR 0013) by presenting the
  * scanned (or typed) non-secret code. One call, three outcomes (the parsed

@@ -1,7 +1,7 @@
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 
-import { registerPushToken, releasePushToken } from "@/lib/api";
+import { registerPushToken } from "@/lib/api";
 
 /**
  * One opaque id per INSTALL, deliberately shared across accounts — it names
@@ -10,7 +10,7 @@ import { registerPushToken, releasePushToken } from "@/lib/api";
  */
 const DEVICE_ID_KEY = "kavtsya.device_id";
 
-async function deviceId(): Promise<string> {
+export async function deviceId(): Promise<string> {
   const existing = await SecureStore.getItemAsync(DEVICE_ID_KEY);
   if (existing) return existing;
   const minted = `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
@@ -24,16 +24,6 @@ async function deviceId(): Promise<string> {
  * fetch is time-boxed. Callers must NOT await this function on any UI path.
  */
 const TOKEN_FETCH_TIMEOUT_MS = 10_000;
-
-/**
- * Registration and release must not cross (#330): a registration that lands
- * after the sign-out release would switch the released token back on.
- * `releases` counts releases, so a registration that started before one never
- * sends; `sending` holds the registrations already sent, which a release waits
- * for so the server sees them first.
- */
-let releases = 0;
-const sending = new Set<Promise<void>>();
 
 /**
  * Try to register this device for pushes (#24): OS permission, then the Expo
@@ -54,7 +44,6 @@ export async function registerDeviceForPush({
 }: {
   askPermission: boolean;
 }): Promise<void> {
-  const releasesAtStart = releases;
   try {
     let permission = await Notifications.getPermissionsAsync();
     if (!permission.granted && askPermission && permission.canAskAgain) {
@@ -71,26 +60,8 @@ export async function registerDeviceForPush({
         ),
       ),
     ]);
-    const id = await deviceId();
-    if (releases !== releasesAtStart) return;
-    const request = registerPushToken(token, id);
-    sending.add(request);
-    try {
-      await request;
-    } finally {
-      sending.delete(request);
-    }
+    await registerPushToken(token, await deviceId());
   } catch {
     // No push surface here (Expo Go / simulator / declined) — nothing to do.
   }
-}
-
-/**
- * Stop this device's pushes for the signed-in account (#330). Must run before
- * the session ends, since the release is authenticated by it.
- */
-export async function releaseDeviceFromPush(): Promise<void> {
-  releases += 1;
-  await Promise.allSettled(sending);
-  await releasePushToken(await deviceId());
 }

@@ -20,10 +20,9 @@ vi.mock("expo-secure-store", () => ({
 }));
 const registerPushToken =
   vi.fn<(token: string, deviceId: string) => Promise<void>>();
-const releasePushToken = vi.fn<(deviceId: string) => Promise<void>>();
-vi.mock("@/lib/api", () => ({ registerPushToken, releasePushToken }));
+vi.mock("@/lib/api", () => ({ registerPushToken }));
 
-const { registerDeviceForPush, releaseDeviceFromPush } =
+const { registerDeviceForPush } =
   await import("../src/features/push/push-registration");
 
 beforeEach(() => {
@@ -68,55 +67,5 @@ describe("registerDeviceForPush", () => {
 
     expect(requestPermissionsAsync).toHaveBeenCalledOnce();
     expect(registerPushToken).toHaveBeenCalledOnce();
-  });
-});
-
-describe("releaseDeviceFromPush", () => {
-  it("a registration still fetching its token never lands after the release", async () => {
-    getPermissionsAsync.mockResolvedValue({ granted: true, canAskAgain: true });
-    let deliverToken!: (value: { data: string }) => void;
-    getExpoPushTokenAsync.mockReturnValue(
-      new Promise((resolve) => {
-        deliverToken = resolve;
-      }),
-    );
-    releasePushToken.mockResolvedValue(undefined);
-
-    const registering = registerDeviceForPush({ askPermission: false });
-    await vi.waitFor(() => expect(getExpoPushTokenAsync).toHaveBeenCalled());
-    await releaseDeviceFromPush();
-    deliverToken({ data: "ExponentPushToken[x]" });
-    await registering;
-
-    expect(releasePushToken).toHaveBeenCalledWith("device-1");
-    expect(registerPushToken).not.toHaveBeenCalled();
-  });
-
-  it("a registration already sent is answered before the release goes out", async () => {
-    getPermissionsAsync.mockResolvedValue({ granted: true, canAskAgain: true });
-    const order: string[] = [];
-    let answerRegistration!: () => void;
-    registerPushToken.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          answerRegistration = () => {
-            order.push("registered");
-            resolve();
-          };
-        }),
-    );
-    releasePushToken.mockImplementation(async () => {
-      order.push("released");
-    });
-
-    const registering = registerDeviceForPush({ askPermission: false });
-    await vi.waitFor(() => expect(registerPushToken).toHaveBeenCalled());
-    const releasing = releaseDeviceFromPush();
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(releasePushToken).not.toHaveBeenCalled();
-    answerRegistration();
-    await Promise.all([registering, releasing]);
-
-    expect(order).toEqual(["registered", "released"]);
   });
 });

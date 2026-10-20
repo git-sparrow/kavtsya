@@ -278,13 +278,11 @@ export const registerPushTokenBodySchema = z.object({
 export type RegisterPushTokenBody = z.infer<typeof registerPushTokenBodySchema>;
 
 /**
- * Body for `POST /api/me/push-token/release` (#330): the app signing out stops
- * THIS device's pushes for the signed-in account.
+ * The header the app sends its `deviceId` in when it signs out (#330), so the
+ * sign-out itself stops THIS device's pushes for the account signing out.
  */
-export const releasePushTokenBodySchema = registerPushTokenBodySchema.pick({
-  deviceId: true,
-});
-export type ReleasePushTokenBody = z.infer<typeof releasePushTokenBodySchema>;
+export const DEVICE_ID_HEADER = "x-device-id";
+export const deviceIdSchema = registerPushTokenBodySchema.shape.deviceId;
 
 /**
  * The member-code alphabet (#21): Crockford base32 — digits and uppercase

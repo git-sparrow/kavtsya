@@ -55,7 +55,6 @@ const protectedRoutes: [method: string, path: string][] = [
   ["DELETE", "/api/me/shift"],
   ["PUT", "/api/me/push-consent"],
   ["POST", "/api/me/push-token"],
-  ["POST", "/api/me/push-token/release"],
   ["GET", "/api/qr-token"],
   ["GET", "/api/reward-defaults"],
   ["POST", "/api/cafes"],

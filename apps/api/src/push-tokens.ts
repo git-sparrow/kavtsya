@@ -40,9 +40,9 @@ export async function registerPushToken(
 }
 
 /**
- * Stop THIS device's pushes for this account: the app calls it as it signs out
- * (#330). Scoped by the session's own user, so an account can only ever
- * silence its own tokens. Signing in again re-registers.
+ * Stop THIS device's pushes for this account, as it signs out on the device
+ * (#330). Scoped by the signing-out session's user, so an account can only
+ * ever silence its own tokens. Signing in again re-registers.
  */
 export async function releasePushToken(
   db: Database,

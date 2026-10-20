@@ -20,9 +20,8 @@ import {
   useDeleteAccount,
 } from "@/features/account/delete-account";
 import { useMe } from "@/features/account/me-context";
-import { useSignOut } from "@/features/account/sign-out";
+import { signOut } from "@/features/account/sign-out";
 import { useMode } from "@/features/mode/mode-context";
-import { registerDeviceForPush } from "@/features/push/push-registration";
 import { updatePushConsent } from "@/lib/api";
 import {
   fontFamily,
@@ -165,7 +164,6 @@ export default function Settings() {
   const { me, reload } = useMe();
   const { mode, switchTo, clearExcursion } = useMode();
   const deletion = useDeleteAccount();
-  const { signingOut, signOut } = useSignOut();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -176,10 +174,8 @@ export default function Settings() {
     setError(null);
     try {
       await updatePushConsent(next);
+      // Home's token upkeep sees the new consent and registers (#330).
       await reload();
-      // Fire-and-forget, AFTER the UI state settled: the token fetch can hang
-      // where push isn't supported (Expo Go) and must never freeze the switch.
-      if (next) void registerDeviceForPush({ askPermission: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не вдалося зберегти вибір");
     } finally {
@@ -229,10 +225,9 @@ export default function Settings() {
         <ListRow
           testID="settings.sign-out"
           icon="logout"
-          title={signingOut ? "Виходимо…" : "Вийти"}
+          title="Вийти"
           chevron={false}
-          disabled={signingOut}
-          onPress={signOut}
+          onPress={() => void signOut()}
         />
         <ListRow
           testID="settings.delete-account"
