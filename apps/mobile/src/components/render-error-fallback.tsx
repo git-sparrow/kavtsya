@@ -1,5 +1,9 @@
-import { useRouter, type ErrorBoundaryProps } from "expo-router";
-import { useEffect } from "react";
+import {
+  useFocusEffect,
+  useRouter,
+  type ErrorBoundaryProps,
+} from "expo-router";
+import { useCallback, useEffect, useRef } from "react";
 import { View } from "react-native";
 
 import { Button } from "@/components/button";
@@ -7,6 +11,14 @@ import { Screen } from "@/components/screen";
 import { StatusStrip } from "@/components/status-strip";
 import { reportRenderError } from "@/lib/report-render-error";
 import { useTheme } from "@/theme";
+
+/** A way off the broken screen that does not depend on it. */
+interface Escape {
+  label: string;
+  /** The second sentence of the strip's detail, naming the escape. */
+  hint: string;
+  onPress: () => void;
+}
 
 /**
  * What a route shows instead of itself when rendering it threw (#216): the
@@ -16,13 +28,13 @@ import { useTheme } from "@/theme";
  *
  * `retry` re-renders the same subtree, so a deterministic bug just throws
  * again. The copy therefore offers another try without promising it works, and
- * `onBack` gives a way off the broken screen that does not depend on it.
+ * `escape` names a way off the broken screen where the route has one.
  */
 export function RenderErrorFallback({
   error,
   retry,
-  onBack,
-}: ErrorBoundaryProps & { onBack?: () => void }) {
+  escape,
+}: ErrorBoundaryProps & { escape?: Escape }) {
   const t = useTheme();
 
   useEffect(() => {
@@ -34,11 +46,9 @@ export function RenderErrorFallback({
       <StatusStrip
         intent="danger"
         title="Не вдалося показати цей екран"
-        detail={
-          onBack
-            ? "Можна спробувати ще раз. Якщо не вийде, повернись назад."
-            : "Можна спробувати ще раз. Якщо не вийде, перезапусти застосунок."
-        }
+        detail={`Можна спробувати ще раз. ${
+          escape?.hint ?? "Якщо не вийде, перезапусти застосунок."
+        }`}
         testID="render-error"
       />
       <View style={{ alignSelf: "stretch", gap: t.space[1] }}>
@@ -48,12 +58,12 @@ export function RenderErrorFallback({
           onPress={() => void retry()}
           testID="render-error-retry"
         />
-        {onBack ? (
+        {escape ? (
           <Button
-            title="Назад"
+            title={escape.label}
             variant="quiet"
-            onPress={onBack}
-            testID="render-error-back"
+            onPress={escape.onPress}
+            testID="render-error-escape"
           />
         ) : null}
       </View>
@@ -71,7 +81,51 @@ export function ScreenErrorBoundary(props: ErrorBoundaryProps) {
   return (
     <RenderErrorFallback
       {...props}
-      onBack={router.canGoBack() ? () => router.back() : undefined}
+      escape={
+        router.canGoBack()
+          ? {
+              label: "Назад",
+              hint: "Якщо не вийде, повернись назад.",
+              onPress: () => router.back(),
+            }
+          : undefined
+      }
+    />
+  );
+}
+
+/**
+ * The boundary for the signed-in landing, which renders whichever Mode the
+ * account derives to and has nothing beneath it to go back to. Settings is the
+ * way out: it holds the Mode switch and sign-out, so a CafeOwner whose Mode
+ * surface throws can still reach their Customer Mode.
+ *
+ * Coming back to the landing retries it, so returning from a Mode switch shows
+ * the new Mode rather than this card. The first focus is the mount itself and
+ * is skipped, so a throw that recurs leaves the card up instead of looping.
+ */
+export function LandingErrorBoundary(props: ErrorBoundaryProps) {
+  const router = useRouter();
+  const { retry } = props;
+  const hasLeft = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (hasLeft.current) void retry();
+      return () => {
+        hasLeft.current = true;
+      };
+    }, [retry]),
+  );
+
+  return (
+    <RenderErrorFallback
+      {...props}
+      escape={{
+        label: "Налаштування",
+        hint: "Якщо не вийде, відкрий налаштування.",
+        onPress: () => router.push("/settings"),
+      }}
     />
   );
 }
