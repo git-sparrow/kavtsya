@@ -1,0 +1,69 @@
+[
+  {
+    "command": {
+      "applyConfigurationCommand": {
+        "config": {
+          "appId": "${APP_ID}",
+          "tags": ["gallery"]
+        },
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "sequenceNumber": 1,
+      "depth": 0
+    }
+  },
+  {
+    "command": {
+      "runFlowCommand": {
+        "sourceDescription": "subflows/reset-to-signed-out.yaml",
+        "config": {
+          "appId": "${APP_ID}"
+        },
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "FAILED",
+      "error": {
+        "message": "Command failed (host:transport:emulator-5554): device offline"
+      },
+      "sequenceNumber": 2,
+      "depth": 0
+    }
+  },
+  {
+    "command": {
+      "applyConfigurationCommand": {
+        "config": {
+          "appId": "${APP_ID}"
+        },
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "sequenceNumber": 3,
+      "depth": 1
+    }
+  },
+  {
+    "command": {
+      "launchAppCommand": {
+        "appId": "${APP_ID}",
+        "clearState": true,
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "FAILED",
+      "error": {
+        "message": "Command failed (host:transport:emulator-5554): device offline"
+      },
+      "sequenceNumber": 4,
+      "depth": 1
+    }
+  }
+]

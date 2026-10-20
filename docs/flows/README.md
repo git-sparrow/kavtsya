@@ -114,8 +114,15 @@ Android emulator on a standard Linux runner, against a real API and Postgres see
 with the demo world. It runs on every PR that touches the app, the API, shared
 packages, dependency manifests or the E2E tooling; any other PR reports success
 without running (the filter is inside the job, so a required check can never sit
-pending). It is a **pilot, not a required check** — promotion is a separate
-decision once the hosted runs have earned it.
+pending). It is a **pilot, not a required check**.
+
+**Promotion bar** (#246 revision 1): at least 10 hosted observations, ending in 3
+consecutive unchanged first-attempt full passes on fresh device and database state,
+every earlier failure accounted for, and a deliberate failure shown to fail the job.
+The counting rules and the running count live in one place,
+[the tally comment on #276](https://github.com/git-sparrow/kavtsya/issues/276#issuecomment-6270435335).
+Reaching the bar makes `e2e-android` a candidate; making it a required check is the
+maintainer's explicit decision.
 
 What a green run proves: sign-up, sign-in/out, navigation and Role Mode dispatch
 against the real API. What it does **not**: a completed Purchase or Reward
@@ -127,7 +134,9 @@ which loads its JS from Metro and is allowed cleartext HTTP to the runner's API.
 sometimes too slow for its emulator. When the emulator never becomes usable, or
 drops out mid-suite, the job fails with an *E2E infrastructure failure, not an app
 failure* annotation in its summary (#312). Re-run that job. Any other red run
-failed in the step it names: setup, build, or a flow, whose evidence is in the
+failed in the step it names: setup, build, or a flow. A failed flow's log ends with
+its failed Maestro commands, `✗ step: <command> — <error>` (or `✗ step detail
+unavailable` when Maestro left no `commands.json`), and its full evidence is in the
 artifact. Either way the run is red: nothing retries to green.
 
 **Reproduce a CI failure locally.** The job uploads an `e2e-android-<run>`

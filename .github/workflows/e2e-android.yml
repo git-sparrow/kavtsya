@@ -5,9 +5,8 @@ name: E2E (Android)
 # sign-in/out, navigation and Role Mode dispatch; not Purchase, Reward, Ворожка,
 # denied-permission UX or the release binary. See docs/flows/README.md.
 #
-# PILOT: not a required check yet. Promotion is a separate, explicit decision
-# (#246 revision 1: ≥10 hosted observations, the last three unchanged first-
-# attempt passes, a deliberate failure shown to fail the job).
+# PILOT: not a required check yet. The promotion bar and where its running count
+# lives: docs/flows/README.md, "In CI".
 #
 # `pull_request`, never `pull_request_target`: fork PRs run this with a
 # read-only token and no secrets — the job needs none (the demo password is a
