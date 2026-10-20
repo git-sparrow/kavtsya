@@ -26,6 +26,8 @@ import { useFocusedApiResource } from "@/lib/use-api-resource";
 import { useScreenAction } from "@/lib/use-screen-action";
 import { fontFamily, useTheme } from "@/theme";
 
+export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-fallback";
+
 /** The board as this screen reads it: what the API returned, and when. */
 type Board = RosterBoardResponse & { loadedAt: number };
 

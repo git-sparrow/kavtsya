@@ -7,6 +7,8 @@ import {
   ScanWorkstation,
 } from "@/features/scan/scan-workstation";
 
+export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-fallback";
+
 /**
  * The CafeOwner's scan screen (#20): the counter workstation framed with the
  * permanent role header (2a). The workstation itself (camera, member-code

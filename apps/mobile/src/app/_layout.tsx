@@ -1,10 +1,11 @@
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, type ErrorBoundaryProps } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { RenderErrorFallback } from "@/components/render-error-fallback";
 import { authClient } from "@/lib/auth-client";
 import { ThemePreferenceProvider, fontAssets, useTheme } from "@/theme";
 
@@ -22,6 +23,21 @@ export default function RootLayout() {
   return (
     <ThemePreferenceProvider>
       <RootShell />
+    </ThemePreferenceProvider>
+  );
+}
+
+/**
+ * The last backstop, for a throw in the root shell itself. Expo Router mounts it
+ * in place of `RootLayout`, outside the providers above, so it supplies its own
+ * theme and safe area to render the same fallback as every other route.
+ */
+export function ErrorBoundary(props: ErrorBoundaryProps) {
+  return (
+    <ThemePreferenceProvider>
+      <SafeAreaProvider>
+        <RenderErrorFallback {...props} />
+      </SafeAreaProvider>
     </ThemePreferenceProvider>
   );
 }

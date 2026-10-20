@@ -17,6 +17,8 @@ import { usePushTokenUpkeep } from "@/features/push/use-push-token-upkeep";
 import { useScreenAction } from "@/lib/use-screen-action";
 import { useTheme } from "@/theme";
 
+export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-fallback";
+
 /**
  * What a failed shift check actually costs, in the second line of its banner
  * (#187).

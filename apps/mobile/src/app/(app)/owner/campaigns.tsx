@@ -14,6 +14,8 @@ import { useMe } from "@/features/account/me-context";
 import { sendCampaign } from "@/lib/api";
 import { useTheme } from "@/theme";
 
+export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-fallback";
+
 /** Where a Free owner reaches Kavtsya about Pro — Telegram-first (grilling 2026-07-10). */
 const KAVTSYA_TELEGRAM_URL = "https://t.me/kavtsya";
 const KAVTSYA_EMAIL = "hello@kavtsya.app";

@@ -9,6 +9,8 @@ import { TextField } from "@/components/text-field";
 import { authClient } from "@/lib/auth-client";
 import { fontFamily, useTheme } from "@/theme";
 
+export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-fallback";
+
 type Mode = "signin" | "signup";
 
 export default function SignIn() {

@@ -30,6 +30,8 @@ import {
   type ThemePreference,
 } from "@/theme";
 
+export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-fallback";
+
 /**
 /** The identity card (4a): avatar monogram, name, email, and the owner badge. */
 function IdentityCard({
