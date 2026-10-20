@@ -87,6 +87,7 @@ run() {
   if ! maestro ${MAESTRO_DEVICE:+--device "$MAESTRO_DEVICE"} test "$HERE/$1" \
        --test-output-dir "$out" "${COMMON_ENV[@]}"; then
     echo "✗ $1 failed — artifacts: $out" >&2
+    node "$REPO/scripts/e2e/failed-steps.mjs" "$out" || true
     return 1
   fi
   # 2.7.0 nests the flow's artifacts as <out>/<timestamp>/<flow>/ despite its

@@ -79,8 +79,8 @@ drift check reads the registry, so an offline push can land there too.
    ```
 
 5. **CI must be green and the branch up to date with `main` before merge.**
-   The `ci` check gates merges; `e2e-android` is advisory until promoted (see the
-   header of `.github/workflows/e2e-android.yml`). After the last push or base
+   The `ci` check gates merges; `e2e-android` is advisory until promoted (the bar is in
+   `docs/flows/README.md`, "In CI"). After the last push or base
    change, confirm a run actually started for the new head.
    Address review comments by pushing more commits to the same branch.
 

@@ -1,0 +1,82 @@
+[
+  {
+    "command": {
+      "assertConditionCommand": {
+        "condition": {
+          "visible": {
+            "textRegex": "Save Password?",
+            "optional": false
+          }
+        },
+        "timeout": "6000",
+        "label": "Wait for the keychain prompt, if iOS shows one",
+        "optional": true
+      }
+    },
+    "metadata": {
+      "status": "WARNED",
+      "sequenceNumber": 7,
+      "depth": 2
+    }
+  },
+  {
+    "command": {
+      "tapOnElement": {
+        "selector": {
+          "textRegex": "Not Now",
+          "optional": true
+        },
+        "retryIfNoChange": false,
+        "waitUntilVisible": false,
+        "longPress": false,
+        "label": "Dismiss the keychain prompt if it appeared",
+        "optional": true
+      }
+    },
+    "metadata": {
+      "status": "WARNED",
+      "sequenceNumber": 8,
+      "depth": 2
+    }
+  },
+  {
+    "command": {
+      "runFlowCommand": {
+        "condition": {
+          "visible": {
+            "idRegex": "(customer|owner)-home\\.settings",
+            "optional": false
+          }
+        },
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "SKIPPED",
+      "sequenceNumber": 10,
+      "depth": 1
+    }
+  },
+  {
+    "command": {
+      "assertConditionCommand": {
+        "condition": {
+          "visible": {
+            "textRegex": "Зареєструватися-DEMO-312-D",
+            "optional": false
+          }
+        },
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "FAILED",
+      "error": {
+        "message": "Assertion is false: \"Зареєструватися-DEMO-312-D\" is visible",
+        "debugMessage": "Assertion '\"Зареєструватися-DEMO-312-D\" is visible' failed. Check the UI hierarchy in debug artifacts to verify the element state and properties."
+      },
+      "sequenceNumber": 14,
+      "depth": 0
+    }
+  }
+]
