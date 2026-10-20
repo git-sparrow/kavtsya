@@ -8,10 +8,9 @@ import type { Database } from "./db";
 
 /**
  * Register/refresh THIS device's token. `unique (token)` makes it idempotent
- * and re-homes a handed-over device to its new account, which is also how a
- * sign-out the server never heard of (#330) is undone: the next account to sign
- * in on the device takes the token over. Any other token this device previously
- * held is deactivated, so one device never receives a campaign twice.
+ * and re-homes a handed-over device to its new account. Any other token this
+ * device previously held is deactivated, so one device never receives a
+ * campaign twice.
  */
 export async function registerPushToken(
   db: Database,
@@ -42,7 +41,7 @@ export async function registerPushToken(
 /**
  * Stop THIS device's pushes for this account, as it signs out on the device
  * (#330). Scoped by the signing-out session's user, so an account can only
- * ever silence its own tokens. Signing in again re-registers.
+ * ever silence its own tokens.
  */
 export async function releasePushToken(
   db: Database,

@@ -56,10 +56,12 @@ export function registerPushRoutes(
  * Sign-out stops this device's pushes for the account signing out (#330). The
  * app names its device in {@link DEVICE_ID_HEADER}; once Better Auth has ended
  * the session, the release runs as that session's own user, so no client value
- * can reach another account's tokens. Doing both in one request means no later
- * request from that session can re-register the token: it no longer
- * authenticates. A sign-out that never reaches the server (offline) is undone
- * by the next account that signs in on the device and takes the token over.
+ * can reach another account's tokens. A registration from that session that
+ * arrives afterwards no longer authenticates; one already past authentication
+ * can still write in the milliseconds around it. Without a release (offline,
+ * expired session, no header, an older build) the token stays active until
+ * another account registers on the device. The maintainer accepted both
+ * residuals on 2026-10-20 (PR #350).
  *
  * Registered before the `/api/auth/*` handler, which it wraps.
  */

@@ -6,7 +6,8 @@ import { registerPushToken } from "@/lib/api";
 /**
  * One opaque id per INSTALL, deliberately shared across accounts — it names
  * the device, and `push_tokens` is per device (#24). Uniqueness is all it
- * needs (it keys a refresh, not a secret).
+ * needs (it keys a refresh, and the sign-out release, not a secret). Minted on
+ * first read.
  */
 const DEVICE_ID_KEY = "kavtsya.device_id";
 
