@@ -278,6 +278,13 @@ export const registerPushTokenBodySchema = z.object({
 export type RegisterPushTokenBody = z.infer<typeof registerPushTokenBodySchema>;
 
 /**
+ * The header the app sends its `deviceId` in when it signs out (#330), so the
+ * sign-out itself stops THIS device's pushes for the account signing out.
+ */
+export const DEVICE_ID_HEADER = "x-device-id";
+export const deviceIdSchema = registerPushTokenBodySchema.shape.deviceId;
+
+/**
  * The member-code alphabet (#21): Crockford base32 — digits and uppercase
  * letters minus the look-alikes I, L, O, U, so the Customer can read the code
  * aloud and the CafeOwner can type it right on the first try. 8 characters

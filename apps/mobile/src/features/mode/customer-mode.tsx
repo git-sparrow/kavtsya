@@ -1,5 +1,4 @@
 import { router } from "expo-router";
-import { useEffect } from "react";
 import { Pressable, View } from "react-native";
 
 import { Berehynia } from "@/components/berehynia";
@@ -12,7 +11,6 @@ import { CustomerQr } from "@/features/loyalty/customer-qr";
 import { usePendingFortune } from "@/features/loyalty/use-pending-fortune";
 import { VorozhkaReveal } from "@/features/loyalty/vorozhka-reveal";
 import { ConsentCard } from "@/features/push/consent-card";
-import { registerDeviceForPush } from "@/features/push/push-registration";
 import { useTheme } from "@/theme";
 
 /** The greeting + settings row that replaces the brand logo on home (1a). */
@@ -85,13 +83,6 @@ export function CustomerMode() {
   // The Ворожка reveal (#23): appears when the CafeOwner scans (the Customer is
   // holding their QR up — the natural moment).
   const { fortune, dismiss } = usePendingFortune();
-
-  // Token upkeep (#24): a consenting account refreshes this device's push token
-  // on arrival, so a rotated token re-homes itself without user action.
-  const consentsToPush = me?.pushConsent ?? false;
-  useEffect(() => {
-    if (consentsToPush) void registerDeviceForPush();
-  }, [consentsToPush]);
 
   return (
     <>

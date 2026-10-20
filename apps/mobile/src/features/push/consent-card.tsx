@@ -7,7 +7,6 @@ import { Button } from "@/components/button";
 import { Surface } from "@/components/surface";
 import { useMe } from "@/features/account/me-context";
 import { useBalances } from "@/features/loyalty/use-balances";
-import { registerDeviceForPush } from "@/features/push/push-registration";
 import { updatePushConsent } from "@/lib/api";
 import { fontFamily, useTheme } from "@/theme";
 
@@ -60,10 +59,8 @@ export function ConsentCard() {
         consent ? "yes" : "no",
       );
       setDecided(true);
+      // Home's token upkeep sees the new consent and registers (#330).
       await reload();
-      // Fire-and-forget, AFTER the UI state settled: the token fetch can hang
-      // where push isn't supported (Expo Go) and must never strand the screen.
-      if (consent) void registerDeviceForPush();
     } catch {
       // Couldn't save — leave the card up; the next tap retries.
       setBusy(false);

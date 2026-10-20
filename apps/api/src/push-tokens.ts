@@ -8,15 +8,17 @@ import type { Database } from "./db";
 
 /**
  * Register/refresh THIS device's token. `unique (token)` makes it idempotent
- * and re-homes a handed-over device to its new account; any other token this
+ * and re-homes a handed-over device to its new account. Any other token this
  * device previously held is deactivated, so one device never receives a
  * campaign twice.
  */
 export async function registerPushToken(
   db: Database,
-  userId: string,
-  token: string,
-  deviceId: string,
+  {
+    userId,
+    token,
+    deviceId,
+  }: { userId: string; token: string; deviceId: string },
 ): Promise<void> {
   await db.begin(async (tx) => {
     await tx`
@@ -34,6 +36,21 @@ export async function registerPushToken(
         and "token" <> ${token} and "active"
     `;
   });
+}
+
+/**
+ * Stop THIS device's pushes for this account, as it signs out on the device
+ * (#330). Scoped by the signing-out session's user, so an account can only
+ * ever silence its own tokens.
+ */
+export async function releasePushToken(
+  db: Database,
+  { userId, deviceId }: { userId: string; deviceId: string },
+): Promise<void> {
+  await db`
+    update push_tokens set "active" = false, "updated_at" = now()
+    where "user_id" = ${userId} and "device_id" = ${deviceId} and "active"
+  `;
 }
 
 /** Flip the Customer's explicit café-news opt-in (default off, #24). */

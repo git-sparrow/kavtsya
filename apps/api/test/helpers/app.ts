@@ -1,6 +1,6 @@
 import type { Hono } from "hono";
 import { expect } from "vitest";
-import { cafeSchema } from "@kavtsya/shared";
+import { DEVICE_ID_HEADER, cafeSchema } from "@kavtsya/shared";
 import { type AppEnv, createApp } from "../../src/app";
 import type { Auth } from "../../src/auth";
 import { type Clock, systemClock } from "../../src/clock";
@@ -93,6 +93,35 @@ export async function signUp(
   });
   expect(res.status).toBe(200);
   return cookieFrom(res);
+}
+
+/** Sign an existing account in again — a second device, or a return — for a new session cookie. */
+export async function signIn(
+  app: Hono<AppEnv>,
+  email: string,
+): Promise<string> {
+  const res = await app.request("/api/auth/sign-in/email", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, password: "hunter2-very-secret" }),
+  });
+  expect(res.status).toBe(200);
+  return cookieFrom(res);
+}
+
+/**
+ * Sign out the way the app does (#330): the request names this device, so the
+ * sign-out also releases its push token. Returns the response.
+ */
+export async function signOutOnDevice(
+  app: Hono<AppEnv>,
+  cookie: string,
+  deviceId?: string,
+): Promise<Response> {
+  return await app.request("/api/auth/sign-out", {
+    method: "POST",
+    headers: { cookie, ...(deviceId ? { [DEVICE_ID_HEADER]: deviceId } : {}) },
+  });
 }
 
 /**

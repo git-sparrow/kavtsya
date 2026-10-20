@@ -18,7 +18,7 @@ import { registerMemberCodeRoutes } from "./routes/member-code";
 import { registerPurchaseRoutes } from "./routes/purchases";
 import { registerQrTokenRoutes } from "./routes/qr-token";
 import { registerCampaignRoutes } from "./routes/campaigns";
-import { registerPushRoutes } from "./routes/push";
+import { registerPushRoutes, registerSignOutRelease } from "./routes/push";
 import { registerRedemptionRoutes } from "./routes/redemptions";
 import { registerRosterRoutes } from "./routes/roster";
 import { registerShiftRoutes } from "./routes/shifts";
@@ -52,8 +52,9 @@ export interface ResolvedSession {
 
 /**
  * Per-request context before the guard: the session lookup, which is null for
- * an anonymous request. Only `requireUser` reads it — everything past that
- * point sees the guaranteed `user`/`session` of `AuthedEnv` (#51).
+ * an anonymous request. `requireUser` reads it — everything past that point
+ * sees the guaranteed `user`/`session` of `AuthedEnv` (#51) — and so does the
+ * public sign-out route, to know whose device it is releasing (#330).
  */
 export type AppEnv = {
   Variables: {
@@ -153,7 +154,9 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.use("*", rejectNul());
 
   // The public surface, named in PUBLIC_PATHS above. Better Auth owns
-  // signup/login/logout/session under /api/auth/*.
+  // signup/login/logout/session under /api/auth/*; sign-out is wrapped first
+  // so it also releases the device's push token (#330).
+  registerSignOutRelease(app, deps);
   app.on(["POST", "GET"], "/api/auth/*", (c) => deps.auth.handler(c.req.raw));
   registerHealthRoute(app, deps);
 

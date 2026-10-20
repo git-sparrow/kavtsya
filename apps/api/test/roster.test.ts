@@ -8,7 +8,7 @@ import type { Auth } from "../src/auth";
 import { fixedClock } from "../src/clock";
 import type { Database } from "../src/db";
 import type { PushMessage, PushProvider } from "../src/push";
-import { makeApp, registerCafe, signUp } from "./helpers/app";
+import { makeApp, registerCafe, signOutOnDevice, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 /**
@@ -202,6 +202,25 @@ test("a non-rostered poster scan raises a pending request and pushes the owner",
     await userIdOf(app, barista),
   ]);
   expect(board.rostered).toEqual([]);
+});
+
+test("a CafeOwner who signed out on that phone is not pushed there (#330)", async () => {
+  const { provider, sent } = recordingProvider();
+  const app = makeApp({
+    db,
+    auth,
+    clock: fixedClock(SCAN_AT),
+    pushProvider: provider,
+  });
+  const { owner, posterCode } = await rosterFixture(app);
+  await registerToken(app, owner, "ExponentPushToken[owner]");
+  await signOutOnDevice(app, owner, "device-1");
+  const barista = await signUp(app, "barista@example.com");
+
+  const res = await scanPoster(app, posterCode, barista);
+
+  expect(posterScanResultSchema.parse(await res.json()).status).toBe("pending");
+  expect(sent).toEqual([]);
 });
 
 test("a non-rostered scan starts no Shift — the barista is not on duty", async () => {

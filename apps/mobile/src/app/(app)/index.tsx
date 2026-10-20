@@ -8,11 +8,12 @@ import { NoticeBanner } from "@/components/notice-banner";
 import { Screen } from "@/components/screen";
 import { ErrorText } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
+import { signOut } from "@/features/account/sign-out";
 import { CustomerMode } from "@/features/mode/customer-mode";
 import { useMode } from "@/features/mode/mode-context";
 import { OwnerMode } from "@/features/mode/owner-mode";
 import { ScannerMode } from "@/features/mode/scanner-mode";
-import { authClient } from "@/lib/auth-client";
+import { usePushTokenUpkeep } from "@/features/push/use-push-token-upkeep";
 import { useScreenAction } from "@/lib/use-screen-action";
 import { useTheme } from "@/theme";
 
@@ -55,6 +56,8 @@ export default function Home() {
   // dismissed either.
   const shiftCheck = useScreenAction({ error: shiftError });
 
+  usePushTokenUpkeep(me?.pushConsent);
+
   useFocusEffect(
     useCallback(() => {
       void reload();
@@ -75,7 +78,7 @@ export default function Home() {
           <Button
             title="Вийти"
             variant="secondary"
-            onPress={() => authClient.signOut()}
+            onPress={() => void signOut()}
           />
         </Card>
       </Screen>

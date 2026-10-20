@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import { meResponseSchema } from "@kavtsya/shared";
 import type { Auth } from "../src/auth";
 import type { Database } from "../src/db";
-import { makeApp, signUp } from "./helpers/app";
+import { makeApp, signOutOnDevice, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 /**
@@ -115,4 +115,30 @@ test("token registration requires a well-formed body", async () => {
   const customer = await signUp(app, "customer@example.com");
 
   expect((await registerToken(app, { token: "" }, customer)).status).toBe(400);
+});
+
+// --- release on sign-out (#330) -------------------------------------------------
+
+test("a sign-out that names no device still signs out, and releases nothing", async () => {
+  const app = makeApp({ db, auth });
+  const customer = await signUp(app, "customer@example.com");
+  expect(
+    (
+      await registerToken(
+        app,
+        { token: "ExponentPushToken[abc123]", deviceId: "device-1" },
+        customer,
+      )
+    ).status,
+  ).toBe(204);
+
+  expect((await signOutOnDevice(app, customer)).status).toBe(200);
+
+  const rows = await db<
+    { active: boolean }[]
+  >`select "active" from push_tokens`;
+  expect(rows).toEqual([{ active: true }]);
+  expect(
+    (await app.request("/api/me", { headers: { cookie: customer } })).status,
+  ).toBe(401);
 });

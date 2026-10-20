@@ -6,7 +6,13 @@ import { fixedClock } from "../src/clock";
 import type { Database } from "../src/db";
 import type { PushMessage, PushProvider, PushReceipt } from "../src/push";
 import { prunePushReceipts } from "../src/push-receipts";
-import { makeApp, registerCafe, signUp } from "./helpers/app";
+import {
+  makeApp,
+  registerCafe,
+  signIn,
+  signOutOnDevice,
+  signUp,
+} from "./helpers/app";
 import { withPlatformConfig } from "./helpers/platform-config";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
@@ -388,6 +394,133 @@ test("a refreshed device token replaces the old one — one device, one delivery
 
   expect(await res.json()).toEqual({ recipients: 1 });
   expect(sent.map((m) => m.token)).toEqual(["ExponentPushToken[ivan-new]"]);
+});
+
+// --- sign-out: a device stops receiving the account it signed out of (#330) ---------
+
+/** A recording app with a Pro Café and one recent Customer there, Ivan, ready to be reached. */
+async function proCafeWithIvan() {
+  const { provider, sent } = recordingProvider();
+  const app = makeApp({
+    db,
+    auth,
+    clock: fixedClock(SEND_AT),
+    pushProvider: provider,
+  });
+  const owner = await signUp(app, "owner@example.com");
+  const cafeId = await registerCafe(app, "Кавця", owner);
+  await makePro(cafeId);
+  const ivan = await signUp(app, "ivan@example.com");
+  await seedPurchase(
+    cafeId,
+    await userIdOf(app, ivan),
+    new Date("2026-07-01T10:00:00Z"),
+  );
+  return { app, sent, owner, cafeId, ivan };
+}
+
+/** Each stored token's `active` flag, keyed by token. */
+async function activeByToken(): Promise<Record<string, boolean>> {
+  const rows = await db<{ token: string; active: boolean }[]>`
+    select "token", "active" from push_tokens
+  `;
+  return Object.fromEntries(rows.map((r) => [r.token, r.active]));
+}
+
+test("signing out releases that device; the account's other devices still receive", async () => {
+  const { app, sent, owner, cafeId, ivan } = await proCafeWithIvan();
+  await optInWithToken(app, ivan, "ExponentPushToken[ivan-phone]", "phone");
+  const ivanOnTablet = await signIn(app, "ivan@example.com");
+  await optInWithToken(
+    app,
+    ivanOnTablet,
+    "ExponentPushToken[ivan-tablet]",
+    "tablet",
+  );
+
+  expect((await signOutOnDevice(app, ivan, "phone")).status).toBe(200);
+  const res = await sendCampaign(app, cafeId, { message: "Привіт!" }, owner);
+
+  expect(await activeByToken()).toEqual({
+    "ExponentPushToken[ivan-phone]": false,
+    "ExponentPushToken[ivan-tablet]": true,
+  });
+  expect(await res.json()).toEqual({ recipients: 1 });
+  expect(sent.map((m) => m.token)).toEqual(["ExponentPushToken[ivan-tablet]"]);
+});
+
+test("a sign-out releases only the signing-out account's tokens, whatever device it names", async () => {
+  const { app, sent, owner, cafeId, ivan } = await proCafeWithIvan();
+  await optInWithToken(app, ivan, "ExponentPushToken[ivan]", "phone");
+  const olha = await signUp(app, "olha@example.com");
+
+  expect((await signOutOnDevice(app, olha, "phone")).status).toBe(200);
+  const res = await sendCampaign(app, cafeId, { message: "Привіт!" }, owner);
+
+  expect(await res.json()).toEqual({ recipients: 1 });
+  expect(sent.map((m) => m.token)).toEqual(["ExponentPushToken[ivan]"]);
+});
+
+test("a sign-out the server never heard of ends when the next account signs in on that phone", async () => {
+  const { app, sent, owner, cafeId, ivan } = await proCafeWithIvan();
+  await optInWithToken(app, ivan, "ExponentPushToken[shared]", "phone");
+  // Ivan signed out offline: no release reached the server.
+
+  // Olha signs in on the same phone. She never consented to café news; the
+  // app still refreshes a token the OS already allows.
+  const olha = await signUp(app, "olha@example.com");
+  const registered = await app.request("/api/me/push-token", {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie: olha },
+    body: JSON.stringify({
+      token: "ExponentPushToken[shared]",
+      deviceId: "phone",
+    }),
+  });
+  expect(registered.status).toBe(204);
+  const res = await sendCampaign(app, cafeId, { message: "Привіт!" }, owner);
+
+  expect(await res.json()).toEqual({ recipients: 0 });
+  expect(sent).toEqual([]);
+  // The phone's token is Olha's now, and still live for her pushes.
+  const [row] = await db<{ user_id: string; active: boolean }[]>`
+    select "user_id", "active" from push_tokens
+    where "token" = 'ExponentPushToken[shared]'
+  `;
+  expect(row).toEqual({ user_id: await userIdOf(app, olha), active: true });
+});
+
+test("the signed-out session can't switch the token back on", async () => {
+  const { app, ivan } = await proCafeWithIvan();
+  await optInWithToken(app, ivan, "ExponentPushToken[ivan]", "phone");
+  await signOutOnDevice(app, ivan, "phone");
+
+  // A registration from before the sign-out arrives late, on the old cookie.
+  const late = await app.request("/api/me/push-token", {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie: ivan },
+    body: JSON.stringify({
+      token: "ExponentPushToken[ivan]",
+      deviceId: "phone",
+    }),
+  });
+
+  expect(late.status).toBe(401);
+  expect(await activeByToken()).toEqual({ "ExponentPushToken[ivan]": false });
+});
+
+test("signing back in and registering again restores delivery", async () => {
+  const { app, sent, owner, cafeId, ivan } = await proCafeWithIvan();
+  await optInWithToken(app, ivan, "ExponentPushToken[ivan]", "phone");
+  await signOutOnDevice(app, ivan, "phone");
+  expect(await activeByToken()).toEqual({ "ExponentPushToken[ivan]": false });
+
+  const ivanAgain = await signIn(app, "ivan@example.com");
+  await optInWithToken(app, ivanAgain, "ExponentPushToken[ivan]", "phone");
+  const res = await sendCampaign(app, cafeId, { message: "Привіт!" }, owner);
+
+  expect(await res.json()).toEqual({ recipients: 1 });
+  expect(sent.map((m) => m.token)).toEqual(["ExponentPushToken[ivan]"]);
 });
 
 // --- the pacing rule: one campaign per Café per Kyiv day -----------------------------
