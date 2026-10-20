@@ -240,8 +240,9 @@ Any future addition uses `expo install`; SDK 57 governs the native surface.
 
 Before building, the maintainer needs an owning Expo account, a paid individual
 Apple Developer team and App Store Connect app record for `com.kavtsya.app`, and
-a personal Google Play developer account with an app record and 15–20 recruited
-testers. Device checks below use the maintainer’s physical iPhone, a second
+a personal Google Play developer account with an app record and the internal
+testers' Google account emails (the closed test needs 15–20 recruited testers
+later). Device checks below use the maintainer’s physical iPhone, a second
 physical iPhone, and separate Customer and CafeOwner accounts. Resolve the store
 contact mailbox before completing store listings.
 
@@ -358,14 +359,26 @@ any other live Café. The maintainer performs these steps:
    earned their Purchase. It reaches all that Café’s recently active, consenting
    members with active tokens. Confirm the notification arrives on **A as
    Customer**, using its production TestFlight build.
+6. Sign-out releases the device's push token (#350). Each send in steps 7–8 is
+   the test Café's first of that Kyiv day: the campaign cap is per Café per Kyiv
+   day, so these run on consecutive days. Record the result line the campaign
+   screen shows after each send; a release build shows no HTTP status.
+   **Day N**, after the step-5 send: on **A as Customer**, online and with café
+   news on, tap «Вийти» in Settings.
+7. **Day N+1:** on **B as CafeOwner**, send from «Розсилка». Expect «Поки нема
+   кому…» (0 recipients), and nothing arrives on **A**.
+8. On **A**, sign back in as the same Customer, **without opening Settings**.
+   **Day N+2:** on **B**, send again. Expect «Отримають 1 твоїх клієнтів», and
+   the notification arrives on **A**.
 
 Record the build ID/status, paid signing team confirmation, TestFlight version
 and build number, both device/iOS versions, sanitized screenshots or notes for
-each step, HTTP evidence and A’s push receipt (or gap) in the release handoff.
+each step, HTTP evidence, A’s push receipt (or gap) and the step 6–8 result lines
+in the release handoff.
 The agent reads no production data; never attach passwords, cookies, QR tokens,
 push tokens or customer records.
 
-### Android: build and start the closed test
+### Android: build and internal testing
 
 The maintainer builds a production AAB, then submits that exact build:
 
@@ -374,10 +387,29 @@ npx eas-cli@24.13.0 build -p android --profile production
 npx eas-cli@24.13.0 submit -p android --profile production --id ANDROID_BUILD_ID
 ```
 
-The submission profile deliberately uploads to **internal testing as a draft**.
-Finish Play Console app setup and listing requirements, then create a **closed
-testing** track and select/promote that uploaded bundle into its release. If the
-API upload is unavailable, download the AAB from that EAS build and upload it
+The submission profile uploads to **internal testing as a draft**. The first
+submission creates the app's first internal-testing release, which stays a draft
+in Play Console until the store listing and app setup tasks are complete. Then,
+in Play Console, create a tester email list (internal testing allows up to 100
+testers per app), select it on the internal test's Testers tab, roll out the
+draft release and send testers the test link. Internal testers cannot find the
+app by searching Google Play. After the first publish of any test type, the link
+can take several hours to reach testers; later bundles arrive within minutes.
+([Expo Android submit](https://docs.expo.dev/submit/android/) and
+[Google internal testing](https://support.google.com/googleplay/android-developer/answer/9845334),
+read on 2026-10-20.)
+
+Report the AAB build ID, versionCode, the internal release's rollout date, and
+one tester device (model and Android version) that installed the build from the
+test link and signed in. Record pending Play Console setup as a gap.
+
+### Android: closed test before the public release
+
+Not part of the internal-testing pass. A personal Play developer account needs a
+closed test before it can apply for production access, so start it early enough
+for the public release date. From the uploaded bundle, create a **closed
+testing** track and select or promote that bundle into its release. If the API
+upload is unavailable, download the AAB from that EAS build and upload it
 manually to the closed track. Complete review/rollout, configure the tester list
 and distribute the opt-in link. The qualifying closed-test period begins only
 after the closed release is available and the tester cohort is opted in.
