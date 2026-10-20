@@ -26,9 +26,19 @@ async function deviceId(): Promise<string> {
 const TOKEN_FETCH_TIMEOUT_MS = 10_000;
 
 /**
+ * Registration and release must not cross (#330): a registration that lands
+ * after the sign-out release would switch the released token back on.
+ * `releases` counts releases, so a registration that started before one never
+ * sends; `sending` holds the registrations already sent, which a release waits
+ * for so the server sees them first.
+ */
+let releases = 0;
+const sending = new Set<Promise<void>>();
+
+/**
  * Try to register this device for pushes (#24): OS permission, then the Expo
- * push token, then the server upsert, which binds the token to the current
- * session (#330). `askPermission` may show the OS prompt, so only a caller
+ * push token, then the server upsert, which assigns the token to the signed-in
+ * account. `askPermission` may show the OS prompt, so only a caller
  * acting on the in-app café-news consent passes it — never before that
  * consent. Without it, a device that already granted permission still
  * refreshes its token: operational pushes (#97) don't depend on marketing
@@ -44,6 +54,7 @@ export async function registerDeviceForPush({
 }: {
   askPermission: boolean;
 }): Promise<void> {
+  const releasesAtStart = releases;
   try {
     let permission = await Notifications.getPermissionsAsync();
     if (!permission.granted && askPermission && permission.canAskAgain) {
@@ -60,7 +71,15 @@ export async function registerDeviceForPush({
         ),
       ),
     ]);
-    await registerPushToken(token, await deviceId());
+    const id = await deviceId();
+    if (releases !== releasesAtStart) return;
+    const request = registerPushToken(token, id);
+    sending.add(request);
+    try {
+      await request;
+    } finally {
+      sending.delete(request);
+    }
   } catch {
     // No push surface here (Expo Go / simulator / declined) — nothing to do.
   }
@@ -71,5 +90,7 @@ export async function registerDeviceForPush({
  * the session ends, since the release is authenticated by it.
  */
 export async function releaseDeviceFromPush(): Promise<void> {
+  releases += 1;
+  await Promise.allSettled(sending);
   await releasePushToken(await deviceId());
 }

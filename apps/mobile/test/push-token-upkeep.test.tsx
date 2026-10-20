@@ -3,8 +3,8 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, renderHook } from "./support/render-hook";
 
 /**
- * Token upkeep (#330) runs from the Home dispatcher, so every Mode re-binds
- * this device's token to the new session, and only consent may prompt.
+ * Token upkeep (#330) runs from the Home dispatcher, so every Mode refreshes
+ * this device's token for the account signed in, and only consent may prompt.
  */
 
 const registerDeviceForPush =

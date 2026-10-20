@@ -399,7 +399,7 @@ test("a refreshed device token replaces the old one — one device, one delivery
 
 // --- sign-out: a device stops receiving the account it signed out of (#330) ---------
 
-/** A recording app with a Pro Café and one recent member, Ivan, ready to be reached. */
+/** A recording app with a Pro Café and one recent Customer there, Ivan, ready to be reached. */
 async function proCafeWithIvan() {
   const { provider, sent } = recordingProvider();
   const app = makeApp({
@@ -420,6 +420,14 @@ async function proCafeWithIvan() {
   return { app, sent, owner, cafeId, ivan };
 }
 
+/** Each stored token's `active` flag, keyed by token. */
+async function activeByToken(): Promise<Record<string, boolean>> {
+  const rows = await db<{ token: string; active: boolean }[]>`
+    select "token", "active" from push_tokens
+  `;
+  return Object.fromEntries(rows.map((r) => [r.token, r.active]));
+}
+
 test("signing out releases that device; the account's other devices still receive", async () => {
   const { app, sent, owner, cafeId, ivan } = await proCafeWithIvan();
   await optInWithToken(app, ivan, "ExponentPushToken[ivan-phone]", "phone");
@@ -434,6 +442,10 @@ test("signing out releases that device; the account's other devices still receiv
   await signOutReleasing(app, ivan, "phone");
   const res = await sendCampaign(app, cafeId, { message: "Привіт!" }, owner);
 
+  expect(await activeByToken()).toEqual({
+    "ExponentPushToken[ivan-phone]": false,
+    "ExponentPushToken[ivan-tablet]": true,
+  });
   expect(await res.json()).toEqual({ recipients: 1 });
   expect(sent.map((m) => m.token)).toEqual(["ExponentPushToken[ivan-tablet]"]);
 });
@@ -471,12 +483,19 @@ test("a sign-out the server never heard of ends when the next account signs in o
 
   expect(await res.json()).toEqual({ recipients: 0 });
   expect(sent).toEqual([]);
+  // The phone's token is Olha's now, and still live for her pushes.
+  const [row] = await db<{ user_id: string; active: boolean }[]>`
+    select "user_id", "active" from push_tokens
+    where "token" = 'ExponentPushToken[shared]'
+  `;
+  expect(row).toEqual({ user_id: await userIdOf(app, olha), active: true });
 });
 
 test("signing back in and registering again restores delivery", async () => {
   const { app, sent, owner, cafeId, ivan } = await proCafeWithIvan();
   await optInWithToken(app, ivan, "ExponentPushToken[ivan]", "phone");
   await signOutReleasing(app, ivan, "phone");
+  expect(await activeByToken()).toEqual({ "ExponentPushToken[ivan]": false });
 
   const ivanAgain = await signIn(app, "ivan@example.com");
   await optInWithToken(app, ivanAgain, "ExponentPushToken[ivan]", "phone");
@@ -484,12 +503,6 @@ test("signing back in and registering again restores delivery", async () => {
 
   expect(await res.json()).toEqual({ recipients: 1 });
   expect(sent.map((m) => m.token)).toEqual(["ExponentPushToken[ivan]"]);
-});
-
-test("a release needs a device id", async () => {
-  const { app, ivan } = await proCafeWithIvan();
-
-  expect((await releaseDevice(app, ivan, "")).status).toBe(400);
 });
 
 // --- the pacing rule: one campaign per Café per Kyiv day -----------------------------

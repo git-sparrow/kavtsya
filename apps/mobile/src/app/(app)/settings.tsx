@@ -20,7 +20,7 @@ import {
   useDeleteAccount,
 } from "@/features/account/delete-account";
 import { useMe } from "@/features/account/me-context";
-import { signOut } from "@/features/account/sign-out";
+import { useSignOut } from "@/features/account/sign-out";
 import { useMode } from "@/features/mode/mode-context";
 import { registerDeviceForPush } from "@/features/push/push-registration";
 import { updatePushConsent } from "@/lib/api";
@@ -165,6 +165,7 @@ export default function Settings() {
   const { me, reload } = useMe();
   const { mode, switchTo, clearExcursion } = useMode();
   const deletion = useDeleteAccount();
+  const { signingOut, signOut } = useSignOut();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -228,9 +229,10 @@ export default function Settings() {
         <ListRow
           testID="settings.sign-out"
           icon="logout"
-          title="Вийти"
+          title={signingOut ? "Виходимо…" : "Вийти"}
           chevron={false}
-          onPress={() => void signOut()}
+          disabled={signingOut}
+          onPress={signOut}
         />
         <ListRow
           testID="settings.delete-account"

@@ -14,9 +14,10 @@ import type { AuthedEnv } from "../require-user";
 
 /**
  * The Customer's push endpoints (#24): consent (explicit opt-in, togglable any
- * time) and per-device token registration. The client only registers a token
- * once BOTH the OS permission and the in-app consent exist; the server still
- * re-checks consent at every fan-out — these writes are plumbing, not the gate.
+ * time), per-device token registration, and its release on sign-out (#330).
+ * The client registers whenever the OS allows pushes, consent or not, because
+ * operational pushes (#97) aren't marketing; the server checks consent at every
+ * campaign fan-out — these writes are plumbing, not the gate.
  */
 export function registerPushRoutes(
   app: Hono<AuthedEnv>,
@@ -56,7 +57,7 @@ export function registerPushRoutes(
     const parsed = releasePushTokenBodySchema.safeParse(
       await c.req.json().catch(() => null),
     );
-    if (!parsed.success) return c.json({ error: "invalid_push_token" }, 400);
+    if (!parsed.success) return c.json({ error: "invalid_device" }, 400);
 
     await releasePushToken(db, {
       userId: user.id,

@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import { meResponseSchema } from "@kavtsya/shared";
 import type { Auth } from "../src/auth";
 import type { Database } from "../src/db";
-import { makeApp, signUp } from "./helpers/app";
+import { makeApp, releaseDevice, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 /**
@@ -115,4 +115,16 @@ test("token registration requires a well-formed body", async () => {
   const customer = await signUp(app, "customer@example.com");
 
   expect((await registerToken(app, { token: "" }, customer)).status).toBe(400);
+});
+
+// --- release on sign-out (#330) -------------------------------------------------
+
+test("a release names the device it releases", async () => {
+  const app = makeApp({ db, auth });
+  const customer = await signUp(app, "customer@example.com");
+
+  const res = await releaseDevice(app, customer, "");
+
+  expect(res.status).toBe(400);
+  expect(await res.json()).toEqual({ error: "invalid_device" });
 });
