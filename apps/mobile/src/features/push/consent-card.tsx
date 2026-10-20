@@ -63,7 +63,7 @@ export function ConsentCard() {
       await reload();
       // Fire-and-forget, AFTER the UI state settled: the token fetch can hang
       // where push isn't supported (Expo Go) and must never strand the screen.
-      if (consent) void registerDeviceForPush();
+      if (consent) void registerDeviceForPush({ askPermission: true });
     } catch {
       // Couldn't save — leave the card up; the next tap retries.
       setBusy(false);

@@ -20,10 +20,10 @@ import {
   useDeleteAccount,
 } from "@/features/account/delete-account";
 import { useMe } from "@/features/account/me-context";
+import { signOut } from "@/features/account/sign-out";
 import { useMode } from "@/features/mode/mode-context";
 import { registerDeviceForPush } from "@/features/push/push-registration";
 import { updatePushConsent } from "@/lib/api";
-import { authClient } from "@/lib/auth-client";
 import {
   fontFamily,
   useTheme,
@@ -178,7 +178,7 @@ export default function Settings() {
       await reload();
       // Fire-and-forget, AFTER the UI state settled: the token fetch can hang
       // where push isn't supported (Expo Go) and must never freeze the switch.
-      if (next) void registerDeviceForPush();
+      if (next) void registerDeviceForPush({ askPermission: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не вдалося зберегти вибір");
     } finally {
@@ -230,7 +230,7 @@ export default function Settings() {
           icon="logout"
           title="Вийти"
           chevron={false}
-          onPress={() => void authClient.signOut()}
+          onPress={() => void signOut()}
         />
         <ListRow
           testID="settings.delete-account"

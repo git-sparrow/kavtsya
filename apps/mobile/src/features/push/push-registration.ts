@@ -1,7 +1,7 @@
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 
-import { registerPushToken } from "@/lib/api";
+import { registerPushToken, releasePushToken } from "@/lib/api";
 
 /**
  * One opaque id per INSTALL, deliberately shared across accounts — it names
@@ -26,18 +26,27 @@ async function deviceId(): Promise<string> {
 const TOKEN_FETCH_TIMEOUT_MS = 10_000;
 
 /**
- * Try to register this device for café news (#24): OS permission (asked here,
- * AFTER the in-app consent — never before), then the Expo push token, then the
- * server upsert. Fire-and-forget by design: quietly a no-op wherever remote
- * push can't work — Expo Go (SDK 53+) and simulators can't mint a token —
- * because the server re-checks consent at every send anyway: a missing token
- * only means this device isn't reachable yet; a dev build on real hardware
- * will be.
+ * Try to register this device for pushes (#24): OS permission, then the Expo
+ * push token, then the server upsert, which binds the token to the current
+ * session (#330). `askPermission` may show the OS prompt, so only a caller
+ * acting on the in-app café-news consent passes it — never before that
+ * consent. Without it, a device that already granted permission still
+ * refreshes its token: operational pushes (#97) don't depend on marketing
+ * consent, and the server re-checks consent at every campaign send.
+ *
+ * Fire-and-forget by design: quietly a no-op wherever remote push can't work —
+ * Expo Go (SDK 53+) and simulators can't mint a token — because a missing
+ * token only means this device isn't reachable yet; a dev build on real
+ * hardware will be.
  */
-export async function registerDeviceForPush(): Promise<void> {
+export async function registerDeviceForPush({
+  askPermission,
+}: {
+  askPermission: boolean;
+}): Promise<void> {
   try {
     let permission = await Notifications.getPermissionsAsync();
-    if (!permission.granted && permission.canAskAgain) {
+    if (!permission.granted && askPermission && permission.canAskAgain) {
       permission = await Notifications.requestPermissionsAsync();
     }
     if (!permission.granted) return;
@@ -55,4 +64,12 @@ export async function registerDeviceForPush(): Promise<void> {
   } catch {
     // No push surface here (Expo Go / simulator / declined) — nothing to do.
   }
+}
+
+/**
+ * Stop this device's pushes for the signed-in account (#330). Must run before
+ * the session ends, since the release is authenticated by it.
+ */
+export async function releaseDeviceFromPush(): Promise<void> {
+  await releasePushToken(await deviceId());
 }

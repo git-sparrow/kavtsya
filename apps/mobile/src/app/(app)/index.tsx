@@ -1,5 +1,5 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { ActivityIndicator } from "react-native";
 
 import { Button } from "@/components/button";
@@ -8,12 +8,12 @@ import { NoticeBanner } from "@/components/notice-banner";
 import { Screen } from "@/components/screen";
 import { ErrorText } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
+import { signOut } from "@/features/account/sign-out";
 import { CustomerMode } from "@/features/mode/customer-mode";
 import { useMode } from "@/features/mode/mode-context";
 import { OwnerMode } from "@/features/mode/owner-mode";
 import { ScannerMode } from "@/features/mode/scanner-mode";
-import { registerDeviceForPush } from "@/features/push/push-registration";
-import { authClient } from "@/lib/auth-client";
+import { usePushTokenUpkeep } from "@/features/push/use-push-token-upkeep";
 import { useScreenAction } from "@/lib/use-screen-action";
 import { useTheme } from "@/theme";
 
@@ -56,14 +56,7 @@ export default function Home() {
   // dismissed either.
   const shiftCheck = useScreenAction({ error: shiftError });
 
-  // Token upkeep (#24): a consenting account refreshes this device's push token
-  // on arrival, in every Mode. Registering also binds the token to this
-  // session, which is what keeps it delivering after a sign-out and sign-in
-  // (#330), and a rotated token re-homes itself without user action.
-  const consentsToPush = me?.pushConsent ?? false;
-  useEffect(() => {
-    if (consentsToPush) void registerDeviceForPush();
-  }, [consentsToPush]);
+  usePushTokenUpkeep(me?.pushConsent);
 
   useFocusEffect(
     useCallback(() => {
@@ -85,7 +78,7 @@ export default function Home() {
           <Button
             title="Вийти"
             variant="secondary"
-            onPress={() => authClient.signOut()}
+            onPress={() => void signOut()}
           />
         </Card>
       </Screen>

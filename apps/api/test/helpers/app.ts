@@ -109,11 +109,26 @@ export async function signIn(
   return cookieFrom(res);
 }
 
-/** Sign out the session this cookie carries, the way the app's button does. */
-export async function signOut(
+/** Release this device's push token for the signed-in account (#330). */
+export async function releaseDevice(
   app: Hono<AppEnv>,
   cookie: string,
+  deviceId: string,
+): Promise<Response> {
+  return await app.request("/api/me/push-token/release", {
+    method: "POST",
+    headers: { "content-type": "application/json", cookie },
+    body: JSON.stringify({ deviceId }),
+  });
+}
+
+/** Sign out the way the app does: release this device, then end the session. */
+export async function signOutReleasing(
+  app: Hono<AppEnv>,
+  cookie: string,
+  deviceId: string,
 ): Promise<void> {
+  expect((await releaseDevice(app, cookie, deviceId)).status).toBe(204);
   const res = await app.request("/api/auth/sign-out", {
     method: "POST",
     headers: { cookie },

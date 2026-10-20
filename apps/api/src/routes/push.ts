@@ -2,9 +2,14 @@ import type { Hono } from "hono";
 import {
   pushConsentBodySchema,
   registerPushTokenBodySchema,
+  releasePushTokenBodySchema,
 } from "@kavtsya/shared";
 import type { AppDeps } from "../app";
-import { registerPushToken, setPushConsent } from "../push-tokens";
+import {
+  registerPushToken,
+  releasePushToken,
+  setPushConsent,
+} from "../push-tokens";
 import type { AuthedEnv } from "../require-user";
 
 /**
@@ -37,13 +42,26 @@ export function registerPushRoutes(
     );
     if (!parsed.success) return c.json({ error: "invalid_push_token" }, 400);
 
-    await registerPushToken(
-      db,
-      user.id,
-      c.get("session").id,
-      parsed.data.token,
-      parsed.data.deviceId,
+    await registerPushToken(db, {
+      userId: user.id,
+      token: parsed.data.token,
+      deviceId: parsed.data.deviceId,
+    });
+    return c.body(null, 204);
+  });
+
+  app.post("/api/me/push-token/release", async (c) => {
+    const user = c.get("user");
+
+    const parsed = releasePushTokenBodySchema.safeParse(
+      await c.req.json().catch(() => null),
     );
+    if (!parsed.success) return c.json({ error: "invalid_push_token" }, 400);
+
+    await releasePushToken(db, {
+      userId: user.id,
+      deviceId: parsed.data.deviceId,
+    });
     return c.body(null, 204);
   });
 }

@@ -278,6 +278,15 @@ export const registerPushTokenBodySchema = z.object({
 export type RegisterPushTokenBody = z.infer<typeof registerPushTokenBodySchema>;
 
 /**
+ * Body for `POST /api/me/push-token/release` (#330): the app signing out stops
+ * THIS device's pushes for the signed-in account.
+ */
+export const releasePushTokenBodySchema = registerPushTokenBodySchema.pick({
+  deviceId: true,
+});
+export type ReleasePushTokenBody = z.infer<typeof releasePushTokenBodySchema>;
+
+/**
  * The member-code alphabet (#21): Crockford base32 — digits and uppercase
  * letters minus the look-alikes I, L, O, U, so the Customer can read the code
  * aloud and the CafeOwner can type it right on the first try. 8 characters

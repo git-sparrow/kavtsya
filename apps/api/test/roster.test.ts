@@ -8,7 +8,7 @@ import type { Auth } from "../src/auth";
 import { fixedClock } from "../src/clock";
 import type { Database } from "../src/db";
 import type { PushMessage, PushProvider } from "../src/push";
-import { makeApp, registerCafe, signOut, signUp } from "./helpers/app";
+import { makeApp, registerCafe, signOutReleasing, signUp } from "./helpers/app";
 import { setupTestAuth, setupTestDb } from "./helpers/testDb";
 
 /**
@@ -204,7 +204,7 @@ test("a non-rostered poster scan raises a pending request and pushes the owner",
   expect(board.rostered).toEqual([]);
 });
 
-test("an owner who signed out on that phone is not pushed there (#330)", async () => {
+test("a CafeOwner who signed out on that phone is not pushed there (#330)", async () => {
   const { provider, sent } = recordingProvider();
   const app = makeApp({
     db,
@@ -214,7 +214,7 @@ test("an owner who signed out on that phone is not pushed there (#330)", async (
   });
   const { owner, posterCode } = await rosterFixture(app);
   await registerToken(app, owner, "ExponentPushToken[owner]");
-  await signOut(app, owner);
+  await signOutReleasing(app, owner, "device-1");
   const barista = await signUp(app, "barista@example.com");
 
   const res = await scanPoster(app, posterCode, barista);
