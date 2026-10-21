@@ -14,6 +14,9 @@ const MEMBER_CODE_HALF = `[${MEMBER_CODE_ALPHABET}]{${MEMBER_CODE_LENGTH / 2}}`;
  * order applied: a URL or path loses its query first (a Better Auth deep link
  * carries the session cookie there), before the narrower patterns see the rest.
  *
+ * Sentry's server-side scrubbing rules repeat these for native crash text,
+ * which never passes through here (docs/deploy.md); change both together.
+ *
  * The member code is matched in its canonical uppercase form, raw or grouped,
  * which is the only form the app holds once a typed code is normalized; any
  * 8-character uppercase token is redacted with it. Matching typed lowercase too
@@ -96,7 +99,7 @@ function scrubEvent(event: ErrorEvent): ErrorEvent {
 }
 
 /**
- * The deny-list every crash report passes through (#217, ADR 0019).
+ * The deny-list for every crash report built in JavaScript (#217, ADR 0019).
  *
  * `beforeSend` runs on JavaScript events only; a native crash is sent by the
  * native SDK, which never calls it. A native report does carry the JS scope's

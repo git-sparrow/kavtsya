@@ -4,7 +4,7 @@ Decided 2026-10-21 (#217). Since #216 every route shows a designed card when ren
 
 ## Decision
 
-**The mobile app reports crashes to Sentry (`@sentry/react-native` 8.31.0), in an organization created in Sentry's EU region (Frankfurt). Reports leave the app only through `apps/mobile/src/lib/crash-reporting.ts`, and each one passes the deny-list in `crash-report-privacy.ts` first.** A build without `EXPO_PUBLIC_SENTRY_DSN` starts nothing, so local development and tests never send anything.
+**The mobile app reports crashes to Sentry (`@sentry/react-native` 8.31.0), in an organization created in Sentry's EU region (Frankfurt). Reports leave the app only through `apps/mobile/src/lib/crash-reporting.ts`, and every event and breadcrumb built in JavaScript passes the deny-list in `crash-report-privacy.ts` first.** What the native SDKs build themselves does not (see "Native crashes" below). A build without `EXPO_PUBLIC_SENTRY_DSN` starts nothing, so local development and tests never send anything.
 
 - **One seam.** `initCrashReporting()` runs first in the root layout. `reportRenderError()` is what every route's error boundary calls (#216). No other file imports the SDK; an ESLint `no-restricted-imports` rule fails the build if one does (type-only imports excepted). Swapping vendors therefore touches one file, as with the AI provider (ADR 0007).
 - **What is reported.** Uncaught JS errors and unhandled promise rejections (the SDK's own handlers), render errors caught by a boundary (through the seam), and native crashes. React Native passes a caught render error to `ExceptionsManager`, which the SDK does not hook (`react-native@0.86.3` `src/private/renderer/errorhandling/ErrorHandlers.js`; `@sentry/react-native@8.31.0` hooks neither, both read 2026-10-21), so the seam call is what reports it, and only once.
@@ -25,7 +25,9 @@ Scrubbing happens on the device, before anything is sent. Sentry's server-side s
 | Native HTTP breadcrumbs (iOS) | `enableNetworkBreadcrumbs: false`, so iOS records no request breadcrumbs of its own, which `beforeBreadcrumb` could not see |
 | Other breadcrumbs' `data` | Dropped; only category and redacted message remain |
 
-**Native crashes.** `beforeSend` runs on JavaScript events only. The native SDKs install their own `beforeSend` (`ios/RNSentry.mm`, `android/.../RNSentryStart.java`, 8.31.0), and nothing set from JS reaches it. A native crash report does carry the JS scope's breadcrumbs, and the SDK forwards a breadcrumb to native only after `beforeBreadcrumb` has run (`@sentry/core@10.76.2` `breadcrumbs.js`; the patched `scope.addBreadcrumb` in `scopeSync.js`). So the breadcrumb rules cover native reports too. What the native SDKs add themselves never passes the JS deny-list: device, OS and app context, their own lifecycle and system breadcrumbs, and the native exception's message and stack.
+**Native crashes.** `beforeSend` runs on JavaScript events only. The native SDKs install their own `beforeSend` (`ios/RNSentry.mm`, `android/.../RNSentryStart.java`, 8.31.0), and nothing set from JS reaches it. A native crash report does carry the JS scope's breadcrumbs, and the SDK forwards a breadcrumb to native only after `beforeBreadcrumb` has run (`@sentry/core@10.76.2` `breadcrumbs.js`; the patched `scope.addBreadcrumb` in `scopeSync.js`). So the breadcrumb rules cover native reports too. What the native SDKs add themselves never passes the JS deny-list: device, OS and app context, their own lifecycle and system breadcrumbs, and the native exception's message and stack. The native SDKs' own filter drops the React Native exceptions that wrap a JS error, which the JS side already reported (`ios/RNSentry.mm`), so that text is not sent twice. Genuine native exception text, written by iOS, Android or a native library, is sent unscrubbed.
+
+**The native path is scrubbed on the server instead.** We keep native crash reports, since they are the only signal for a crash in the camera or another native module. The project's Advanced Data Scrubbing rules repeat the deny-list's patterns (`docs/deploy.md`, "One-time setup"), and Sentry applies them "to all new events within a project" just before saving (Sentry docs, "Advanced Data Scrubbing", read 2026-10-21). That native text therefore reaches Sentry's EU servers before it is scrubbed, which the privacy policy must say. Whether the rules reach native-SDK events is **unverified** until the release-build proof shows it. Considered and rejected: a native `beforeSend` set from a config plugin, which would repeat the deny-list in Swift and Kotlin, and `enableNativeCrashHandling: false`, which would bring back the silence this ADR exists to end.
 
 `test/crash-report-privacy.test.ts` pins every row. Adding a field that may carry personal data means adding a row here and a case there.
 
@@ -48,13 +50,13 @@ Scrubbing happens on the device, before anything is sent. Sentry's server-side s
 
 ## Disclosure
 
-Crash reports carry pseudonymous data: device, OS and app details, release-health session records, and whatever the deny-list lets through. Under GDPR and Ukraine's Law On Personal Data Protection that is personal data. Our reading (not legal advice) is that the lawful basis is legitimate interest (GDPR Art. 6(1)(f)): keeping the app working. That basis needs a **notice, not consent**. So:
+Crash reports carry pseudonymous data: device, OS and app details, release-health session records, and whatever the deny-list lets through. Under GDPR and Ukraine's Law On Personal Data Protection that is personal data. **Unverified legal reading, not advice; checked against no legal source:** the lawful basis is legitimate interest (GDPR Art. 6(1)(f)), keeping the app working, and that basis needs a notice (Art. 13), not consent. One question this reading leaves open: whether ePrivacy Directive Art. 5(3), which governs storing or reading identifiers on a user's device, requires consent for the SDK's on-device identifiers for EU users. It, and the Ukrainian-law position, go to the legal review in #352. Until then the design follows this reading:
 
 - The disclosure lives in the **privacy policy (#352)**, not on the #24 consent card. That card asks a different question (café news), and bundling purposes into one consent is what GDPR forbids. A Customer who never earns a Зернятко also never sees it.
-- The policy must state the vendor (Sentry), the EU (Frankfurt) region and the account metadata Sentry keeps in the US, the legitimate-interest basis, the categories sent, the categories withheld (the table above), and the retention (the plan's lookback).
+- The policy must state the vendor (Sentry), the EU (Frankfurt) region and the account metadata Sentry keeps in the US, the legitimate-interest basis, the categories sent, the categories withheld (the table above), that native crash text is scrubbed on Sentry's servers rather than on the device, and the retention (the plan's lookback).
 - The App Store privacy label and Google Play's Data safety form declare crash data and diagnostics.
 
-All three are pilot blockers on #58. Legal review of the policy text belongs to #352.
+All three are pilot blockers on #58. Legal review of the policy text, and of the reading above, belongs to #352.
 
 ## Consequences
 

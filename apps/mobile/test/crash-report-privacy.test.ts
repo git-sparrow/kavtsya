@@ -1,4 +1,6 @@
 import type { ErrorEvent } from "@sentry/react-native";
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { crashReportPrivacy } from "../src/lib/crash-report-privacy";
@@ -15,6 +17,30 @@ const QR_TOKEN =
   "eyJ1c2VySWQiOiJhYmMiLCJleHAiOjE3MDAwMDAwMDB9.Wm9P1x5rQ2c3Z9yK8sLmN4tV7bH0dJfA6eGqXiUoTpw";
 const MEMBER_CODE = "7KQ4M9TZ";
 const PUSH_TOKEN = "ExponentPushToken[xAbC123dEfG456hIjK]";
+
+/** Text that would leak without a rule: what it is, the text, the secret in it. */
+const LEAKS: [string, string, string][] = [
+  ["an email", `No account for ${EMAIL}`, EMAIL],
+  ["a QR token", `Rejected token ${QR_TOKEN}`, QR_TOKEN],
+  ["a raw member code", `Unknown code ${MEMBER_CODE}`, MEMBER_CODE],
+  ["a grouped member code", "Unknown code 7KQ4-M9TZ", "7KQ4-M9TZ"],
+  ["a space-grouped member code", "Unknown code 7KQ4 M9TZ", "7KQ4 M9TZ"],
+  ["an Expo push token", `Dead device ${PUSH_TOKEN}`, PUSH_TOKEN],
+  ["a newer Expo push token", "Dead ExpoPushToken[abc123]", "abc123"],
+  [
+    "a bare session token",
+    "Rejected session Zk3vQ9pL2xR7mT4nB8cY1wH6dF5gJ0aS",
+    "Zk3vQ9pL2xR7mT4nB8cY1wH6dF5gJ0aS",
+  ],
+  ["a credential pair", "cookie: session_token=abc.def", "abc.def"],
+  ["a path's query string", "GET /api/purchases?token=secret failed", "secret"],
+  [
+    "a URL's query string",
+    "Failed kavtsya://auth?cookie=better-auth.session_token%3Dabc",
+    "session_token",
+  ],
+  ["a bearer credential", "Authorization: Bearer abc.def.ghi", "abc.def.ghi"],
+];
 
 const { beforeSend: send, beforeBreadcrumb: crumb } = crashReportPrivacy;
 
@@ -41,32 +67,7 @@ describe("crashReportPrivacy: SDK switches", () => {
 });
 
 describe("crashReportPrivacy: error text", () => {
-  it.each([
-    ["an email", `No account for ${EMAIL}`, EMAIL],
-    ["a QR token", `Rejected token ${QR_TOKEN}`, QR_TOKEN],
-    ["a raw member code", `Unknown code ${MEMBER_CODE}`, MEMBER_CODE],
-    ["a grouped member code", "Unknown code 7KQ4-M9TZ", "7KQ4-M9TZ"],
-    ["a space-grouped member code", "Unknown code 7KQ4 M9TZ", "7KQ4 M9TZ"],
-    ["an Expo push token", `Dead device ${PUSH_TOKEN}`, PUSH_TOKEN],
-    ["a newer Expo push token", "Dead ExpoPushToken[abc123]", "abc123"],
-    [
-      "a bare session token",
-      "Rejected session Zk3vQ9pL2xR7mT4nB8cY1wH6dF5gJ0aS",
-      "Zk3vQ9pL2xR7mT4nB8cY1wH6dF5gJ0aS",
-    ],
-    ["a credential pair", "cookie: session_token=abc.def", "abc.def"],
-    [
-      "a path's query string",
-      "GET /api/purchases?token=secret failed",
-      "secret",
-    ],
-    [
-      "a URL's query string",
-      "Failed kavtsya://auth?cookie=better-auth.session_token%3Dabc",
-      "session_token",
-    ],
-    ["a bearer credential", "Authorization: Bearer abc.def.ghi", "abc.def.ghi"],
-  ])("redacts %s from exception values", (_, message, secret) => {
+  it.each(LEAKS)("redacts %s from exception values", (_, message, secret) => {
     const value = send(errorEvent(message))?.exception?.values?.[0]?.value;
 
     expect(value).not.toContain(secret);
@@ -195,4 +196,42 @@ describe("crashReportPrivacy: breadcrumbs", () => {
       message: "Error for [redacted]",
     });
   });
+});
+
+/**
+ * A native crash's own text is scrubbed only by the Sentry project's Advanced
+ * Data Scrubbing rules, which docs/deploy.md lists for the maintainer to enter.
+ * They must stop what the JS deny-list stops, so they are read from the doc and
+ * run against the same leaks. Emails are Sentry's built-in "Email Addresses"
+ * type, which has no regex to run here.
+ */
+describe("Sentry's server-side scrubbing rules in docs/deploy.md", () => {
+  const doc = readFileSync(
+    new URL("../../../docs/deploy.md", import.meta.url),
+    "utf8",
+  );
+  const rules = [...doc.matchAll(/^\s*\| Regex Matches \| `(.+)` \|$/gm)].map(
+    ([, cell]) => {
+      const source = cell.replace(/\\\|/g, "|");
+      return source.startsWith("(?i)")
+        ? new RegExp(source.slice(4), "gi")
+        : new RegExp(source, "g");
+    },
+  );
+
+  it("are all listed", () => {
+    expect(rules.length).toBeGreaterThan(0);
+  });
+
+  it.each(LEAKS.filter(([what]) => what !== "an email"))(
+    "redact %s",
+    (_, message, secret) => {
+      const scrubbed = rules.reduce(
+        (text, rule) => text.replace(rule, "[redacted]"),
+        message,
+      );
+
+      expect(scrubbed).not.toContain(secret);
+    },
+  );
 });
