@@ -1,4 +1,4 @@
-import type { Breadcrumb, ErrorEvent } from "@sentry/react-native";
+import type { ErrorEvent } from "@sentry/react-native";
 import { describe, expect, it } from "vitest";
 
 import { crashReportPrivacy } from "../src/lib/crash-report-privacy";
@@ -16,15 +16,7 @@ const QR_TOKEN =
 const MEMBER_CODE = "7KQ4M9TZ";
 const PUSH_TOKEN = "ExponentPushToken[xAbC123dEfG456hIjK]";
 
-const { beforeSend, beforeBreadcrumb } = crashReportPrivacy;
-
-function send(event: ErrorEvent): ErrorEvent | null {
-  return beforeSend(event);
-}
-
-function crumb(breadcrumb: Breadcrumb): Breadcrumb | null {
-  return beforeBreadcrumb(breadcrumb);
-}
+const { beforeSend: send, beforeBreadcrumb: crumb } = crashReportPrivacy;
 
 function errorEvent(value: string, extra: Partial<ErrorEvent> = {}) {
   return {
@@ -54,7 +46,20 @@ describe("crashReportPrivacy: error text", () => {
     ["a QR token", `Rejected token ${QR_TOKEN}`, QR_TOKEN],
     ["a raw member code", `Unknown code ${MEMBER_CODE}`, MEMBER_CODE],
     ["a grouped member code", "Unknown code 7KQ4-M9TZ", "7KQ4-M9TZ"],
+    ["a space-grouped member code", "Unknown code 7KQ4 M9TZ", "7KQ4 M9TZ"],
     ["an Expo push token", `Dead device ${PUSH_TOKEN}`, PUSH_TOKEN],
+    ["a newer Expo push token", "Dead ExpoPushToken[abc123]", "abc123"],
+    [
+      "a bare session token",
+      "Rejected session Zk3vQ9pL2xR7mT4nB8cY1wH6dF5gJ0aS",
+      "Zk3vQ9pL2xR7mT4nB8cY1wH6dF5gJ0aS",
+    ],
+    ["a credential pair", "cookie: session_token=abc.def", "abc.def"],
+    [
+      "a path's query string",
+      "GET /api/purchases?token=secret failed",
+      "secret",
+    ],
     [
       "a URL's query string",
       "Failed kavtsya://auth?cookie=better-auth.session_token%3Dabc",
@@ -72,6 +77,21 @@ describe("crashReportPrivacy: error text", () => {
     const event = send({ type: undefined, message: `Signed in as ${EMAIL}` });
 
     expect(event?.message).toBe("Signed in as [redacted]");
+  });
+
+  it("keeps release and package identifiers readable", () => {
+    const message = "react-native@0.86.3 in com.kavtsya.app@1.0.0+3";
+
+    expect(send(errorEvent(message))?.exception?.values?.[0]?.value).toBe(
+      message,
+    );
+  });
+
+  it("redacts any 8-character uppercase token, a code or not", () => {
+    // The price of matching member codes without knowing which tokens are codes.
+    expect(
+      send(errorEvent("hash DEADBEEF"))?.exception?.values?.[0]?.value,
+    ).toBe("hash [redacted]");
   });
 
   it("leaves ordinary error text alone", () => {
@@ -96,6 +116,12 @@ describe("crashReportPrivacy: event context", () => {
     );
 
     expect(event?.request).toBeUndefined();
+  });
+
+  it("drops extras, which the app never sets", () => {
+    const event = send(errorEvent("boom", { extra: { email: EMAIL } }));
+
+    expect(event?.extra).toBeUndefined();
   });
 
   it("keeps only an opaque user id", () => {

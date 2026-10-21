@@ -108,8 +108,8 @@ reports only when its build has `EXPO_PUBLIC_SENTRY_DSN`.
    keep data scrubbing on (the default) and turn on the setting that stops storing
    IP addresses.
 3. Create an **Organization Auth Token**. It carries the organization and its
-   region's URL, so the build needs no URL or org slug (sentry-cli always prefers
-   the token's own).
+   region's URL, which sentry-cli uses over any configured one (`src/config.rs`,
+   sentry-cli, read 2026-10-21), so the build needs no URL or org slug.
 4. In each EAS environment that builds for testers (`preview`, `production`), set:
 
    | Variable | Visibility | Value |
@@ -118,20 +118,19 @@ reports only when its build has `EXPO_PUBLIC_SENTRY_DSN`.
    | `SENTRY_AUTH_TOKEN` | secret | the Organization Auth Token |
    | `SENTRY_PROJECT` | plain text | the project slug |
 
-   Never commit the token. The config plugin strips an `authToken` option for the
-   same reason.
+   Never commit the token.
 
 ### Prove it before trusting it
 
-A crash reporter nobody has seen working gives false confidence. Before the pilot,
-and again after any change to the Sentry setup:
+Before the pilot, and again after any change to the Sentry setup (why: ADR 0019):
 
 1. Build with EAS for a tester profile and confirm the build log shows the source
    maps and debug symbols uploaded.
 2. Install it and trigger a render error on purpose, for example a temporary
    `throw` in a screen behind a test-only path. Do not ship that change.
 3. In Sentry, the event must show `release` `com.kavtsya.app@<version>+<build>`,
-   `ota_updates.is_embedded_launch`, and a stack trace whose frames resolve to
+   `ota_updates.is_embedded_launch` (and, once EAS Update exists,
+   `expo.updates.update_id`), and a stack trace whose frames resolve to
    `src/...tsx` lines. Minified frames mean the upload or the Debug ID failed.
 4. Check the event for anything the ADR's deny-list withholds. Record the event
    link on #217.
@@ -145,6 +144,5 @@ cd apps/mobile
 eas update --branch <branch> && npx sentry-expo-upload-sourcemaps dist
 ```
 
-Skipping it leaves every user on that update with minified, unreadable traces,
-while reports keep arriving and look healthy. Put the command in the script that
-publishes updates.
+Put the command in the script that publishes updates; ADR 0019 names what
+skipping it costs.

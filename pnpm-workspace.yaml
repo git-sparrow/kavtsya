@@ -49,5 +49,6 @@ allowBuilds:
   tree-sitter-typescript: true
   unrs-resolver: true
   # Its postinstall only downloads a binary when the platform's optional
-  # @sentry/cli-* package failed to install, which never happens here.
+  # @sentry/cli-* package is missing (scripts/install.js, 3.8.0); pnpm installs
+  # optional dependencies, so the binary always comes from there.
   "@sentry/cli": false

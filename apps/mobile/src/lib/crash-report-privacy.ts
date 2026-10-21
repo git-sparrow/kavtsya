@@ -1,4 +1,4 @@
-import { MEMBER_CODE_ALPHABET } from "@kavtsya/shared";
+import { MEMBER_CODE_ALPHABET, MEMBER_CODE_LENGTH } from "@kavtsya/shared";
 import type {
   Breadcrumb,
   ErrorEvent,
@@ -7,23 +7,33 @@ import type {
 
 const REDACTED = "[redacted]";
 
+const MEMBER_CODE_HALF = `[${MEMBER_CODE_ALPHABET}]{${MEMBER_CODE_LENGTH / 2}}`;
+
 /**
  * What may never leave the device in an error message or breadcrumb, in the
- * order applied: a URL loses its query first (a Better Auth deep link carries
- * the session cookie there), before the narrower patterns see what is left.
+ * order applied: a URL or path loses its query first (a Better Auth deep link
+ * carries the session cookie there), before the narrower patterns see the rest.
+ *
+ * The member code is matched in its canonical uppercase form, raw or grouped,
+ * which is the only form the app holds once a typed code is normalized; any
+ * 8-character uppercase token is redacted with it. Matching typed lowercase too
+ * would redact every 8-letter word in an ordinary error message.
  */
 const SECRETS: readonly [RegExp, string][] = [
-  [/([a-z][a-z0-9+.-]*:\/\/[^\s?#]*)[?#]\S*/gi, `$1?${REDACTED}`],
+  [/((?:[a-z][a-z0-9+.-]*:\/\/|\/)[^\s?#]*)[?#]\S*/gi, `$1?${REDACTED}`],
   [/\bBearer\s+\S+/gi, `Bearer ${REDACTED}`],
-  [/[^\s@]+@[^\s@]+\.[^\s@]+/g, REDACTED],
-  [/ExponentPushToken\[[^\]]*\]/g, REDACTED],
+  [
+    /\b(session_token|token|cookie|authorization)(["']?\s*[:=]\s*["']?)[^\s"',;&]+/gi,
+    `$1$2${REDACTED}`,
+  ],
+  [/[^\s@]+@[^\s@]+\.[a-z]{2,}\b/gi, REDACTED],
+  [/Expo(?:nent)?PushToken\[[^\]]*\]/g, REDACTED],
   // Signed `<body>.<sig>` tokens (the QR, ADR 0006) and JWT-shaped ones.
   [/[A-Za-z0-9_-]{16,}(?:\.[A-Za-z0-9_-]{16,})+/g, REDACTED],
+  // Opaque session tokens and other long random ids.
+  [/[A-Za-z0-9_-]{32,}/g, REDACTED],
   [
-    new RegExp(
-      `\\b[${MEMBER_CODE_ALPHABET}]{4}-?[${MEMBER_CODE_ALPHABET}]{4}\\b`,
-      "g",
-    ),
+    new RegExp(`\\b${MEMBER_CODE_HALF}[\\s-]?${MEMBER_CODE_HALF}\\b`, "g"),
     REDACTED,
   ],
 ];
@@ -63,6 +73,8 @@ function scrubBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb | null {
 
 function scrubEvent(event: ErrorEvent): ErrorEvent {
   delete event.request;
+  // The app sets no extras, so any that appear came from somewhere unvetted.
+  delete event.extra;
 
   const id = event.user?.id;
   if (id === undefined) delete event.user;

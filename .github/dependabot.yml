@@ -71,10 +71,8 @@ updates:
       # both on the Expo track once the SDK ships React >=19.3.
       - dependency-name: "test-renderer"
         versions: [">=1.3.0"]
-      # @sentry/react-native ships native code, so it moves on the Expo track
-      # like any native module. It is the one native package we hold AHEAD of
-      # the SDK's pin (~7.11.0 for SDK 57, which predates RN 0.86) and exclude
-      # from `expo install` checks; see docs/agents/dependency-updates.md (#217).
+      # @sentry/react-native ships native code, so it moves on the Expo track,
+      # held ahead of the SDK's own pin: docs/agents/dependency-updates.md.
       - dependency-name: "@sentry/react-native"
     groups:
       # All minor + patch bumps batch into a single PR. Majors are deliberately
