@@ -48,3 +48,6 @@ allowBuilds:
   tree-sitter-javascript: true
   tree-sitter-typescript: true
   unrs-resolver: true
+  # Its postinstall only downloads a binary when the platform's optional
+  # @sentry/cli-* package failed to install, which never happens here.
+  "@sentry/cli": false

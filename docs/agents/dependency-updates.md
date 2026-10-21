@@ -491,6 +491,16 @@ rm -rf ios android .expo && watchman watch-del-all
 npx expo prebuild --clean
 ```
 
+`@sentry/react-native` is the exception to "the SDK sets the version": SDK 57 pins
+`~7.11.0`, released before React Native 0.86, while 8.x fixes iOS data loss on RN ≥ 0.86
+and Android native errors swallowed by Expo's bridgeless handler (#217, approved by the
+maintainer 2026-10-21). `expo.install.exclude` in `apps/mobile/package.json` keeps
+`expo install --check/--fix` and the full Expo Doctor off it, and Dependabot ignores it.
+On each Expo track pass, move it to the latest stable 8.x by hand
+(`pnpm --filter @kavtsya/mobile add @sentry/react-native@~<version>`, after checking its
+changelog for the new React Native version). Drop the exclusion once the SDK's own pin
+catches up.
+
 If the new SDK ships React 19.3 or later, also lift the `test-renderer` hold: drop its
 `ignore` entry in `.github/dependabot.yml` and move `apps/mobile` off `~1.2.0` (1.3 needs
 React ≥ 19.3 through `react-reconciler` 0.34).

@@ -41,6 +41,28 @@ export default tseslint.config(
     },
   },
 
+  // Crash reporting leaves the app through one seam (#217, ADR 0019), so a
+  // vendor swap stays one file. Type-only imports carry no SDK at runtime.
+  {
+    files: ["apps/mobile/src/**/*.{ts,tsx}"],
+    ignores: ["apps/mobile/src/lib/crash-reporting.ts"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@sentry/*"],
+              allowTypeImports: true,
+              message:
+                "Report through @/lib/crash-reporting; only it imports the SDK.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // Config files and Expo config plugins legitimately use CommonJS require().
   {
     files: ["**/*.config.{js,cjs}", "apps/mobile/plugins/**/*.js"],

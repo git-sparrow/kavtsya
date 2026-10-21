@@ -1,0 +1,172 @@
+import type { Breadcrumb, ErrorEvent } from "@sentry/react-native";
+import { describe, expect, it } from "vitest";
+
+import { crashReportPrivacy } from "../src/lib/crash-report-privacy";
+
+/**
+ * The deny-list for what crash reports may carry off the device (#217). A QR
+ * token or a session cookie in a report is an auth-adjacent credential leaving
+ * our infrastructure, so every case below is a leak these options exist to stop.
+ */
+
+const EMAIL = "olena.koval@example.com";
+// The shape signed-token.ts mints: base64url JSON body, "." and a SHA-256 HMAC.
+const QR_TOKEN =
+  "eyJ1c2VySWQiOiJhYmMiLCJleHAiOjE3MDAwMDAwMDB9.Wm9P1x5rQ2c3Z9yK8sLmN4tV7bH0dJfA6eGqXiUoTpw";
+const MEMBER_CODE = "7KQ4M9TZ";
+const PUSH_TOKEN = "ExponentPushToken[xAbC123dEfG456hIjK]";
+
+const { beforeSend, beforeBreadcrumb } = crashReportPrivacy;
+
+function send(event: ErrorEvent): ErrorEvent | null {
+  return beforeSend(event);
+}
+
+function crumb(breadcrumb: Breadcrumb): Breadcrumb | null {
+  return beforeBreadcrumb(breadcrumb);
+}
+
+function errorEvent(value: string, extra: Partial<ErrorEvent> = {}) {
+  return {
+    type: undefined,
+    exception: { values: [{ type: "Error", value }] },
+    ...extra,
+  } as ErrorEvent;
+}
+
+describe("crashReportPrivacy: SDK switches", () => {
+  it("keeps every automatic PII and capture source off", () => {
+    expect(crashReportPrivacy).toMatchObject({
+      sendDefaultPii: false,
+      attachScreenshot: false,
+      attachViewHierarchy: false,
+      // Handled HTTP failures belong to the screen that shows them (#53, #190).
+      enableCaptureFailedRequests: false,
+      // iOS would otherwise record every request natively, out of beforeBreadcrumb's reach.
+      enableNetworkBreadcrumbs: false,
+    });
+  });
+});
+
+describe("crashReportPrivacy: error text", () => {
+  it.each([
+    ["an email", `No account for ${EMAIL}`, EMAIL],
+    ["a QR token", `Rejected token ${QR_TOKEN}`, QR_TOKEN],
+    ["a raw member code", `Unknown code ${MEMBER_CODE}`, MEMBER_CODE],
+    ["a grouped member code", "Unknown code 7KQ4-M9TZ", "7KQ4-M9TZ"],
+    ["an Expo push token", `Dead device ${PUSH_TOKEN}`, PUSH_TOKEN],
+    [
+      "a URL's query string",
+      "Failed kavtsya://auth?cookie=better-auth.session_token%3Dabc",
+      "session_token",
+    ],
+    ["a bearer credential", "Authorization: Bearer abc.def.ghi", "abc.def.ghi"],
+  ])("redacts %s from exception values", (_, message, secret) => {
+    const value = send(errorEvent(message))?.exception?.values?.[0]?.value;
+
+    expect(value).not.toContain(secret);
+    expect(value).toContain("[redacted]");
+  });
+
+  it("redacts the event message", () => {
+    const event = send({ type: undefined, message: `Signed in as ${EMAIL}` });
+
+    expect(event?.message).toBe("Signed in as [redacted]");
+  });
+
+  it("leaves ordinary error text alone", () => {
+    const message = "Cannot read property 'balance' of undefined";
+
+    expect(send(errorEvent(message))?.exception?.values?.[0]?.value).toBe(
+      message,
+    );
+  });
+});
+
+describe("crashReportPrivacy: event context", () => {
+  it("drops the request, its headers, body and cookies", () => {
+    const event = send(
+      errorEvent("boom", {
+        request: {
+          url: "https://api.kavtsya.com/api/purchases",
+          headers: { cookie: "better-auth.session_token=abc" },
+          data: { qrToken: QR_TOKEN },
+        },
+      }),
+    );
+
+    expect(event?.request).toBeUndefined();
+  });
+
+  it("keeps only an opaque user id", () => {
+    const event = send(
+      errorEvent("boom", {
+        user: {
+          id: "install-1",
+          email: EMAIL,
+          username: "olena",
+          ip_address: "203.0.113.7",
+        },
+      }),
+    );
+
+    expect(event?.user).toEqual({ id: "install-1" });
+  });
+
+  it("scrubs breadcrumbs that ride on the event", () => {
+    const event = send(
+      errorEvent("boom", {
+        breadcrumbs: [
+          { category: "console", message: EMAIL },
+          { category: "ui", message: `Opened ${MEMBER_CODE}` },
+        ],
+      }),
+    );
+
+    expect(event?.breadcrumbs).toEqual([
+      { category: "ui", message: "Opened [redacted]" },
+    ]);
+  });
+});
+
+describe("crashReportPrivacy: breadcrumbs", () => {
+  it("drops console breadcrumbs, whatever was logged", () => {
+    expect(crumb({ category: "console", message: "hello" })).toBeNull();
+  });
+
+  it.each(["fetch", "xhr"])(
+    "keeps a %s breadcrumb's method, status and path only",
+    (category) => {
+      const result = crumb({
+        category,
+        type: "http",
+        data: {
+          method: "POST",
+          status_code: 409,
+          url: "https://api.kavtsya.com/api/purchases?token=abc#frag",
+          request_body: { qrToken: QR_TOKEN },
+          response_body_size: 120,
+        },
+      });
+
+      expect(result?.data).toEqual({
+        method: "POST",
+        status_code: 409,
+        url: "https://api.kavtsya.com/api/purchases",
+      });
+    },
+  );
+
+  it("redacts the message and drops the data of any other breadcrumb", () => {
+    const result = crumb({
+      category: "sentry.event",
+      message: `Error for ${EMAIL}`,
+      data: { email: EMAIL },
+    });
+
+    expect(result).toEqual({
+      category: "sentry.event",
+      message: "Error for [redacted]",
+    });
+  });
+});
