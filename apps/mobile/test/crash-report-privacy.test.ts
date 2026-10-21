@@ -223,15 +223,45 @@ describe("Sentry's server-side scrubbing rules in docs/deploy.md", () => {
     expect(rules.length).toBeGreaterThan(0);
   });
 
+  const scrub = (text: string) =>
+    rules.reduce(
+      (scrubbed, rule) => scrubbed.replace(rule, "[redacted]"),
+      text,
+    );
+
   it.each(LEAKS.filter(([what]) => what !== "an email"))(
     "redact %s",
     (_, message, secret) => {
-      const scrubbed = rules.reduce(
-        (text, rule) => text.replace(rule, "[redacted]"),
-        message,
-      );
-
-      expect(scrubbed).not.toContain(secret);
+      expect(scrub(message)).not.toContain(secret);
     },
   );
+
+  // The native-shaped event the release proof sends (docs/deploy.md): every
+  // planted value in a field the rules read must be one the rules redact, or
+  // the proof would fail on a gap in the rules rather than in Sentry.
+  it("redact everything planted in the native probe event", () => {
+    const probe = JSON.parse(
+      readFileSync(
+        new URL("./fixtures/sentry-native-probe.json", import.meta.url),
+        "utf8",
+      ),
+    );
+    const fields: string[] = [
+      probe.message,
+      ...probe.exception.values.map((e: { value: string }) => e.value),
+      ...probe.breadcrumbs.values.flatMap(
+        (b: { message: string; data: Record<string, string> }) => [
+          b.message,
+          ...Object.values(b.data),
+        ],
+      ),
+    ];
+    // Emails and IPs are Sentry's built-in types, so no regex to run here.
+    const planted =
+      /7KQ4.?M9TZ|ExponentPushToken|token=s|Bearer abc|cookie=abc|Zk3vQ9|eyJ/;
+
+    expect(fields.map(scrub).filter((field) => planted.test(field))).toEqual(
+      [],
+    );
+  });
 });

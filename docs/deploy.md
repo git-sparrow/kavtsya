@@ -159,16 +159,19 @@ Before the pilot, and again after any change to the Sentry setup (why: ADR 0019)
    `crash-reporting.ts` (the only file allowed to import the SDK), rebuild,
    trigger it, and relaunch the app: the native crash must arrive with a
    symbolicated native stack. Do not ship that change either.
-6. Check that Sentry applies the server-side rules (a test checks only the
-   patterns): send an event that skips the app's deny-list, with one value per
-   rule, and confirm Sentry stores `[redacted]` for each.
+6. Check that Sentry applies the server-side rules to a native-shaped event (a
+   test checks only the patterns). `apps/mobile/test/fixtures/sentry-native-probe.json`
+   is an iOS (`cocoa`) crash event that skips the app's deny-list, with a value
+   for every rule planted in its exception, message and breadcrumb:
 
    ```bash
-   SENTRY_DSN=<the DSN> npx sentry-cli send-event -m "probe olena@example.com \
-     203.0.113.7 7KQ4-M9TZ ExponentPushToken[abc] /api/x?token=s Bearer abc \
-     cookie=abc Zk3vQ9pL2xR7mT4nB8cY1wH6dF5gJ0aS \
-     eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0"
+   cd apps/mobile
+   SENTRY_DSN=<the DSN> npx sentry-cli send-event test/fixtures/sentry-native-probe.json
    ```
+
+   In Sentry, every planted value must read `[redacted]`, and the
+   `ota_updates.update_id` context must be unchanged. sentry-cli also attaches
+   the sending computer's host name and OS; delete the event once checked.
 
    Then open step 5's native crash and check that its release, Debug IDs and
    (once EAS Update exists) the `ota_updates` context's `update_id` arrived

@@ -1,0 +1,29 @@
+{
+  "platform": "cocoa",
+  "level": "fatal",
+  "message": "probe message olena.koval@example.com 7KQ4-M9TZ",
+  "exception": {
+    "values": [
+      {
+        "type": "NSInvalidArgumentException",
+        "value": "probe olena.koval@example.com 203.0.113.7 7KQ4-M9TZ 7KQ4 M9TZ ExponentPushToken[abc] /api/x?token=s Bearer abc cookie=abc Zk3vQ9pL2xR7mT4nB8cY1wH6dF5gJ0aS eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0"
+      }
+    ]
+  },
+  "breadcrumbs": {
+    "values": [
+      {
+        "category": "http",
+        "message": "probe breadcrumb olena.koval@example.com 7KQ4M9TZ",
+        "data": {
+          "url": "https://api.kavtsya.com/api/x?token=s"
+        }
+      }
+    ]
+  },
+  "contexts": {
+    "ota_updates": {
+      "update_id": "8f7123d4-7b8e-4d2b-9b04-95aa15cd59ec"
+    }
+  }
+}
