@@ -107,7 +107,10 @@ reports only when its build has `EXPO_PUBLIC_SENTRY_DSN`.
 2. Create one React Native project. Under Project Settings → Security & Privacy,
    keep data scrubbing on (the default) and turn on the setting that stops storing
    IP addresses. Under **Advanced Data Scrubbing**, add these rules, each
-   `[Replace]` from `$string` with the placeholder `[redacted]`. They are the
+   `[Replace]` with the placeholder `[redacted]`, from the source
+   `$error.value || $message || $breadcrumb.message || $breadcrumb.data.*`.
+   Free text only, never `$string`: that would also rewrite the update id,
+   release and Debug IDs that identify and symbolicate a report. They are the
    only scrubbing a native crash's own text gets (ADR 0019), and they mirror
    `SECRETS` in `apps/mobile/src/lib/crash-report-privacy.ts`, so change both
    together:
@@ -156,13 +159,19 @@ Before the pilot, and again after any change to the Sentry setup (why: ADR 0019)
    `crash-reporting.ts` (the only file allowed to import the SDK), rebuild,
    trigger it, and relaunch the app: the native crash must arrive with a
    symbolicated native stack. Do not ship that change either.
-6. Check the server-side rules, which no JS test covers: send an event that
-   skips the app's deny-list and confirm Sentry stores `[redacted]` for each value.
+6. Check that Sentry applies the server-side rules (a test checks only the
+   patterns): send an event that skips the app's deny-list, with one value per
+   rule, and confirm Sentry stores `[redacted]` for each.
 
    ```bash
-   SENTRY_DSN=<the DSN> npx sentry-cli send-event \
-     -m "probe olena@example.com 7KQ4-M9TZ ExponentPushToken[abc] /api/x?token=s"
+   SENTRY_DSN=<the DSN> npx sentry-cli send-event -m "probe olena@example.com \
+     203.0.113.7 7KQ4-M9TZ ExponentPushToken[abc] /api/x?token=s Bearer abc \
+     cookie=abc Zk3vQ9pL2xR7mT4nB8cY1wH6dF5gJ0aS \
+     eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0"
    ```
+
+   Then open step 5's native crash and check that its release, Debug IDs and
+   (once EAS Update exists) `expo.updates.update_id` arrived intact.
 
 7. Record the event links on #217.
 
