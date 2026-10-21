@@ -171,7 +171,8 @@ Before the pilot, and again after any change to the Sentry setup (why: ADR 0019)
    ```
 
    Then open step 5's native crash and check that its release, Debug IDs and
-   (once EAS Update exists) `expo.updates.update_id` arrived intact.
+   (once EAS Update exists) the `ota_updates` context's `update_id` arrived
+   intact; native crashes carry the context, not the `expo.updates.*` tags.
 
 7. Record the event links on #217.
 
