@@ -71,6 +71,9 @@ updates:
       # both on the Expo track once the SDK ships React >=19.3.
       - dependency-name: "test-renderer"
         versions: [">=1.3.0"]
+      # @sentry/react-native ships native code, so it moves on the Expo track,
+      # held ahead of the SDK's own pin: docs/agents/dependency-updates.md.
+      - dependency-name: "@sentry/react-native"
     groups:
       # All minor + patch bumps batch into a single PR. Majors are deliberately
       # left ungrouped so each higher-risk bump opens its own PR for individual

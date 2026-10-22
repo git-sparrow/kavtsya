@@ -86,8 +86,120 @@ only in the same project and environment; wiping the volume deletes its backups.
 ```bash
 cd apps/mobile
 EXPO_PUBLIC_API_URL=https://api.kavtsya.com KAVTSYA_NO_PUSH=1 \
+  SENTRY_DISABLE_AUTO_UPLOAD=true \
   npx expo run:ios --device --configuration Release
 ```
 
 `KAVTSYA_NO_PUSH=1` is only for signing with a free Apple team; drop it once a
-paid team signs the build.
+paid team signs the build. `SENTRY_DISABLE_AUTO_UPLOAD=true` skips the source-map
+upload, without which a Release build fails when `SENTRY_AUTH_TOKEN` is unset;
+such a build sends no crash reports anyway, having no DSN.
+
+## Crash reporting (Sentry)
+
+Decision and deny-list: [ADR 0019](adr/0019-crash-reporting-sentry.md). The app
+reports only when its build has `EXPO_PUBLIC_SENTRY_DSN`.
+
+### One-time setup (maintainer)
+
+1. Create the Sentry organization with **Data Storage Location: EU (Frankfurt)**.
+   This cannot be changed later.
+2. Create one React Native project. Under Project Settings → Security & Privacy,
+   keep data scrubbing on (the default) and turn on the setting that stops storing
+   IP addresses. Under **Advanced Data Scrubbing**, add these rules, each
+   `[Replace]` with the placeholder `[redacted]`, from the source
+   `$error.value || $message || $breadcrumb.message || $breadcrumb.data.*`.
+   Free text only, never `$string`: that would also rewrite the update id,
+   release and Debug IDs that identify and symbolicate a report. They are the
+   only scrubbing a native crash's own text gets (ADR 0019), and they mirror
+   `SECRETS` in `apps/mobile/src/lib/crash-report-privacy.ts`, so change both
+   together:
+
+   | Data type | Regex (Rust dialect) |
+   |---|---|
+   | Email Addresses | |
+   | IP Addresses | |
+   | Regex Matches | `(?i)(?:[a-z][a-z0-9+.-]*://\|/)[^\s?#]*[?#]\S*` |
+   | Regex Matches | `(?i)\bBearer\s+\S+` |
+   | Regex Matches | `(?i)\b(?:session_token\|token\|cookie\|authorization)["']?\s*[:=]\s*["']?[^\s"',;&]+` |
+   | Regex Matches | `Expo(?:nent)?PushToken\[[^\]]*\]` |
+   | Regex Matches | `[A-Za-z0-9_-]{16,}(?:\.[A-Za-z0-9_-]{16,})+` |
+   | Regex Matches | `[A-Za-z0-9_-]{32,}` |
+   | Regex Matches | `\b[0-9A-HJKMNP-TV-Z]{4}[\s-]?[0-9A-HJKMNP-TV-Z]{4}\b` |
+
+   The `\|` in the table is Markdown escaping: type a plain `|`.
+3. Create an **Organization Auth Token**. It carries the organization and its
+   region's URL, which sentry-cli uses over any configured one (`src/config.rs`,
+   sentry-cli, read 2026-10-21), so the build needs no URL or org slug.
+4. In each EAS environment that builds for testers (`preview`, `production`), set:
+
+   | Variable | Visibility | Value |
+   |---|---|---|
+   | `EXPO_PUBLIC_SENTRY_DSN` | plain text | the project's DSN |
+   | `SENTRY_AUTH_TOKEN` | secret | the Organization Auth Token |
+   | `SENTRY_PROJECT` | plain text | the project slug |
+
+   Never commit the token.
+
+### Prove it before trusting it
+
+Before the pilot, and again after any change to the Sentry setup (why: ADR 0019):
+
+1. Build with EAS for a tester profile and confirm the build log shows the source
+   maps and debug symbols uploaded.
+2. Install it and trigger a render error on purpose, for example a temporary
+   `throw` in a screen behind a test-only path. Do not ship that change.
+3. In Sentry, the event must show `release` `com.kavtsya.app@<version>+<build>`,
+   `ota_updates.is_enabled: false` (once EAS Update exists:
+   `ota_updates.is_embedded_launch` and `expo.updates.update_id`), and a stack
+   trace whose frames resolve to
+   `src/...tsx` lines. Minified frames mean the upload or the Debug ID failed.
+4. Check the event for anything the ADR's deny-list withholds.
+5. Replace the throw with a temporary `Sentry.nativeCrash()` in
+   `crash-reporting.ts` (the only file allowed to import the SDK), rebuild,
+   trigger it, and relaunch the app: the native crash must arrive with a
+   symbolicated native stack. Do not ship that change either.
+6. Check that Sentry applies the server-side rules to a native-shaped event (a
+   test checks only the patterns). `apps/mobile/test/fixtures/sentry-native-probe.json`
+   is an iOS (`cocoa`) crash event that skips the app's deny-list, with a value
+   for every rule planted in its exception, message and breadcrumb:
+
+   ```bash
+   cd apps/mobile
+   SENTRY_DSN=<the DSN> npx sentry-cli send-event test/fixtures/sentry-native-probe.json
+   ```
+
+   In Sentry, every planted value must read `[redacted]`, and the
+   `ota_updates.update_id` context must be unchanged. sentry-cli also attaches
+   the sending computer's host name and OS; delete the event once checked.
+
+   Then open step 5's native crash and check that its release, Debug IDs and
+   (once EAS Update exists) the `ota_updates` context's `update_id` arrived
+   intact; native crashes carry the context, not the `expo.updates.*` tags.
+
+7. Record the event links on #217.
+
+### After an EAS Update
+
+When EAS Update is adopted, upload the update's source maps right after publishing.
+The uploader runs locally, where the EAS secret is unreadable, and it needs the org
+and project spelled out (it exits otherwise; `cli.js`, 8.31.0). Keep them in
+`apps/mobile/.env.sentry-build-plugin`, which `.env.*` keeps out of git:
+
+```sh
+SENTRY_AUTH_TOKEN=<an Organization Auth Token>
+SENTRY_ORG=<org slug>
+SENTRY_PROJECT=<project slug>
+```
+
+Publish with the environment whose DSN the update must carry; without
+`--environment`, it gets none of that environment's variables:
+
+```bash
+cd apps/mobile
+eas update --branch <branch> --environment production \
+  && npx sentry-expo-upload-sourcemaps dist
+```
+
+Put the command in the script that publishes updates; ADR 0019 names what
+skipping it costs.

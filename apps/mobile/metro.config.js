@@ -1,12 +1,15 @@
 // Metro must watch the whole monorepo and resolve hoisted node_modules so the
 // Expo app can import the shared @kavtsya/shared package.
-const { getDefaultConfig } = require("expo/metro-config");
+//
+// Sentry's wrapper is Expo's default config plus a Debug ID stamped into each
+// bundle and its source map, which is how a crash report finds its map (#217).
+const { getSentryExpoConfig } = require("@sentry/react-native/metro");
 const path = require("path");
 
 const projectRoot = __dirname;
 const monorepoRoot = path.resolve(projectRoot, "../..");
 
-const config = getDefaultConfig(projectRoot);
+const config = getSentryExpoConfig(projectRoot);
 
 config.watchFolders = [monorepoRoot];
 config.resolver.nodeModulesPaths = [

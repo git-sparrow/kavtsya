@@ -48,7 +48,8 @@
       ],
       "expo-font",
       "expo-status-bar",
-      "./plugins/with-optional-push-entitlement"
+      "./plugins/with-optional-push-entitlement",
+      "@sentry/react-native/expo"
     ],
     "experiments": {
       "typedRoutes": true,

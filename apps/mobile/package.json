@@ -20,6 +20,7 @@
     "@expo/dom-webview": "~57.0.1",
     "@expo/metro-runtime": "~57.0.17",
     "@kavtsya/shared": "workspace:*",
+    "@sentry/react-native": "~8.31.0",
     "better-auth": "catalog:",
     "expo": "~57.0.29",
     "expo-camera": "~57.0.6",
@@ -51,5 +52,12 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "@sentry/react-native"
+      ]
+    }
   }
 }

@@ -9,7 +9,7 @@ import { View } from "react-native";
 import { Button } from "@/components/button";
 import { Screen } from "@/components/screen";
 import { StatusStrip } from "@/components/status-strip";
-import { reportRenderError } from "@/lib/report-render-error";
+import { reportRenderError } from "@/lib/crash-reporting";
 import { useTheme } from "@/theme";
 
 /** A way off the broken screen that does not depend on it. */
