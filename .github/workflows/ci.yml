@@ -31,6 +31,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          # On a pull_request the checkout is the merge commit, so HEAD^1 is the
+          # base the PR is compared with (the Expo surface step below).
+          fetch-depth: 2
 
       - name: Set up pnpm (version from packageManager)
         uses: pnpm/action-setup@v6
@@ -86,6 +90,11 @@ jobs:
 
       - name: Check dependency graph
         run: pnpm deps:check
+
+      # Dependabot only: the Expo track itself moves these packages on purpose.
+      - name: Check Expo surface (Dependabot)
+        if: startsWith(github.head_ref, 'dependabot/npm_and_yarn/')
+        run: node scripts/deps-check/expo-surface.mjs HEAD^1
 
       - name: Typecheck
         run: pnpm typecheck
