@@ -1,39 +1,14 @@
 name: Expo SDK check
 
-# The FULL `expo-doctor`, including "Check that packages match versions required
-# by installed Expo SDK". That one check resolves the expected set from Expo's
-# live version map, so it can fail a commit that changed nothing the moment Expo
-# publishes a patch. The other 20 checks are a function of the diff and run on
-# every PR in ci.yml.
-#
-# So this workflow is a MONITOR ONLY. It runs on a schedule (+ manual) and turns
-# a failure into a tracking issue, the trigger for the human-run Expo track in
-# docs/agents/dependency-updates.md. Before this existed, drift was found by
-# accident, via an unrelated PR going red.
-#
-# It deliberately does NOT gate pull requests (#232). It used to fail dependency
-# PRs on the strict version match, on the reasoning that a dependency change is
-# where alignment must hold. The cadence does not allow it: `expo` shipped 20
-# stable releases in SDK 57 at a median 3 days apart, and #222 realigned
-# everything on 2026-08-26 only for 10 packages to be behind again by 08-30. The
-# aligned window is ~2-3 days, so the gate was red by default — a toll booth paid
-# in either an unrelated realign or an override, and this repo already knows
-# where merging through red leads (red `main`, 2026-07-29 to #167).
-#
-# It also never earned its keep: every real dependency defect here (#212, #223,
-# #224/#226) was caught by a duplicate- or overridden-dependency check, all of
-# which gate on every PR via ci.yml. Expo itself treats the version match as
-# advisory ("There may be circumstances where you want to use a version of a
-# package that is different from the version recommended by `npx expo install`"
-# — https://expo.fyi/dependency-validation).
+# The FULL `expo-doctor`, including the SDK version match that reads Expo's live
+# version map. A MONITOR, not a gate (#232): a failure opens a tracking issue, the
+# trigger for the human-run Expo track. Why: docs/agents/dependency-updates.md,
+# "Gate vs monitor".
 
 on:
   schedule:
-    # Fortnightly (1st and 15th) — deliberately twice the Dependabot cadence,
-    # which is monthly (see .github/dependabot.yml). Expo publishes inside an SDK
-    # on its own schedule, so drift is worth catching sooner than dep bumps are.
-    # GitHub cron is UTC-only, so 04:00 UTC lands at 06:00/07:00 Europe/Kyiv
-    # depending on DST. Close enough for a monitor; do not chase the DST hour.
+    # 1st and 15th: Expo publishes inside an SDK more often than Dependabot runs.
+    # UTC-only cron; 04:00 UTC is 06:00/07:00 Kyiv by DST, close enough.
     - cron: "0 4 1,15 * *"
   workflow_dispatch:
 

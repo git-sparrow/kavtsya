@@ -48,35 +48,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # The expo-doctor checks that are a function of THIS diff: Expo config
-      # schema, duplicate/overridden deps, peer deps, Metro config, native-module
-      # support-package compatibility, committed env files.
-      #
-      # One check is deliberately skipped: "packages match versions required by
-      # installed Expo SDK" resolves its expected set from Expo's LIVE version
-      # map, so it reddens a commit that changed nothing as soon as Expo ships a
-      # patch. That is a monitor, not a merge gate — expo-sdk-check.yml owns it,
-      # on a schedule and on dependency PRs. See docs/agents/dependency-updates.md.
-      #
-      # PINNED, deliberately. `npx expo-doctor` resolves `latest` at run time, so
-      # the gate redefines pass/fail on Expo's release schedule rather than on the
-      # diff: identical lockfile, 1.20.3 green (main, 2026-08-26) and 1.20.4 red
-      # (#224, 2026-08-28, a PR touching only .github/dependabot.yml). Same class
-      # of bug as the SDK version check below — external state deciding a merge
-      # gate — so it gets the same treatment.
-      #
-      # Bump it BY HAND, on the Expo track. Dependabot does not see a version
-      # inside an `npx` string (it reads manifests and `uses:` refs), and moving
-      # expo-doctor into apps/mobile devDependencies would not help: `expo-doctor`
-      # matches the `expo-*` ignore pattern, so it is frozen for automation like
-      # every other Expo-governed package. Its dist-tags are SDK-keyed too
-      # (sdk-56 -> 1.19.12), which is the same signal.
-      #
-      # Bumped 1.20.3 -> 1.20.4 in the same PR that fixed what 1.20.4 found
-      # (@expo/dom-webview was stale at 56.0.5; expo wants ~57.0.1). That is the
-      # workflow this pin exists to make possible: a new check arrives in a PR
-      # where someone has scheduled time to read its findings, never by surprise
-      # on an unrelated diff.
+      # The expo-doctor checks that are a function of THIS diff. The SDK version
+      # match reads Expo's live version map, so expo-sdk-check.yml runs it as a
+      # monitor. Pinned so the gate's verdict changes only in the PR that bumps it,
+      # by hand on the Expo track. Why both: docs/agents/dependency-updates.md,
+      # "Gate vs monitor" and "Pin the gate's expo-doctor".
       - name: Expo Doctor (project health, excl. SDK version match)
         run: npx expo-doctor@1.20.4
         working-directory: apps/mobile
