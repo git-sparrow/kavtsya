@@ -1,14 +1,13 @@
 # Dependency updates
 
-How Kavtsya keeps its dependencies fresh **safely by construction**: stable releases
-only, no version conflicts, and every change gated by CI before it can merge. This is
-maintainer-facing tooling — read it before touching `pnpm-workspace.yaml`, the app
-`package.json` files, `.github/dependabot.yml`, or the mobile native surface.
-
-There is no single global "source of truth" for versions. Authority is **layered by
-category** — each kind of dependency has exactly one place that owns its version.
+How Kavtsya keeps dependencies fresh and safe: stable releases only, no version
+conflicts, every change gated by CI. Read it before touching `pnpm-workspace.yaml`, an
+app `package.json`, `.github/dependabot.yml`, or the mobile native surface. Each rule
+carries its reason and the issue or PR that holds the full history.
 
 ## Version-authority model
+
+Authority is layered by category: each kind of dependency has exactly one owner.
 
 | Category | Source of truth | Where it lives |
 | --- | --- | --- |
@@ -17,132 +16,62 @@ category** — each kind of dependency has exactly one place that owns its versi
 | Cross-cutting shared libraries | a **pnpm catalog** | `pnpm-workspace.yaml` |
 | App-local runtime deps | the owning app | `apps/api/package.json`, etc. |
 
-Practical consequences:
-
-- **Never reason about what is installed by reading a `package.json` range.** A range
-  (`^`, `~`) is a constraint, not a fact. `pnpm-lock.yaml` is the only truth for the
-  resolved version.
-- **Never bump an Expo-governed package by hand or let automation do it.** Those
-  versions are dictated by the installed Expo SDK; an out-of-band bump breaks the
-  native build. They move only on the deliberate [Expo track](#expo-track) below.
-- **A library used in two or more workspace packages lives in the catalog**, so its
-  version cannot drift apart between packages.
-- **A library used in only one app stays in that app's `package.json`** — app-local
-  concerns are not hoisted into a shared authority they do not belong to.
+- **Read resolved versions from `pnpm-lock.yaml`.** A `package.json` range is a
+  constraint, not a fact.
+- **Expo-governed packages move only on the [Expo track](#expo-track)**, never by hand
+  or by automation: the SDK dictates them as a known-good set, and an out-of-band bump
+  breaks the native build.
+- **A library declared in two or more workspace packages lives in the catalog**; a
+  library used by one app stays in that app's `package.json`.
 
 ## The pnpm catalog
 
-The `catalog:` block in `pnpm-workspace.yaml` is the single definition for every
-dependency declared in more than one workspace package. Referencing manifests use the
-`catalog:` protocol (e.g. `"typescript": "catalog:"`) instead of a literal range, so
-there is exactly one version and it cannot diverge.
+Manifests reference catalog entries with `"<dep>": "catalog:"`, so there is one version
+and it cannot diverge. Membership is the `catalog:` block in `pnpm-workspace.yaml`; a
+dependency joins when a second workspace package declares it.
 
-**Current membership** (a dep joins when it is declared in ≥ 2 workspace packages):
+- `@better-auth/expo` shares the catalog with `better-auth` so the two auth halves move
+  in lockstep. Both are JS-only and **not** Expo-governed despite the name.
+- `vite` is catalog'd as vitest's peer: left undeclared, pnpm kept a stale vite 5 (#270).
+- `typescript` is also declared at the repo root: pnpm's isolated layout links only a
+  package's own dependencies, and `.vscode/settings.json` points `js/ts.tsdk.path` at the
+  root `node_modules/typescript`, so the editor uses the same compiler as CI.
+- **Not catalog'd:** the Expo-governed surface (managed by `expo install`), root-only
+  tooling (`eslint`, `prettier`, `husky`, …: one home already), and app-local runtime deps.
 
-| Dependency | Declared in | Why catalog'd |
-| --- | --- | --- |
-| `typescript` | root, api, shared, mobile | was drifting (`^5.6.3` vs `~6.0.3`) |
-| `vitest` | api, mobile | was drifting (`^2.1.8` vs `^2.1.9`) |
-| `vite` | api, mobile | vitest 5's peer; left undeclared, pnpm kept a stale vite 5 (#270) |
-| `zod` | api, shared | shared validation schemas |
-| `better-auth` | api, mobile | auth server + client halves |
-| `@better-auth/expo` | api, mobile | moves in lockstep with `better-auth` |
-
-`@better-auth/expo` shares the catalog with `better-auth` so the two auth halves can
-never diverge. Both are scoped, `^`-ranged, JS-only packages — **not** Expo-governed,
-despite the `expo` in the name — so they stay automatically updatable.
-
-`typescript` is declared at the **repo root** as well as in the three workspace
-packages, which looks redundant and is not. pnpm's isolated layout links only a
-package's own dependencies, so without the root declaration there is no
-`node_modules/typescript` at the root at all — and `.vscode/settings.json` points
-`js/ts.tsdk.path` there so the editor reports errors with the same compiler as
-`pnpm typecheck` and CI, instead of the older one VS Code bundles. It also makes
-explicit what `typescript-eslint` was already relying on as an auto-installed peer.
-Because all four declarations read `catalog:`, the extra home cannot introduce drift.
-
-**Not catalog'd, on purpose:**
-
-- **Expo-governed packages and `@types/react`** — Expo-mirrored, managed via
-  `expo install` (see below).
-- **Root-only tooling** (`eslint`, `prettier`, `husky`, `lint-staged`,
-  `typescript-eslint`, `eslint-config-*`) — already has a single home in the repo-root
-  `package.json`; catalog'ing single-home deps would add indirection for no gain.
-- **App-local runtime deps** (`hono`, `pg`, `postgres`, `@hono/node-server`,
-  `@types/pg`, `tsx` for the API) — owned by the app that uses them.
-
-### Adding or changing a catalog entry
-
-1. Add/update the version under `catalog:` in `pnpm-workspace.yaml`.
-2. In each referencing `package.json`, set the dependency to `"catalog:"`.
-3. `pnpm install` to update the lockfile.
-4. Run the gate (`pnpm typecheck && pnpm lint && pnpm format:check && pnpm test`).
-
-When a dep newly appears in a second workspace package, move it into the catalog at
-that point rather than duplicating a literal range.
+To add or change an entry: edit `catalog:`, set each referencing manifest to `"catalog:"`,
+`pnpm install`, then `pnpm verify`.
 
 ## Automated updates: Dependabot
 
-`.github/dependabot.yml` opens grouped, stable-only update PRs. No third-party GitHub
-App and no paid infrastructure — Dependabot is GitHub-native and config-only.
+`.github/dependabot.yml`, GitHub-native and config-only:
 
-- **Two ecosystems:** `npm` and `github-actions` (CI tooling).
-- **One npm directory, `/`** — the root job already covers the whole pnpm workspace:
-  every member manifest plus the catalog in `pnpm-workspace.yaml`. Listing members as
-  extra `directories:` entries duplicates coverage and opens dead PRs; see
-  [why there is exactly one npm directory](#one-npm-directory) before adding one.
-- **Cadence: monthly** — `interval: "monthly"` at `06:00 Europe/Kyiv` fires on the 1st.
-  This deliberately replaced a biweekly cron schedule that never worked; see
-  [why the schedule is boring](#boring-schedule) before changing it.
-- **Grouping — as few PRs as possible:**
-  - All **minor + patch** updates batch into **one** grouped PR.
-  - Each **major** update opens its **own** PR for individual scrutiny (majors are left
-    ungrouped on purpose).
-  - All GitHub Actions bumps batch into one PR.
-- **Stable-only:** this is Dependabot's default — it never proposes betas / RCs /
-  pre-releases unless a manifest is already on one (ours are not). No extra config; the
-  intent is recorded here.
-- **Labels & commit prefixes:** every PR is labelled `dependencies`; commits are
-  prefixed `chore(deps)` / `chore(deps-dev)` / `chore(ci)`.
-- **Catalog support:** Dependabot updates `catalog:` entries in `pnpm-workspace.yaml`
-  directly (GA since 2025-02-04), so catalog'd deps stay fresh automatically.
-- **pnpm ≥ 11.13.0:** Dependabot runs the pnpm in `packageManager`. Its registry proxy
-  answers `304 Not Modified` to unconditional requests. pnpm before 11.13.0 trusts that
-  `304` and fails every job with `ERR_PNPM_CACHE_MISSING_AFTER_304`; Dependabot then
-  closes the open PR as "no longer updatable"
-  ([pnpm/pnpm#12882](https://github.com/pnpm/pnpm/issues/12882)).
+- **Ecosystems:** `npm` and `github-actions`.
+- **One npm directory, `/`.** The root job covers every workspace manifest and the
+  catalog. A per-member directory cannot regenerate the root lockfile, so its PR dies on
+  `ERR_PNPM_OUTDATED_LOCKFILE` (#198 vs #202). Add a directory only for a package outside
+  the workspace with its own lockfile.
+- **Cadence: `monthly`**, 06:00 Europe/Kyiv on the 1st. A named interval has nothing to
+  get wrong; the earlier biweekly `cron:` key was not in the schema, so Dependabot never
+  ran once (#191).
+- **Groups by update type:** all minor + patch in one PR, each major on its own, all
+  Actions bumps in one PR. Not by dependency type: dependabot-core#14824 marks every
+  catalog entry `production`.
+- **Stable-only** is Dependabot's default while no manifest is on a prerelease.
+- **Labels and prefixes:** `dependencies`; `chore(deps)`, `chore(deps-dev)`, `chore(ci)`.
+- **pnpm ≥ 11.13.0** in `packageManager`: older pnpm trusts the Dependabot proxy's `304`
+  and fails every job with `ERR_PNPM_CACHE_MISSING_AFTER_304`, which shows up only as
+  Dependabot closing the PR (pnpm/pnpm#12882, #338).
+- **Security updates and alerts** are enabled in the repository settings (2026-10-23).
+  An advisory opens its own PR outside the monthly cadence.
 
-<a id="boring-schedule"></a>
+### Changing `.github/dependabot.yml`
 
-### Why the schedule is boring — and how a broken config stayed silent
+GitHub validates the file only on some PRs that touch it, so a missing red check proves
+nothing (#185, #153, #195). On any change:
 
-The cadence used to be biweekly (the 1st and 15th) via `interval: "cron"`. It never ran
-**once**. The schedule carried a `cron:` sub-key, which is not in Dependabot's schema at
-all — the expression key is `cronjob` — so GitHub rejected the file outright:
-
-```
-The property '#/updates/0/schedule' contains additional properties ["cron"]
-outside of the schema when none are allowed
-```
-
-A rejected config is not a degraded config: nothing runs. That cost this repo every
-Dependabot update between the config landing (`31e1cc4`, the SDK 56 → 57 track) and #191.
-
-**The expensive part was the silence, not the typo.** GitHub validates
-`.github/dependabot.yml` only on a PR that *touches the file*, so a config broken at
-birth never gets a second look — no red check anywhere, just an automation that quietly
-does not exist. It surfaced only because an unrelated PR happened to edit a nearby line.
-
-Worse, **the config check cannot be used as a gate.** Dependabot posts it as a check run
-named `.github/dependabot.yml`, but only sometimes: it appeared on #185 (failing, on a PR
-that edited an unrelated line) and did **not** appear at all on #153 (which introduced the
-broken file) or on #195 (which fixed it). A red one is proof of breakage; its absence is
-proof of nothing. Never read "no complaint" as "valid".
-
-So, two standing rules for this file:
-
-1. **Validate it yourself, locally, on any change.** Do not wait to be told. The config is
-   plain YAML against a published JSON Schema:
+1. **Validate locally, both directions**: the new file passes and the form it replaces
+   fails.
 
    ```sh
    curl -sLO https://json.schemastore.org/dependabot-2.0.json   # -L: it redirects
@@ -150,348 +79,150 @@ So, two standing rules for this file:
    npx --yes ajv-cli@5 validate --strict=false -s dependabot-2.0.json -d /tmp/cfg.json
    ```
 
-   Two footguns in that recipe, both hit while writing it: without `-L` you download an
-   HTML redirect page, and `-d` must be a real file — a `<(…)` process substitution fails,
-   because ajv reads the input twice and a fifo only yields once. `--strict=false` is
-   required because the schema carries an `x-intellij-enum-metadata` keyword.
-
-   A good check confirms **both directions** — that the new config passes *and* that the
-   form you are replacing fails. If a red `.github/dependabot.yml` check also shows up on
-   the PR, treat it as a bonus signal, not the signal.
-
-2. **Confirm a real run, not just a valid file** — a valid config that never fires looks
-   exactly like this bug did. _Insights → Dependency graph → Dependabot_ shows "Last
-   checked" per ecosystem, and its "Check for updates" button forces a run immediately
-   instead of waiting for the 1st. **Do this after merging any schedule change.**
-
-`monthly` was chosen over a corrected `cronjob:` expression on purpose. Cron scheduling
-carries failure modes a named interval simply does not have — runaway job storms
-([dependabot-core#14035][14035]), biweekly expressions silently degrading to weekly
-([dependabot-core#12246][12246]), and a day-of-month/day-of-week combination that ORs
-rather than ANDs. Those specific bugs are fixed upstream (checked 2026-08-11), but the
-whole class is avoidable, and given that nothing had run at all, **reliable once a month
-beats elegant twice a month.** The cost is one skipped run per month; the gain is a
-schedule with nothing to get wrong.
-
-<a id="one-npm-directory"></a>
-
-### Why there is exactly one npm directory
-
-The `npm` entry lists a single `directory: "/"`. It used to list four — `/`, `/apps/api`,
-`/apps/mobile`, `/packages/shared` — on the reasonable-sounding theory that each
-workspace member needs its own entry. It does not, and the extra three actively hurt.
-
-A pnpm workspace is **one dependency graph resolved into one root `pnpm-lock.yaml`**. The
-root job walks every member manifest and the catalog, and regenerates that lockfile. A
-per-member job is scoped to its own directory, so it edits that `package.json` and
-**cannot** touch the root lockfile, which sits outside its scope. The PR it opens is dead
-on arrival — CI's `pnpm install --frozen-lockfile` fails with `ERR_PNPM_OUTDATED_LOCKFILE`
-before a single real check runs.
-
-The result was a matched pair of PRs for every `apps/api` bump: one correct from `/`, one
-permanently red from `/apps/api`.
-
-| Bump                         | From `/`                   | From `/apps/api`          |
-| ---------------------------- | -------------------------- | ------------------------- |
-| `@hono/node-server` 1.19→2.1 | #198 — manifest + lockfile | #202 — manifest only, red |
-| `@types/node` 24→26          | #200 — manifest + lockfile | #203 — manifest only, red |
-
-Note the failure mode: the config was **schema-valid the whole time**, so neither local
-`ajv` validation nor GitHub's own config check could have caught it. The only signal was
-duplicate PRs where one of each pair never went green. When reviewing this file, read it
-for meaning, not just validity.
-
-**Add a directory here only for a package outside the pnpm workspace that carries a
-lockfile of its own. Never for a workspace member.**
-
-### Why grouping is by update-type, not dependency-type
-
-A known Dependabot bug ([dependabot-core#14824][14824]) misclassifies **all** pnpm
-catalog entries as `dependency-type: production`. A production-vs-development grouping
-split would therefore be unreliable. Grouping on **update level** (minor/patch vs major)
-sidesteps the bug entirely and gives us the review rhythm we actually want.
+   `-d` must be a real file (ajv reads it twice, a fifo yields once); `--strict=false`
+   because the schema carries `x-intellij-enum-metadata`.
+2. **Read it for meaning**: the per-member directories were schema-valid the whole time.
+3. **Confirm a real run** after a schedule change: _Insights → Dependency graph →
+   Dependabot_ shows "Last checked"; "Check for updates" forces a run.
 
 ### Why the Expo surface is frozen for automation
 
-`.github/dependabot.yml` **ignores** the entire Expo-governed surface: `expo`, `expo-*`,
-`@expo/*`, `react`, `react-native`, `react-native-*`, `@types/react`, and
-`eslint-config-expo`. These versions are dictated by the installed Expo SDK as a
-known-good, SDK-validated set. An independent bump — even a patch — can break the native
-build, so automation must never touch them. They are realigned only on the
-[Expo track](#expo-track).
+The npm `ignore` list holds the Expo-governed surface (`expo`, `expo-*`, `@expo/*`,
+`react`, `react-native`, `react-native-*`, `@types/react`) plus packages coupled to it:
 
-`eslint-config-expo` is the one Expo-governed package that is **not** matched by the
-name patterns: its major tracks the SDK (56.x for SDK 56, 57.x for SDK 57), but it is
-root-only tooling, so it lives in the repo-root `package.json` alongside `eslint` and
-`prettier` rather than in `apps/mobile`. It is therefore ignored by exact name and
-bumped by hand on the Expo track — `expo install --fix` does not reach outside
-`apps/mobile` and will not realign it for you.
+- `eslint-config-expo`: SDK-keyed major, but root-only tooling, so no pattern matches it
+  and `expo install --fix` does not reach it. Bump it by hand on the Expo track.
+- `@swmansion/argent`, `test-renderer` (`>=1.3.0`), `@sentry/react-native`: the reason
+  sits beside each entry in the file.
+
+`@better-auth/expo` and `@expo-google-fonts/*` are other scopes, JS-only, and stay
+updatable; `react-native-qrcode-svg` is frozen with the rest of `react-native-*`.
 
 ### Peers are declared, never auto-installed
 
-`pnpm-workspace.yaml` sets `autoInstallPeers: false` and `dedupePeerDependents: false`:
-a peer is linked only where a package declares it. With either one on, pnpm satisfies an
-optional peer from **another** workspace package. `apps/api` imports only
-`@better-auth/expo`'s server plugin, but it then linked that package's optional Expo peers
-(`expo-constants`, `expo-network`, …) from `apps/mobile` and resolved them separately.
-Every `better-auth` bump forked a second `expo`/`react-native` that way, and Expo Doctor's
-duplicate check failed (#295, #333). Pinning the peer that happened to differ
-(`@types/react`, #336) did not hold: Dependabot's lockfile still forked within the pinned
-range. Measured 2026-10-16 with pnpm 11.7.0 on #333's manifests: only both settings off
-gave one `expo`. That held on the existing lockfile, on a fresh lockfile, and after a
-further `better-auth` bump. `autoInstallPeers: false` alone, `dedupePeerDependents: false`
-alone, and `overrides` that remove the peer (`"@better-auth/expo>expo-constants": "-"`)
-all left `apps/api` on the Expo graph.
+`pnpm-workspace.yaml` sets `autoInstallPeers: false` and `dedupePeerDependents: false`.
+With either on, `apps/api` linked `@better-auth/expo`'s optional Expo peers from
+`apps/mobile`, so every `better-auth` bump forked a second `expo` and Expo Doctor's
+duplicate check failed (#295, #333). Only both settings off held (measured 2026-10-16,
+pnpm 11.7.0); a `@types/react` pin (#336), either setting alone, and `overrides` that
+remove the peer did not.
 
-When `pnpm install` warns about a peer, run `pnpm peers check` and do one of two things:
+When `pnpm install` warns about a peer, run `pnpm peers check` and either:
 
-- **Declare it** in the workspace package that needs it, under that package's version
-  authority (the Expo SDK for the Expo surface).
-- **Add it to `peerDependencyRules.ignoreMissing`**, with a comment naming who already
-  supplies it or why it is unused. Use this only when the package is supplied by a
-  dependency that owns its version, or is never loaded (web-only, never imported).
+- **declare it** in the workspace package that needs it, under that package's version
+  authority; or
+- **list it in `peerDependencyRules.ignoreMissing`** with a comment naming who supplies it
+  or why it is never loaded.
 
-Keep `pnpm peers check` clean. Every acceptable miss is listed in `ignoreMissing`, so a new
-entry in its output is a real decision to make.
+Every acceptable miss is listed, so a new line in `pnpm peers check` is a real decision.
 
-### Do not add `react-dom` (or a testing library that needs it)
+### Do not add `react-dom`
 
-Mobile hooks are tested with **`test-renderer`**, which builds an in-memory tree and
-needs no DOM (#53). This is deliberate: the obvious alternative,
-`@testing-library/react`, renders through `react-dom` into jsdom, and `react-dom` is a
-trap here.
-
-React refuses to run unless `react-dom` matches `react` **exactly**, so it would have to
-be pinned to whatever `react` the SDK dictates and moved on the Expo track by hand —
-and because `better-auth` and `expo` both declare it as an *optional* peer, any second
-copy forks `expo` into two peer resolutions until `expo-doctor` fails the install as
-duplicated.
-
-None of that exists today: nothing in the repo declares `react-dom`, so nothing installs it.
-Its only wanters are web-only DOM components (`@radix-ui/*`, `vaul`, via expo-router →
-`@expo/ui`), so it is listed in `peerDependencyRules.ignoreMissing`. Adding `@testing-library/react`,
-`jsdom`, or `react-dom` brings the whole chain back. If you need to render React Native
-components (not just hooks), that is a runner decision — see the note on Jest in the ADR,
-not a dependency to add here.
-
-> **Do not "helpfully" bump an Expo package.** `react-native-qrcode-svg` is `^`-ranged
-> and looks updatable, but it is frozen wholesale with the rest of `react-native-*` for
-> native-peer safety; it is reviewed during the Expo track. Conversely,
-> `@better-auth/expo` and `@expo-google-fonts/*` are **not** Expo-governed (different
-> scopes, JS-only) and stay updatable — the ignore patterns above deliberately do not
-> match them.
+Mobile hooks are tested with **`test-renderer`**, which needs no DOM (#53).
+`@testing-library/react`, `jsdom` and `react-dom` bring back a package that must match
+`react` exactly, moves by hand on the Expo track, and, as an optional peer of
+`better-auth` and `expo`, forks `expo` until Expo Doctor fails. Its only wanters are
+web-only DOM components, so it sits in `ignoreMissing`. Rendering React Native components
+(not just hooks) is a test-runner decision for the ADR, not a dependency to add.
 
 ## CI safety net
 
-Every update PR must pass the full gate in `.github/workflows/ci.yml` before it can
-merge green:
+Every update PR passes the gate in `.github/workflows/ci.yml` before it can merge:
 
-- `pnpm typecheck`, `pnpm lint`, `pnpm format:check`
-- `pnpm test` — the API suite runs against a **real** Postgres service (no mocks)
-- `pnpm deps:check` — `pnpm peers check` is clean, `apps/api` resolves no `expo` or
-  `react-native`, and the lockfile has no `react-dom` (the sections above say why)
-- **Expo surface, Dependabot PRs only** — `scripts/deps-check/expo-surface.mjs` compares
+- `pnpm verify`: `agents:check`, `deps:check` (peers clean, `apps/api` off the Expo
+  graph, no `react-dom`), `typecheck`, `lint`, `format:check`, and `test`, where the API
+  suite runs against a real Postgres.
+- **Expo surface, Dependabot PRs only**: `scripts/deps-check/expo-surface.mjs` compares
   the lockfile's resolved versions of every `ignore`-list package with the PR's base,
   transitive ones included. A move that leaves major.minor (`0.minor` on 0.x), a new
-  version alongside an old one, or an added or removed package fails. A patch move inside
-  the same contract is a warning on the PR ([drift, not a defect](#patch-drift-inside-an-sdk-is-not-a-defect)).
-  The Expo track moves these packages on purpose, so the step skips non-Dependabot PRs; on
-  #332 it would have failed `expo-modules-jsi` 57.0 → 57.1.
-- **`npx expo-doctor`** (run in `apps/mobile`) — validates that the mobile dependency
-  set is coherent, so config, peer-dependency and native-module incompatibility is
-  caught automatically before merge.
+  version beside an old one, or an added or removed package fails. A patch move inside
+  the same contract is a warning ([drift, not a defect](#patch-drift-inside-an-sdk-is-not-a-defect)).
+  The Expo track moves these packages on purpose, so other PRs skip the step; #332 would
+  have failed on `expo-modules-jsi` 57.0 → 57.1.
+- **`expo-doctor`** in `apps/mobile`: duplicate and overridden dependencies, peers, Expo
+  config, Metro config, native-module support packages.
 
-A bad update cannot merge green.
+### Gate vs monitor: one expo-doctor check runs elsewhere
 
-### Gate vs monitor: why one expo-doctor check runs elsewhere
-
-`expo-doctor` runs 21 checks. Twenty are a pure function of the repo — Expo config
-schema, duplicate and overridden dependencies, missing peer deps, Metro config,
-committed env files, `@react-navigation` alongside `expo-router`, native-module
-support-package compatibility. Those belong on the merge gate: they fail because of
-*your diff*.
-
-One is not: **"Check that packages match versions required by installed Expo SDK"**
-resolves its expected set from Expo's **live** version map. It turns red the moment
-Expo publishes a patch inside the current SDK, on a commit that changed nothing. On
-the merge gate that is corrosive — it reddens unrelated PRs on Expo's release
-schedule, and teaches everyone to merge through red, which destroys the gate for the
-twenty checks that *are* about the diff. (It happened: `main` sat red from
-2026-07-29 until #167, discovered only because it also reddened an unrelated feature
-PR.)
-
-So the split is:
+Twenty of expo-doctor's 21 checks are a function of the diff and gate every PR. The
+twenty-first, "packages match versions required by installed Expo SDK", reads Expo's
+**live** version map and goes red on a commit that changed nothing once Expo ships a
+patch. On the gate it taught merging through red (`main` red from 2026-07-29 to #167).
 
 | Where | What runs | Role |
 | --- | --- | --- |
-| `ci.yml`, every PR | `expo-doctor` with `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK=1` | **gate** — blocks merge |
-| `expo-sdk-check.yml`, fortnightly + `workflow_dispatch` | full `expo-doctor` | **monitor** — opens a drift issue, see below |
+| `ci.yml`, every PR | `expo-doctor@<pinned>` with `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK=1` | **gate** |
+| `expo-sdk-check.yml`, 1st and 15th + `workflow_dispatch` | full `expo-doctor`, floating | **monitor**: opens a drift issue |
 
-Both jobs also set `EXPO_DOCTOR_WARN_ON_NETWORK_ERRORS=1`: several checks call Expo's
-API, and a network blip is not a broken PR.
-
-**The monitor does not gate pull requests** (#232). It used to fail PRs touching the
-mobile manifests or the lockfile, on the reasoning that a dependency change is exactly
-where alignment must hold. The cadence does not allow it. `expo` shipped 20 stable
-releases inside SDK 57 at a **median 3 days** apart, and #222 realigned everything on
-2026-08-26 only for `expo install --check` to report 10 packages behind by 08-30. The
-aligned window is ~2–3 days, so the gate was red by default — a toll booth paid in
-either an unrelated realign or an override.
-
-It also never earned its keep. Every real dependency defect this repo has hit —
-`expo-constants` (#212), `@types/react` (#223), `@expo/dom-webview` (#224/#226) — was
-caught by a **duplicate-** or **overridden-dependency** check, and all of those gate on
-every PR through `ci.yml`. The version match caught none of them; it only blocked. Expo
-treats it as advisory too: *"There may be circumstances where you want to use a version
-of a package that is different from the version recommended by `npx expo install`"*
-([expo.fyi/dependency-validation](https://expo.fyi/dependency-validation)).
+Both set `EXPO_DOCTOR_WARN_ON_NETWORK_ERRORS=1`. The monitor does not gate PRs (#232):
+`expo` shipped 20 releases in SDK 57 at a median 3 days apart, so the aligned window is
+2–3 days. Every real defect so far (#212, #223, #224/#226) was caught by the duplicate or
+overridden checks that do gate.
 
 ### Patch drift inside an SDK is not a defect
 
-The contract is the **major** — SDK 57. Being a few patches behind inside it is the
-normal resting state of any project that is not realigned daily, and `expo install`
-picks the SDK's known-good set whenever it runs.
-
-So realign on the fortnightly drift issue, or when a fix actually needs a newer patch.
-**Never realign to make a check green** — that inverts the tool into the thing it was
-supposed to serve, and drags unrelated native bumps (`react-native`, `react-native-*`)
-into whatever PR happened to be open. If a realign moves the native surface, it is its
-own PR on the Expo track, with a dev-build rebuild and a smoke test.
+The contract is the SDK major. Realign on the drift issue, or when a fix needs a newer
+patch, and never to make a check green: that drags unrelated native bumps into whatever
+PR is open. A realign that moves the native surface is its own Expo-track PR, with a
+dev-build rebuild and a smoke test.
 
 ### Pin the gate's expo-doctor; leave the monitor's floating
 
-Moving the SDK version check off the gate fixed *a* check that read external state. It
-left the **tool itself** reading external state: `npx expo-doctor` resolves `latest` at
-run time, so the gate's definition of pass/fail changes on Expo's release schedule.
-
-That bit on 2026-08-28. Identical lockfile, two verdicts:
-
-| When | expo-doctor | Result |
-| --- | --- | --- |
-| 2026-08-26, `main` | 1.20.3 | 20/20 — green |
-| 2026-08-28, #224 (only `.github/dependabot.yml` changed) | 1.20.4 | 19/20 — `✖ Check for overridden dependencies` |
-
-1.20.4 flags `@expo/dom-webview@56.0.5` where `expo` wants `~57.0.1` — **a real defect**,
-sitting on `main` unnoticed. That is the point: the new check was right, and it still must
-not arrive by surprise on an unrelated PR. A gate that reddens on someone else's release
-teaches the team to merge through red, which is what cost this repo `main` for two weeks.
-
-So `ci.yml` pins an exact version and `expo-sdk-check.yml` does not:
-
-- **Gate → pinned.** Deterministic, a function of the diff. New checks arrive in one
-  deliberate PR where the findings can be read and fixed together.
-- **Monitor → floating.** Its job is to notice drift against the outside world; running
-  the newest checks is the feature.
-
-**The pin went in at 1.20.3, not 1.20.4** — the last version `main` was verified green
-on. Introducing the pin and adopting a newer check are two separate changes, and the PR
-that introduced the mechanism (#225) did only the first. Pinning to the newest release in
-the same commit would have made the mechanism's first act the very thing it exists to
-prevent — a gate reddening on a finding nobody had scheduled time to fix.
-
-#226 then bumped it to 1.20.4 **together with the fix for what 1.20.4 found**. That is the
-shape every future bump should take: read the new findings, fix them, move the pin, one PR.
-A bump that needs the findings deferred is a bump that is not ready.
-
-**Bump the pin by hand, on the Expo track.** Dependabot cannot see a version inside an
-`npx` string, and moving `expo-doctor` into `apps/mobile` devDependencies would not help
-— it matches the `expo-*` ignore pattern and is frozen for automation like every other
-Expo-governed package. Its dist-tags are SDK-keyed (`sdk-56` → 1.19.12), the same signal.
+`npx expo-doctor` resolves `latest` at run time, so an unpinned gate changes its verdict
+on Expo's schedule: the same lockfile passed on 1.20.3 and failed on 1.20.4 (#224). The
+gate pins an exact version; the monitor floats, because noticing the outside world is its
+job. Bump the pin by hand on the Expo track, **in the same PR that fixes what the new
+version finds** (#226). Dependabot cannot see a version inside an `npx` string, and as a
+devDependency `expo-doctor` would match the `expo-*` ignore anyway.
 
 ### Transitive Expo packages float through the freeze
 
-The `ignore` list stops Dependabot editing a **manifest**. It does not stop a full lockfile
-re-resolution floating an Expo-governed package that arrives **transitively** — and
-`expo install --fix` will not realign one either, because it only touches declared
-packages. Three instances in one month, all surfacing as an `expo-doctor` duplicate- or
-overridden-dependency failure:
+The `ignore` list stops Dependabot editing a manifest, not a lockfile re-resolution
+floating an Expo-governed package in transitively, and `expo install --fix` touches only
+declared packages (#212, #223, `@expo/dom-webview`). On a Dependabot PR the Expo surface
+step in `ci` names the package.
 
-| PR | Package | Fork |
-| --- | --- | --- |
-| #212 | `expo-constants` | 57.0.10 vs 57.0.11 |
-| #223 | `@types/react` | 19.2.17 vs 19.2.18 → forks `react-native` → forks `expo` |
-| `main` | `@expo/dom-webview` | 56.0.5 installed, `expo` wants `~57.0.1` |
+**Fix: declare it with `expo install <pkg>` in `apps/mobile`**, so the SDK map owns its
+version (#226: one manifest line, nothing else moved). Measured 2026-08-30 on pnpm 11.7.0,
+these fail: `pnpm install --resolution-only` (no-op), `overrides:` (do not reach
+auto-installed peer edges), deleting entries plus `--fix-lockfile` ("Already up to
+date"), and `pnpm update -r <pkg>` (floats `@expo/cli` and friends). Never hand-edit
+`pnpm-lock.yaml`. Declaring widens peer suffixes elsewhere (`react-dom@19.2.7` went from
+34 to 74 occurrences), so read that part of the diff.
 
-On a Dependabot PR the Expo surface step in `ci` names the package (see
-[CI safety net](#ci-safety-net)). When one appears it is a **resolution** problem, not a manifest bump — but do not assume a
-narrow lockfile-only fix exists. Measured against `@expo/dom-webview@56.0.5` on
-2026-08-30, pnpm 11.7.0, every contained option failed:
-
-| Attempt | Outcome |
-| --- | --- |
-| `pnpm install --resolution-only` | No-op. pnpm treats the stale resolution as settled. |
-| `overrides:` in `pnpm-workspace.yaml` | Recorded in the lockfile, **peer unchanged at 56.0.5** — overrides do not reach auto-installed peer edges. Re-resolution also spread `react-dom@19.2.7` from 34 lockfile occurrences to 74, against `react@19.2.3`. |
-| Delete the stale entries, `pnpm install --fix-lockfile` | pnpm short-circuits on "Already up to date" and never re-reads the lockfile. |
-| `pnpm update -r <pkg>` | Fixes the package, but the name matches no importer, so pnpm falls back to a general update: `@expo/cli` 57.0.18 → 57.0.20, plus `@expo/metro-config`, `@expo/ui`, `@expo/log-box`. Floats the native surface — forbidden. |
-
-**What works: declare it, and let the SDK version map own the version.** In #226,
-`expo install @expo/dom-webview` from `apps/mobile` resolved it against the SDK 57 map
-(`~57.0.1` — it reported "Installing 1 SDK 57.0.0 compatible native module"), which
-promotes the package from an auto-installed peer edge that pnpm will not revisit to a
-declared dependency pnpm must satisfy. The result was the narrowest possible fix:
-
-- one manifest line in `apps/mobile/package.json`;
-- `@expo/dom-webview` 56.0.5 → 57.0.1 in the lockfile and **nothing else moved** —
-  `@expo/cli` stayed 57.0.18, `@expo/log-box` 57.0.3, `react` 19.2.3, `react-native`
-  0.86.2;
-- `pnpm-workspace.yaml` untouched (no `minimumReleaseAgeExclude` block appended).
-
-The cost is a declared dependency the app does not import directly. That is acceptable
-precisely because the SDK map has an opinion about it: the entry is a faithful mirror like
-every other line in that manifest, and `expo install --fix` maintains it from now on
-rather than it becoming a hand-held pin. Prefer this to a full re-resolution whenever the
-forked package is in the SDK map — and never hand-edit `pnpm-lock.yaml` (see
-`CONTRIBUTING.md`).
-
-One thing to check rather than assume: promoting a peer to a declared dependency widens
-peer-resolution suffixes elsewhere in the lockfile. Here `react-dom@19.2.7` went from 34
-occurrences to 74 without a second copy being installed or `expo-doctor` complaining —
-but `react-dom` is the package this repo is most exposed to (see "Do not add `react-dom`"
-above), so read that part of the diff rather than skimming it.
-
-Note this is *not* a job for `expo.install.exclude` (which `expo-doctor`'s own advice
-suggests). That key would also hide those packages from `expo install --check`,
-blinding the Expo track itself. Never silence the packages; move the check.
+Keep the packages visible to `expo install --check`: `expo.install.exclude` would blind the
+Expo track itself.
 
 ## The maintainer's recurring task
 
-1. When the monthly grouped Dependabot PR arrives, **review it tests-first** (as usual)
-   and merge if the gate is green. Majors arrive as their own PRs — merge or hold each
-   independently.
-2. **Separately, when the Expo drift issue appears,** run the Expo track below. This is
-   judgment-heavy and stays a human decision, not automation — but you no longer have to
-   remember to look: `.github/workflows/expo-sdk-check.yml` runs the full `expo-doctor`
-   on the 1st and 15th and opens an issue labelled `dependencies` when the mobile set has
-   fallen behind the installed SDK (one issue at a time; it stays open until the track is
-   run). A full SDK release still arrives the usual way — via Expo's own announcements —
-   and follows the `expo:upgrading-expo` skill.
-3. **When an Argent drift issue appears,** decide upgrade or retain, as #263 did.
-   Dependabot ignores `@swmansion/argent`, so `.github/workflows/argent-drift-check.yml`
-   compares the pin with npm's `latest` monthly and opens the issue. Closing it records
-   the decision for that release. Upgrade per
-   [Updating Argent](../argent-howto.md#updating-argent).
+1. **The monthly grouped Dependabot PR:** if `ci` and `e2e-android` are green on its
+   head, the checks have done the mechanical review; merge it. **On red CI, or for a
+   major or `0.x` minor**, take it to merge-ready in an agent session (#345): diagnose,
+   then hold the package on a branch from `main` (#340) and `@dependabot recreate`.
+2. **The Expo drift issue** (`expo-sdk-check.yml`, the 1st and 15th; one open at a time):
+   run the Expo track below. A full SDK release follows the `expo:upgrading-expo` skill.
+3. **An Argent drift issue** (`argent-drift-check.yml`, monthly): decide upgrade or
+   retain, as #263 did, per [Updating Argent](../argent-howto.md#updating-argent).
 
 <a id="expo-track"></a>
 
 ## Expo track (deliberate, human-run)
 
-The mobile native surface is realigned to a known-good set **only** through Expo's own
-tooling, keyed to Expo SDK releases — never by an out-of-band or automated bump. For a
-full SDK version jump (e.g. SDK 56 → 57), follow the `expo:upgrading-expo` skill; the
-core realignment recipe is:
+The native surface is realigned only through Expo's own tooling, keyed to SDK releases.
+For a full SDK jump, follow the `expo:upgrading-expo` skill; the core recipe:
 
 ```bash
 # From apps/mobile:
 npx expo install --check   # detect drift against the installed SDK (report only)
 npx expo install --fix     # realign every Expo-governed package to the SDK's set
-npx expo-doctor            # validate the whole mobile dependency graph is coherent
+npx expo-doctor            # validate the mobile dependency graph
 
 # From the repo root — `expo install --fix` does not reach outside apps/mobile:
 pnpm add -w -D eslint-config-expo@^<major>.0.0   # match the new SDK major
 ```
 
-On a full SDK jump, also regenerate the CNG native output so it is rebuilt against the
-new SDK (`apps/mobile/ios` and `android` are git-ignored build artefacts, not sources):
+On a full SDK jump, also regenerate the CNG output (`ios` and `android` are git-ignored
+build artefacts):
 
 ```bash
 # From apps/mobile:
@@ -499,40 +230,25 @@ rm -rf ios android .expo && watchman watch-del-all
 npx expo prebuild --clean
 ```
 
-`@sentry/react-native` is the exception to "the SDK sets the version": SDK 57's pin
-predates React Native 0.86, so it is held on 8.x (why: ADR 0019; approved by the
-maintainer 2026-10-21). `expo.install.exclude` in `apps/mobile/package.json` keeps
-`expo install --check/--fix` and the full Expo Doctor off it, and Dependabot ignores it.
-On each Expo track pass, move it to the latest stable 8.x by hand
-(`pnpm --filter @kavtsya/mobile add @sentry/react-native@~<version>`, after checking its
-changelog for the new React Native version). Drop the exclusion once the SDK's own pin
-catches up.
+- **`@sentry/react-native`** is held on 8.x ahead of the SDK's pin (ADR 0019, approved
+  2026-10-21). `expo.install.exclude` keeps `expo install` and the full Expo Doctor off
+  it. On each pass, move it to the latest stable 8.x by hand
+  (`pnpm --filter @kavtsya/mobile add @sentry/react-native@~<version>`) after reading its
+  changelog for the new React Native; drop the exclusion once the SDK catches up.
+- **`test-renderer`**: once the SDK ships React ≥ 19.3, drop its `ignore` entry and move
+  `apps/mobile` off `~1.2.0` (1.3 needs `react-reconciler` 0.34).
 
-If the new SDK ships React 19.3 or later, also lift the `test-renderer` hold: drop its
-`ignore` entry in `.github/dependabot.yml` and move `apps/mobile` off `~1.2.0` (1.3 needs
-React ≥ 19.3 through `react-reconciler` 0.34).
-
-Then run the full gate (`pnpm typecheck && pnpm lint && pnpm format:check && pnpm test`)
-and, for a real SDK jump, smoke-test the app in the simulator (see `docs/argent-howto.md`).
-
-`expo install --fix` is the sanctioned mechanism for changing an Expo-governed version —
-it picks the version the installed SDK blesses. It is **not** an "independent bump", so it
-does not violate the freeze; it is the freeze working as intended.
+Then `pnpm verify`, and for a real SDK jump a simulator smoke test
+(`docs/argent-howto.md`). `expo install --fix` picks the versions the installed SDK
+blesses: it is the freeze working, not an independent bump.
 
 ### Run the track a day after Expo publishes
 
-pnpm 11 quarantines fresh releases: `minimumReleaseAge` defaults to **1440 minutes (24h)**
-(it was `0` before v11), so pnpm refuses to install any version published less than a day
-ago. This collides with the Expo track by construction — the drift monitor fires *because*
-Expo just published, and the natural reflex is to run `expo install --fix` the same day.
-
-When that happens, pnpm offers to write a `minimumReleaseAgeExclude` list into
-`pnpm-workspace.yaml`, pinning each too-fresh version. **Do not commit that block.** It
-waives the supply-chain guard for exactly the packages that reach native code, it is the
-one part of the diff nobody reviews, and the list would grow on every future track run.
-
-The guard is not a merge-gate problem you have to work around — the cutoff is *rolling*,
-recomputed at install time, so it expires on its own:
+pnpm 11's `minimumReleaseAge` defaults to 24h, and the drift monitor fires because Expo
+just published. pnpm then offers to write a `minimumReleaseAgeExclude` list into
+`pnpm-workspace.yaml`. **Leave it out of the commit**: it waives the supply-chain guard
+for exactly the packages that reach native code, and it would grow on every run. The
+cutoff is rolling:
 
 ```bash
 git checkout pnpm-workspace.yaml   # drop the block pnpm appended
@@ -540,14 +256,6 @@ git checkout pnpm-workspace.yaml   # drop the block pnpm appended
 pnpm install --frozen-lockfile     # same lockfile, now passes
 ```
 
-The realigned `pnpm-lock.yaml` is already correct and does **not** need re-resolving — only
-the age check has to pass. Note it runs even when resolution is skipped: a lockfile carrying
-a too-fresh entry fails `pnpm install --frozen-lockfile` with
-`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`, so CI catches a committed bypass attempt too.
-
-So: let the drift issue sit for a day, then run the track. If you have already run it, keep
-the lockfile, drop the exclude block, and wait out the remainder of the window.
-
-[12246]: https://github.com/dependabot/dependabot-core/issues/12246
-[14035]: https://github.com/dependabot/dependabot-core/issues/14035
-[14824]: https://github.com/dependabot/dependabot-core/issues/14824
+The realigned lockfile needs no re-resolving. A committed too-fresh entry fails
+`pnpm install --frozen-lockfile` with `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`, so CI
+catches a bypass too.
