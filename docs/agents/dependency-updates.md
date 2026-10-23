@@ -290,6 +290,13 @@ merge green:
 - `pnpm test` — the API suite runs against a **real** Postgres service (no mocks)
 - `pnpm deps:check` — `pnpm peers check` is clean, `apps/api` resolves no `expo` or
   `react-native`, and the lockfile has no `react-dom` (the sections above say why)
+- **Expo surface, Dependabot PRs only** — `scripts/deps-check/expo-surface.mjs` compares
+  the lockfile's resolved versions of every `ignore`-list package with the PR's base,
+  transitive ones included. A move that leaves major.minor (`0.minor` on 0.x), a new
+  version alongside an old one, or an added or removed package fails. A patch move inside
+  the same contract is a warning on the PR ([drift, not a defect](#patch-drift-inside-an-sdk-is-not-a-defect)).
+  The Expo track moves these packages on purpose, so the step skips non-Dependabot PRs; on
+  #332 it would have failed `expo-modules-jsi` 57.0 → 57.1.
 - **`npx expo-doctor`** (run in `apps/mobile`) — validates that the mobile dependency
   set is coherent, so config, peer-dependency and native-module incompatibility is
   caught automatically before merge.
@@ -405,7 +412,8 @@ overridden-dependency failure:
 | #223 | `@types/react` | 19.2.17 vs 19.2.18 → forks `react-native` → forks `expo` |
 | `main` | `@expo/dom-webview` | 56.0.5 installed, `expo` wants `~57.0.1` |
 
-When one appears it is a **resolution** problem, not a manifest bump — but do not assume a
+On a Dependabot PR the Expo surface step in `ci` names the package (see
+[CI safety net](#ci-safety-net)). When one appears it is a **resolution** problem, not a manifest bump — but do not assume a
 narrow lockfile-only fix exists. Measured against `@expo/dom-webview@56.0.5` on
 2026-08-30, pnpm 11.7.0, every contained option failed:
 
