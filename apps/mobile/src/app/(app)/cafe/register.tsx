@@ -23,6 +23,7 @@ export default function RegisterCafeScreen() {
 
   return (
     <Screen
+      fixedHeader
       header={
         <BackHeader title="Стати Кавоваром" testID="register-cafe.back" />
       }

@@ -206,6 +206,7 @@ export default function ScanPosterScreen() {
         header={
           <BackHeader title="Приєднатися до кав'ярні" testID="request.back" />
         }
+        fixedHeader
       >
         <StatusStrip
           testID="request.owner-cafe"
@@ -223,7 +224,7 @@ export default function ScanPosterScreen() {
   // barista off their current post (#99).
   if (switchTo) {
     return (
-      <Screen header={<BackHeader title="Уже на зміні" />}>
+      <Screen fixedHeader header={<BackHeader title="Уже на зміні" />}>
         <Surface emphasis="promise">
           <Text
             style={{
@@ -261,6 +262,7 @@ export default function ScanPosterScreen() {
         header={
           <BackHeader title="Приєднатися до кав'ярні" testID="request.back" />
         }
+        fixedHeader
       >
         <View style={{ flex: 1, justifyContent: "center" }}>
           <ActivityIndicator size="large" color={t.c.foreground} />
@@ -274,6 +276,7 @@ export default function ScanPosterScreen() {
       header={
         <BackHeader title="Приєднатися до кав'ярні" testID="request.back" />
       }
+      fixedHeader
     >
       <Muted style={{ textAlign: "left" }}>
         Бариста? Скануй постер Кавці біля каси своєї кав&apos;ярні.
