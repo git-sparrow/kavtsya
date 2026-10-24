@@ -10,6 +10,9 @@
     "ios": {
       "bundleIdentifier": "com.kavtsya.app",
       "supportsTablet": false,
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "icon": {
         "light": "./assets/images/icon.png",
         "dark": "./assets/images/ios-icon-dark.png",
