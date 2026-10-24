@@ -34,7 +34,9 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Кавця використовує камеру, щоб сканувати QR-код клієнта і нараховувати зернятка."
+          "cameraPermission": "Кавця використовує камеру, щоб сканувати QR-код клієнта і нараховувати зернятка.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ],
       [
@@ -57,6 +59,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6844a2d6-a989-4f48-a401-33cc0bf0645b"
+      }
+    },
+    "owner": "olekhorob"
   }
 }
