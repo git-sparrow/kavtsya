@@ -204,7 +204,6 @@ eas update --branch <branch> --environment production \
 Put the command in the script that publishes updates; ADR 0019 names what
 skipping it costs.
 
-
 ## Shipping the mobile app
 
 The **maintainer** owns account setup, credentials, remote builds, submissions,
@@ -269,6 +268,13 @@ checkout. No credentials belong in `eas.json` or PR evidence.
 Keep `KAVTSYA_NO_PUSH` **unset** in the maintainer shell, local env files and both
 EAS environments. That free-team escape hatch strips the push entitlement.
 Check EAS environment variables for conflicting API URLs before building.
+
+Finish [Crash reporting (Sentry) › One-time setup](#one-time-setup-maintainer)
+before the first `preview` or `production` build: both profiles read their
+EAS environment, and without `SENTRY_AUTH_TOKEN` the source-map upload fails
+the build. The first tester build is also the build for "Prove it before
+trusting it".
+
 EAS CLI 24.13.0 was checked with `npm view eas-cli version peerDependencies deprecated`
 on 2026-10-14; commands/flags and remote credential handling were read in the
 [EAS CLI reference](https://docs.expo.dev/eas/cli/) and
