@@ -188,6 +188,7 @@ export default function Settings() {
   if (!me) {
     return (
       <Screen
+        fixedHeader
         header={<BackHeader title="Налаштування" testID="settings.back" />}
       >
         <View style={{ flex: 1, justifyContent: "center" }}>
@@ -250,7 +251,10 @@ export default function Settings() {
   );
 
   return (
-    <Screen header={<BackHeader title="Налаштування" testID="settings.back" />}>
+    <Screen
+      fixedHeader
+      header={<BackHeader title="Налаштування" testID="settings.back" />}
+    >
       <IdentityCard name={me.name} email={me.email} owner={isOwner} />
 
       {/* Same rows in the same place for both roles (10a): the theme is a

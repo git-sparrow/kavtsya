@@ -41,7 +41,7 @@ export function BackHeader({
       >
         <Icon name="chevron-left" size={24} color={t.c["text-secondary"]} />
       </Pressable>
-      <Heading size={24} accessibilityRole="header">
+      <Heading size={24} accessibilityRole="header" style={{ flexShrink: 1 }}>
         {title}
       </Heading>
     </View>
