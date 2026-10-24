@@ -203,3 +203,239 @@ eas update --branch <branch> --environment production \
 
 Put the command in the script that publishes updates; ADR 0019 names what
 skipping it costs.
+
+## Shipping the mobile app
+
+The **maintainer** owns account setup, credentials, remote builds, submissions,
+store rollout and physical-device checks. Agents prepare config and commands;
+merging a PR does not trigger a mobile release. Run EAS commands in `apps/mobile`
+([Expo monorepo guide](https://docs.expo.dev/build-reference/build-with-monorepos/),
+read via the `llms.txt` index on 2026-10-14).
+
+### Profiles and versions
+
+[`apps/mobile/eas.json`](../apps/mobile/eas.json) defines `preview` for internal
+distribution and `production` for TestFlight/Play (Android AAB). Both bundle
+`EXPO_PUBLIC_API_URL=https://api.kavtsya.com`: preview uses real production data
+and writes. Preview is not a store build or a staging backend.
+
+Before a new marketed release, change `expo.version` in `app.json` through a PR;
+leave it unchanged for replacement builds of that release. EAS owns
+`ios.buildNumber` and `android.versionCode` remotely and increments them for
+production builds; do not add or hand-bump them in app config. With no existing
+remote/local build number, EAS initializes the first build at 1. If builds have
+already been uploaded outside EAS, the maintainer first runs
+`npx eas-cli@25.3.0 build:version:set` and enters each platform's last uploaded
+number. ([Expo versioning](https://docs.expo.dev/build-reference/app-versions/),
+read on 2026-10-14: `cli.appVersionSource: remote`, `autoIncrement: true`.)
+
+No EAS development profile is included. `developmentClient: true` requires
+`expo-dev-client`, which this app does not declare. Checked on 2026-10-14 against
+[EAS profiles](https://docs.expo.dev/build/eas-json/) and the
+[SDK 57 DevClient reference](https://docs.expo.dev/versions/v57.0.0/sdk/dev-client/).
+Any future addition uses `expo install`; SDK 57 governs the native surface.
+
+### Maintainer setup and credentials
+
+Before building, the maintainer needs an owning Expo account, a paid individual
+Apple Developer team and App Store Connect app record for `com.kavtsya.app`, and
+a personal Google Play developer account with an app record and the internal
+testers' Google account emails (the closed test needs 15–20 recruited testers
+later). Device checks below use the maintainer’s physical iPhone, a second
+physical iPhone, and separate Customer and CafeOwner accounts. Resolve the store
+contact mailbox before completing store listings.
+
+From the reviewed checkout, after `pnpm install --frozen-lockfile`:
+
+```bash
+cd apps/mobile
+npx eas-cli@25.3.0 login
+npx eas-cli@25.3.0 project:init
+npx eas-cli@25.3.0 credentials -p ios
+npx eas-cli@25.3.0 credentials -p android
+```
+
+Select the owning Expo project and paid Apple team, and EAS-managed credentials.
+Review and commit the real project linkage (`extra.eas.projectId` and any
+`owner` change) through the release PR before building; do not invent an ID.
+For iOS, configure the distribution certificate, provisioning profile, APNs key
+and App Store Connect API key. For Android, configure the upload keystore and
+Google Service Account key for Play submissions. EAS stores managed credentials
+on its servers; Apple/Google accounts and store records stay in their portals.
+Keep downloaded keys, service-account JSON and `credentials.json` outside the
+checkout. No credentials belong in `eas.json` or PR evidence.
+
+Keep `KAVTSYA_NO_PUSH` **unset** in the maintainer shell, local env files and both
+EAS environments. That free-team escape hatch strips the push entitlement.
+Check EAS environment variables for conflicting API URLs before building.
+
+Finish [Crash reporting (Sentry) › One-time setup](#one-time-setup-maintainer)
+before the first `preview` or `production` build: both profiles read their
+EAS environment, and without `SENTRY_AUTH_TOKEN` the source-map upload fails
+the build. The first tester build is also the build for "Prove it before
+trusting it".
+
+EAS CLI 25.3.0 was checked with `npm view eas-cli version deprecated engines`
+on 2026-10-24 (not deprecated; Node `>=22`), and each command below with its
+`--help` that day. Remote credential handling was read in the
+[EAS CLI reference](https://docs.expo.dev/eas/cli/) and
+[eas.json reference](https://docs.expo.dev/eas/json/) on 2026-10-14.
+
+### Preview: internal distribution
+
+The maintainer runs these from `apps/mobile` after the account/credential setup
+above. For iOS, first register each intended device with `device:create`, then
+select those devices when building so the ad hoc provisioning profile includes
+them. Install using the finished build’s EAS link. Android internal builds
+produce an APK; install it from its EAS link on the intended Android device.
+
+```bash
+npx eas-cli@25.3.0 device:create
+npx eas-cli@25.3.0 build -p ios --profile preview
+npx eas-cli@25.3.0 build -p android --profile preview
+```
+
+Only devices included in the iOS ad hoc profile can install that build; adding a
+device requires a rebuild or re-sign. Checked via the `llms.txt` index and
+[Expo internal distribution](https://docs.expo.dev/build/internal-distribution/)
+on 2026-10-14. These previews still access the production API.
+
+### iOS: build, TestFlight, device pass
+
+The maintainer runs these separately; replace the ID with the successful iOS
+production build's ID, so submission cannot accidentally select a preview build:
+
+```bash
+unset KAVTSYA_NO_PUSH
+npx eas-cli@25.3.0 build -p ios --profile production
+npx eas-cli@25.3.0 submit -p ios --profile production --id IOS_BUILD_ID
+```
+
+`submit.production.ios.ascAppId` in `eas.json` names the App Store Connect app,
+created by hand so its primary language and SKU are chosen rather than defaulted;
+the submit prompt only selects credentials. `ios.config.usesNonExemptEncryption:
+false` in `app.json` is the maintainer's export-compliance answer (standard HTTPS
+and the iOS Keychain only), so builds skip that prompt; revisit it before adding
+any other encryption. After Apple processes the upload, add the maintainer as a
+TestFlight internal tester and install that build on the physical iPhone.
+Submission uploads the binary; it does not publish an App Store release.
+([Expo iOS submit](https://docs.expo.dev/submit/ios/), read on 2026-10-14.)
+
+For the device pass, the maintainer operates both their iPhone **A** and the
+second iPhone **B**. Install the same production TestFlight build on both phones.
+The Apple ID used for TestFlight on B must be an App Store Connect user on the
+team with access to this app, invited to its internal testing group. Both
+phones run against production; the Customer QR is a live, rotating token.
+
+If someone else operates B, add their Apple ID as an App Store Connect user with
+app access for internal testing, or distribute through an external testing group,
+which requires TestFlight Beta App Review. These tester requirements were checked
+against [Apple internal testers](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers/)
+and [external testers](https://developer.apple.com/help/app-store-connect/test-a-beta-version/invite-external-testers/)
+on 2026-10-14.
+
+Decide the push-check path before starting: the **test Café created in step 1**
+must itself be on the Pro Plan to send a campaign. New Cafés start Free; in v1,
+only the Platform can change their Plan. That requires **explicit maintainer
+approval of a deliberate production Plan change** for this test Café. Without
+that approval and completed setup, record the push check as a gap up front and
+skip steps 4–5; do not attempt a send. No Plan change is implied by this procedure.
+
+Keep that Café dedicated to the test accounts: a campaign reaches **all** its
+recently active, consenting members with active device tokens, rather than one
+chosen Customer, and consumes its campaign allowance. Never send this test from
+any other live Café. The maintainer performs these steps:
+
+1. On **A**, create/sign in to the **CafeOwner** account and register a Café.
+   On **B**, create a new, separate **Customer** account and display its live QR.
+   Leave café news consent off and do not grant notification permission on **B**.
+   Record the Customer’s starting balance on B.
+2. On **A as CafeOwner**, open the scanner with camera permission not yet granted
+   and record the Ukrainian permission copy. Scan B’s Customer QR and verify a
+   successful Purchase; on **B as Customer**, verify the balance rises by one
+   Зернятко. On **A as CafeOwner**, rescan the **same, unexpired** QR and verify
+   duplicate rejection; on **B as Customer**, verify no second balance increase.
+   When the café-news consent card appears on **B** after the first Purchase,
+   decline it. This leaves account-level consent off; step 4 enables it on A.
+3. Record HTTP `201` then `409` evidence for A’s scan requests as well as the
+   visible results. If response statuses cannot be observed on the release
+   build, record that assertion as a gap rather than inferring it from screens.
+4. For the push check, **sign out on both phones**. On **A**, sign in to the same
+   **Customer** account used on B for the scan. On **B**, sign in to the
+   **CafeOwner** account used on A. On **A as Customer**, enable café news consent
+   and OS notifications; push-token registration must happen on **A**, the
+   intended receiving device.
+5. Only after the approved Pro setup above, on **B as CafeOwner**, send one test
+   campaign from the **same test Café created in step 1**, where the Customer
+   earned their Purchase. It reaches all that Café’s recently active, consenting
+   members with active tokens. Confirm the notification arrives on **A as
+   Customer**, using its production TestFlight build.
+6. Sign-out releases the device's push token (#350). Each send in steps 7–8 is
+   the test Café's first of that Kyiv day: the campaign cap is per Café per Kyiv
+   day, so these run on consecutive days. Record the result line the campaign
+   screen shows after each send; a release build shows no HTTP status.
+   **Day N**, after the step-5 send: on **A as Customer**, online and with café
+   news on, tap «Вийти» in Settings.
+7. **Day N+1:** on **B as CafeOwner**, send from «Розсилка». Expect «Поки нема
+   кому…» (0 recipients), and nothing arrives on **A**.
+8. On **A**, sign back in as the same Customer, **without opening Settings**.
+   **Day N+2:** on **B**, send again. Expect «Отримають 1 твоїх клієнтів», and
+   the notification arrives on **A**.
+
+Record the build ID/status, paid signing team confirmation, TestFlight version
+and build number, both device/iOS versions, sanitized screenshots or notes for
+each step, HTTP evidence, A’s push receipt (or gap) and the step 6–8 result lines
+in the release handoff.
+The agent reads no production data; never attach passwords, cookies, QR tokens,
+push tokens or customer records.
+
+### Android: build and internal testing
+
+The maintainer builds a production AAB, then submits that exact build:
+
+```bash
+npx eas-cli@25.3.0 build -p android --profile production
+npx eas-cli@25.3.0 submit -p android --profile production --id ANDROID_BUILD_ID
+```
+
+The submission profile uploads to **internal testing as a draft**. The first
+submission creates the app's first internal-testing release, which stays a draft
+in Play Console until the store listing and app setup tasks are complete. Then,
+in Play Console, create a tester email list (internal testing allows up to 100
+testers per app), select it on the internal test's Testers tab, roll out the
+draft release and send testers the test link. Internal testers cannot find the
+app by searching Google Play. After the first publish of any test type, the link
+can take several hours to reach testers; later bundles arrive within minutes.
+([Expo Android submit](https://docs.expo.dev/submit/android/) and
+[Google internal testing](https://support.google.com/googleplay/android-developer/answer/9845334),
+read on 2026-10-20.)
+
+Report the AAB build ID, versionCode, the internal release's rollout date, and
+one tester device (model and Android version) that installed the build from the
+test link and signed in. Record pending Play Console setup as a gap.
+
+### Android: closed test before the public release
+
+Not part of the internal-testing pass. A personal Play developer account needs a
+closed test before it can apply for production access, so start it early enough
+for the public release date. From the uploaded bundle, create a **closed
+testing** track and select or promote that bundle into its release. If the API
+upload is unavailable, download the AAB from that EAS build and upload it
+manually to the closed track. Complete review/rollout, configure the tester list
+and distribute the opt-in link. The qualifying closed-test period begins only
+after the closed release is available and the tester cohort is opted in.
+Do not substitute `track: beta`: Google's API documents beta as open
+testing and custom names for closed tracks.
+([Expo Android submit](https://docs.expo.dev/submit/android/),
+[submission schema](https://docs.expo.dev/eas/json/),
+[Google track names](https://developers.google.com/android-publisher/tracks),
+read on 2026-10-14.)
+
+Recruit 15–20 testers and keep at least 12 continuously opted in for 14 days.
+After that period, apply for production access; elapsed time alone does not
+publish the app. Checked against
+[Google's personal-account testing requirements](https://support.google.com/googleplay/android-developer/answer/14151465)
+on 2026-10-14. Report the AAB build ID, versionCode, actual closed-track name,
+rollout/availability date, and date the qualifying 12-tester continuous opt-in
+period began. Record pending review, listing/contact-email or recruitment as a
+gap until the closed release is available and the qualifying cohort is opted in.
