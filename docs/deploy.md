@@ -225,7 +225,7 @@ leave it unchanged for replacement builds of that release. EAS owns
 production builds; do not add or hand-bump them in app config. With no existing
 remote/local build number, EAS initializes the first build at 1. If builds have
 already been uploaded outside EAS, the maintainer first runs
-`npx eas-cli@24.13.0 build:version:set` and enters each platform's last uploaded
+`npx eas-cli@25.3.0 build:version:set` and enters each platform's last uploaded
 number. ([Expo versioning](https://docs.expo.dev/build-reference/app-versions/),
 read on 2026-10-14: `cli.appVersionSource: remote`, `autoIncrement: true`.)
 
@@ -249,10 +249,10 @@ From the reviewed checkout, after `pnpm install --frozen-lockfile`:
 
 ```bash
 cd apps/mobile
-npx eas-cli@24.13.0 login
-npx eas-cli@24.13.0 project:init
-npx eas-cli@24.13.0 credentials -p ios
-npx eas-cli@24.13.0 credentials -p android
+npx eas-cli@25.3.0 login
+npx eas-cli@25.3.0 project:init
+npx eas-cli@25.3.0 credentials -p ios
+npx eas-cli@25.3.0 credentials -p android
 ```
 
 Select the owning Expo project and paid Apple team, and EAS-managed credentials.
@@ -275,10 +275,11 @@ EAS environment, and without `SENTRY_AUTH_TOKEN` the source-map upload fails
 the build. The first tester build is also the build for "Prove it before
 trusting it".
 
-EAS CLI 24.13.0 was checked with `npm view eas-cli version peerDependencies deprecated`
-on 2026-10-14; commands/flags and remote credential handling were read in the
+EAS CLI 25.3.0 was checked with `npm view eas-cli version deprecated engines`
+on 2026-10-24 (not deprecated; Node `>=22`), and each command below with its
+`--help` that day. Remote credential handling was read in the
 [EAS CLI reference](https://docs.expo.dev/eas/cli/) and
-[eas.json reference](https://docs.expo.dev/eas/json/) that day.
+[eas.json reference](https://docs.expo.dev/eas/json/) on 2026-10-14.
 
 ### Preview: internal distribution
 
@@ -289,9 +290,9 @@ them. Install using the finished build’s EAS link. Android internal builds
 produce an APK; install it from its EAS link on the intended Android device.
 
 ```bash
-npx eas-cli@24.13.0 device:create
-npx eas-cli@24.13.0 build -p ios --profile preview
-npx eas-cli@24.13.0 build -p android --profile preview
+npx eas-cli@25.3.0 device:create
+npx eas-cli@25.3.0 build -p ios --profile preview
+npx eas-cli@25.3.0 build -p android --profile preview
 ```
 
 Only devices included in the iOS ad hoc profile can install that build; adding a
@@ -306,13 +307,17 @@ production build's ID, so submission cannot accidentally select a preview build:
 
 ```bash
 unset KAVTSYA_NO_PUSH
-npx eas-cli@24.13.0 build -p ios --profile production
-npx eas-cli@24.13.0 submit -p ios --profile production --id IOS_BUILD_ID
+npx eas-cli@25.3.0 build -p ios --profile production
+npx eas-cli@25.3.0 submit -p ios --profile production --id IOS_BUILD_ID
 ```
 
-The submit prompt selects the App Store Connect app and credentials. After Apple
-processes the upload, add the maintainer as a TestFlight internal tester, complete
-any compliance prompts, and install that build on the physical iPhone.
+`submit.production.ios.ascAppId` in `eas.json` names the App Store Connect app,
+created by hand so its primary language and SKU are chosen rather than defaulted;
+the submit prompt only selects credentials. `ios.config.usesNonExemptEncryption:
+false` in `app.json` is the maintainer's export-compliance answer (standard HTTPS
+and the iOS Keychain only), so builds skip that prompt; revisit it before adding
+any other encryption. After Apple processes the upload, add the maintainer as a
+TestFlight internal tester and install that build on the physical iPhone.
 Submission uploads the binary; it does not publish an App Store release.
 ([Expo iOS submit](https://docs.expo.dev/submit/ios/), read on 2026-10-14.)
 
@@ -389,8 +394,8 @@ push tokens or customer records.
 The maintainer builds a production AAB, then submits that exact build:
 
 ```bash
-npx eas-cli@24.13.0 build -p android --profile production
-npx eas-cli@24.13.0 submit -p android --profile production --id ANDROID_BUILD_ID
+npx eas-cli@25.3.0 build -p android --profile production
+npx eas-cli@25.3.0 submit -p android --profile production --id ANDROID_BUILD_ID
 ```
 
 The submission profile uploads to **internal testing as a draft**. The first
