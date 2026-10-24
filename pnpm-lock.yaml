@@ -2870,8 +2870,8 @@ packages:
   electron-to-chromium@1.5.396:
     resolution: {integrity: sha512-yHiw2Y3C3H9U6TMbOfoWK/BPreiOPXRfTWPBwQBoZG6/8TB6eOPnsy5oaRYuatR7Fw2SJ4kKforgufeo7fq0EQ==}
 
-  electron@42.6.1:
-    resolution: {integrity: sha512-HR9yiOyl+kZpSAugjOpBNvKpoh1wNpTK4wl6geD9W9Xmo6L6IgEzVB/JKlbEUDdXYeqRaaEhTUSSfyQ/g9iXvQ==}
+  electron@42.11.18:
+    resolution: {integrity: sha512-hbzodG06x/l7uq+oeyob5ugv6qZBmJRWC7Uto5QEE99xSHUARz6d+++Rz+79T/ssTYTQkONW4ciTTcJuAbXKIQ==}
     engines: {node: '>= 22.12.0'}
     hasBin: true
 
@@ -7331,7 +7331,7 @@ snapshots:
       tree-sitter: 0.21.1
       tree-sitter-typescript: 0.23.2(tree-sitter@0.21.1)
     optionalDependencies:
-      electron: 42.6.1
+      electron: 42.11.18
       node-pty: 1.1.0
     transitivePeerDependencies:
       - '@cfworker/json-schema'
@@ -8387,7 +8387,7 @@ snapshots:
 
   electron-to-chromium@1.5.396: {}
 
-  electron@42.6.1:
+  electron@42.11.18:
     dependencies:
       '@electron-internal/extract-zip': 1.0.4
       '@electron/get': 5.0.0
