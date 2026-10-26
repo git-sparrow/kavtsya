@@ -262,7 +262,9 @@ checkout. No credentials belong in `eas.json` or PR evidence.
 
 Keep `KAVTSYA_NO_PUSH` **unset** in the maintainer shell, local env files and both
 EAS environments. That free-team escape hatch strips the push entitlement.
-Check EAS environment variables for conflicting API URLs before building.
+Before building, list each EAS environment's variables
+(`npx eas-cli@25.3.0 env:list production`, then `preview`) and check them for
+`KAVTSYA_NO_PUSH` and a conflicting `EXPO_PUBLIC_API_URL`.
 
 Finish [Crash reporting (Sentry) › One-time setup](#one-time-setup-maintainer)
 before the first `preview` or `production` build: both profiles read their
@@ -330,27 +332,34 @@ against [Apple internal testers](https://developer.apple.com/help/app-store-conn
 and [external testers](https://developer.apple.com/help/app-store-connect/test-a-beta-version/invite-external-testers/)
 on 2026-10-14.
 
-Decide the push-check path before starting. Steps 4–8 send campaigns, which
-need three things; without all of them, record the push check as a gap up front
-and skip steps 4–8:
+Decide the push-check path before starting. Steps 4–8 (campaigns are sent in
+steps 5, 7 and 8) need three things; without all of them, record the push check
+as a gap up front and skip steps 4–8:
 
 - **Explicit maintainer approval of a deliberate production Plan change** for the
   test Café created in step 1. A campaign needs a Pro Café, new Cafés start
   Free, and in v1 only the Platform changes a Plan, by hand in the database.
-- The production API is deployed from a `main` that includes #350 (sign-out
-  releases the device's push token). GitHub records each production deploy's
-  commit: `gh api repos/git-sparrow/kavtsya/deployments --jq '.[0].sha'`.
-- The TestFlight build on A includes #350.
+- The serving `api` deployment includes #350 (sign-out releases the device's
+  push token): take its commit from the Railway dashboard's active `api`
+  deployment, and the merge commit of #350 from
+  `git log origin/main --grep '#350' --format=%h`.
+- The TestFlight build on A includes #350: take its commit from
+  `npx eas-cli@25.3.0 build:view <build ID>`.
+
+For each, `git merge-base --is-ancestor <#350 commit> <that commit>` must
+succeed.
 
 Keep that Café dedicated to the test accounts: a campaign reaches **all** its
-recently active, consenting Customers with active device tokens, and consumes
-its campaign allowance. Never send this test from any other live Café.
+recently active, consenting Customers with active device tokens. Each send,
+even one that reaches nobody, uses the Café's single campaign for that Business
+day, so a failed send is retried on the next Business day. Never send this test
+from any other live Café.
 
-After step 3 and before step 4's sign-ins, the maintainer makes the Plan change
-(the app reads a Café's Plan once per sign-in or launch, so a phone already
-signed in as the CafeOwner shows the Free offer until the app restarts) with
-`railway connect postgres` (needs `psql` installed locally; unverified), finding
-the Café by its CafeOwner's email:
+After step 3 and before step 4's sign-ins, the maintainer makes the Plan change.
+The app reloads a Café's Plan at sign-in and whenever Home regains focus, so a
+CafeOwner already on «Розсилка» sees the Free offer until they return to Home.
+Use `railway connect postgres` (needs `psql` installed locally; unverified) and
+find the Café by its CafeOwner's email:
 
 ```sql
 select c.id, c.name, c.plan from cafes c
@@ -358,7 +367,8 @@ select c.id, c.name, c.plan from cafes c
 update cafes set plan = 'pro' where id = '<that id>';
 ```
 
-When the test Café no longer needs campaigns, revert it with
+The `select` must return exactly one row, and the `update` must report
+`UPDATE 1`. When the test Café no longer needs campaigns, revert it with
 `update cafes set plan = 'free' where id = '<that id>';`.
 
 The maintainer performs these steps:
@@ -367,11 +377,13 @@ The maintainer performs these steps:
    On **B**, create a new, separate **Customer** account and display its live QR.
    Leave café news consent off and do not grant notification permission on **B**.
    Record the Customer’s starting balance on B.
-2. On **A as CafeOwner**, open the scanner with camera permission not yet granted
-   and record the Ukrainian permission copy. Scan B’s Customer QR and verify a
-   successful Purchase; on **B as Customer**, verify the balance rises by one
-   Зернятко. On **A as CafeOwner**, rescan the **same, unexpired** QR and verify
-   duplicate rejection; on **B as Customer**, verify no second balance increase.
+2. On **A as CafeOwner**, on a fresh install, open the scanner and record both
+   Ukrainian permission texts: the app's own screen, then the iOS alert. Scan
+   B’s Customer QR and verify a successful Purchase; on **B as Customer**, verify
+   the balance rises by one Зернятко. Within a minute, with B's app kept open
+   (the QR changes before it expires and whenever the app returns to the
+   foreground), on **A as CafeOwner** rescan the **same** QR and verify duplicate
+   rejection; on **B as Customer**, verify no second balance increase.
    When the café-news consent card appears on **B** after the first Purchase,
    decline it. This leaves account-level consent off; step 4 enables it on A.
 3. Record HTTP `201` then `409` evidence for A’s scan requests as well as the
@@ -391,29 +403,30 @@ The maintainer performs these steps:
    **Customer** account used on B for the scan. On **B**, sign in to the
    **CafeOwner** account used on A. On **A as Customer**, enable café news consent
    and OS notifications; push-token registration must happen on **A**, the
-   intended receiving device.
-5. On **A**, leave the app (Home screen or lock): the app shows no notification
+   intended receiving device. Stay on the app's home screen for about 15 seconds
+   so the registration finishes before A leaves the app.
+5. On **A**, leave the app (iOS Home screen or lock): the app shows no notification
    that arrives while it is open. On **B as CafeOwner**, send one test campaign
    from the **same test Café created in step 1**, where the Customer earned
    their Purchase. Confirm the notification arrives on **A**.
-6. Each send in steps 7–8 is the test Café's first of that Business day: the
-   campaign cap is per Café per Business day, so these run on consecutive days.
-   Record the result line the campaign screen shows after each send; a release
-   build shows no HTTP status.
+6. Steps 5, 7 and 8 each need their own Business day (one campaign per Café per
+   Business day), so they run on consecutive days. Record the result line the
+   campaign screen shows after each send; a release build shows no HTTP status.
    **Day N**, after the step-5 send: on **A as Customer**, online and with café
    news on, tap «Вийти» in Settings.
 7. **Day N+1:** on **B as CafeOwner**, send from «Розсилка». Expect «Поки нема
    кому…» (0 recipients), and nothing arrives on **A**.
 8. On **A**, sign back in as the same Customer, **without opening Settings**,
-   then leave the app. **Day N+2:** on **B**, send again. Expect «Отримають 1
-   твоїх клієнтів», and the notification arrives on **A**.
+   wait on the app's home screen for about 15 seconds, then leave the app.
+   **Day N+2:** on **B**, send again. Expect «Отримають 1 твоїх клієнтів», and
+   the notification arrives on **A**.
 
 Record the build ID/status, paid signing team confirmation, TestFlight version
 and build number, both device/iOS versions, sanitized screenshots or notes for
-each step, HTTP evidence, A’s push receipt (or gap) and the step 6–8 result lines
-in the release handoff.
+each step, HTTP evidence, A’s push receipt (or gap) and the result lines of
+steps 5, 7 and 8 in the release handoff.
 The agent reads no production data; never attach passwords, cookies, QR tokens,
-push tokens or customer records.
+member codes, push tokens or customer records.
 
 ### Android: build and internal testing
 
