@@ -346,7 +346,9 @@ Keep that Café dedicated to the test accounts: a campaign reaches **all** its
 recently active, consenting Customers with active device tokens, and consumes
 its campaign allowance. Never send this test from any other live Café.
 
-After step 1 and before step 5, the maintainer makes the Plan change with
+After step 3 and before step 4's sign-ins, the maintainer makes the Plan change
+(the app reads a Café's Plan once per sign-in or launch, so a phone already
+signed in as the CafeOwner shows the Free offer until the app restarts) with
 `railway connect postgres` (needs `psql` installed locally; unverified), finding
 the Café by its CafeOwner's email:
 
