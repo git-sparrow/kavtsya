@@ -1,5 +1,5 @@
 diff --git a/ios/Current/CameraSessionManager.swift b/ios/Current/CameraSessionManager.swift
-index 7a6568c3f0cdad49c1ab276da79660fdcd9a24dc..e5c56f625c3e486171003644028836b8e4a0ebcd 100644
+index 7a6568c3f0cdad49c1ab276da79660fdcd9a24dc..e597983d519b7c99de454d5983d46e259fb3c5af 100644
 --- a/ios/Current/CameraSessionManager.swift
 +++ b/ios/Current/CameraSessionManager.swift
 @@ -25,6 +25,9 @@ protocol CameraSessionManagerDelegate: AnyObject {
@@ -19,7 +19,7 @@ index 7a6568c3f0cdad49c1ab276da79660fdcd9a24dc..e5c56f625c3e486171003644028836b8
 -    let selectedDevice = lenses.first {
 -      $0.localizedName == delegate.selectedLens
 +    let selectedDevice: AVCaptureDevice?
-+    if usesAdaptiveScannerCamera {
++    if requestsAdaptiveScannerCamera {
 +      let preferredTypes: [AVCaptureDevice.DeviceType] = [.builtInDualWideCamera, .builtInTripleCamera]
 +      selectedDevice = preferredTypes.lazy.compactMap { type in
 +        lenses.first { camera in
@@ -35,16 +35,15 @@ index 7a6568c3f0cdad49c1ab276da79660fdcd9a24dc..e5c56f625c3e486171003644028836b8
      }
  
      if let selectedDevice {
-@@ -217,13 +232,35 @@ class CameraSessionManager: NSObject, DeviceDiscoveryDelegate {
+@@ -217,13 +232,38 @@ class CameraSessionManager: NSObject, DeviceDiscoveryDelegate {
      do {
        try device.lockForConfiguration()
        defer { device.unlockForConfiguration() }
 -      let minZoom = 1.0
 -      device.videoZoomFactor = minZoom * pow(device.activeFormat.videoMaxZoomFactor / minZoom, delegate.zoom)
 +      if usesAdaptiveScannerCamera {
-+        // A virtual camera starts at its ultra-wide field of view. Start at the
-+        // wide constituent's boundary so iOS can switch to macro without making
-+        // the Customer's QR smaller. The factor comes from this device, not a model table.
++        // Match the wide constituent's field of view using this virtual
++        // device's reported switchover boundary.
 +        let wideIndex = device.constituentDevices.firstIndex { $0.deviceType == .builtInWideAngleCamera }
 +        let factors = device.virtualDeviceSwitchOverVideoZoomFactors
 +        let wideZoom: CGFloat
@@ -66,14 +65,18 @@ index 7a6568c3f0cdad49c1ab276da79660fdcd9a24dc..e5c56f625c3e486171003644028836b8
      }
    }
  
-+  private var usesAdaptiveScannerCamera: Bool {
++  private var requestsAdaptiveScannerCamera: Bool {
 +    delegate?.selectedLens == Self.adaptiveScannerLens && delegate?.presetCamera == .back
++  }
++
++  private var usesAdaptiveScannerCamera: Bool {
++    requestsAdaptiveScannerCamera && captureDeviceInput?.device.isVirtualDevice == true
 +  }
 +
    func getAvailableLenses() -> [String] {
      guard let delegate else {
        return []
-@@ -355,6 +392,9 @@ class CameraSessionManager: NSObject, DeviceDiscoveryDelegate {
+@@ -355,6 +395,9 @@ class CameraSessionManager: NSObject, DeviceDiscoveryDelegate {
        if session.canAddInput(deviceInput) {
          session.addInput(deviceInput)
          captureDeviceInput = deviceInput
