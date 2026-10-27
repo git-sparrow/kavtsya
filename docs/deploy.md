@@ -380,10 +380,12 @@ The maintainer performs these steps:
 2. On **A as CafeOwner**, on a fresh install, open the scanner and record both
    Ukrainian permission texts: the app's own screen, then the iOS alert. Scan
    B’s Customer QR and verify a successful Purchase; on **B as Customer**, verify
-   the balance rises by one Зернятко. Within a minute, with B's app kept open
-   (the QR changes before it expires and whenever the app returns to the
-   foreground), on **A as CafeOwner** rescan the **same** QR and verify duplicate
-   rejection; on **B as Customer**, verify no second balance increase.
+   the balance rises by one Зернятко. The QR changes about 75 seconds after it
+   appears and whenever the app returns to the foreground, so just before the
+   first scan bring B's app back to the foreground (a fresh QR) and finish both
+   scans within a minute of that, with B's app kept open: on **A as CafeOwner**
+   rescan the **same** QR and verify duplicate rejection; on **B as Customer**,
+   verify no second balance increase.
    When the café-news consent card appears on **B** after the first Purchase,
    decline it. This leaves account-level consent off; step 4 enables it on A.
 3. Record HTTP `201` then `409` evidence for A’s scan requests as well as the
@@ -461,7 +463,9 @@ for the public release date. From the uploaded bundle, create a **closed
 testing** track and select or promote that bundle into its release. If the API
 upload is unavailable, download the AAB from that EAS build and upload it
 manually to the closed track. Complete review/rollout, configure the tester list
-and distribute the opt-in link. The qualifying closed-test period begins only
+and distribute the opt-in link. A tester already in the internal test must opt
+out of it before opting in to the closed test (Google internal testing page,
+read 2026-10-26). The qualifying closed-test period begins only
 after the closed release is available and the tester cohort is opted in.
 Do not substitute `track: beta`: Google's API documents beta as open
 testing and custom names for closed tracks.
