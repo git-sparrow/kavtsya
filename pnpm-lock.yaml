@@ -25,6 +25,9 @@ catalogs:
       specifier: ^4.6.7
       version: 4.6.7
 
+patchedDependencies:
+  expo-camera@57.0.6: 8bf5c332b7f87010b4ac22cf9e9fd6b75cc28dcb530584a28918fb1d3008dca0
+
 importers:
 
   .:
@@ -140,7 +143,7 @@ importers:
         version: 57.0.29(@expo/dom-webview@57.0.1)(@expo/metro-runtime@57.0.17)(expo-router@57.0.27)(react-native-worklets@0.10.1(react-native@0.86.3(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
       expo-camera:
         specifier: ~57.0.6
-        version: 57.0.6(expo@57.0.29)(react-native@0.86.3(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
+        version: 57.0.6(patch_hash=8bf5c332b7f87010b4ac22cf9e9fd6b75cc28dcb530584a28918fb1d3008dca0)(expo@57.0.29)(react-native@0.86.3(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
       expo-constants:
         specifier: ~57.0.22
         version: 57.0.22(expo@57.0.29)(react-native@0.86.3(@types/react@19.2.17)(react@19.2.3))
@@ -8792,7 +8795,7 @@ snapshots:
       - supports-color
       - typescript
 
-  expo-camera@57.0.6(expo@57.0.29)(react-native@0.86.3(@types/react@19.2.17)(react@19.2.3))(react@19.2.3):
+  expo-camera@57.0.6(patch_hash=8bf5c332b7f87010b4ac22cf9e9fd6b75cc28dcb530584a28918fb1d3008dca0)(expo@57.0.29)(react-native@0.86.3(@types/react@19.2.17)(react@19.2.3))(react@19.2.3):
     dependencies:
       barcode-detector: 3.2.0
       expo: 57.0.29(@expo/dom-webview@57.0.1)(@expo/metro-runtime@57.0.17)(expo-router@57.0.27)(react-native-worklets@0.10.1(react-native@0.86.3(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
