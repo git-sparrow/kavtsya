@@ -20,7 +20,7 @@ export const SCAN_REJECTION_COPY: Record<ScanRejection, RejectionCopy> = {
   },
   token_used: {
     title: "Код уже використано",
-    detail: "Попроси клієнта оновити екран",
+    detail: "Зачекай кілька секунд — QR клієнта оновиться сам",
   },
   invalid_token: {
     title: "Це не QR-код Кавці",

@@ -196,15 +196,25 @@ export type RewardDefaults = z.infer<typeof rewardDefaultsSchema>;
 
 /**
  * Contract for `GET /api/qr-token`: the Customer's short-lived, rotating QR
- * token (ADR 0006) and the instant it expires. The app renders `token` as a QR
- * and refreshes before `expiresAt`; the CafeOwner's scanner validates it
- * server-side (the scan slice, #20).
+ * token (ADR 0006), its id and the instant it expires. The app renders `token`
+ * as a QR and refreshes before `expiresAt`, or as soon as `jti` reads as used
+ * (`GET /api/qr-token/:jti`); the CafeOwner's scanner validates it server-side
+ * (the scan slice, #20).
  */
 export const qrTokenResponseSchema = z.object({
   token: z.string(),
+  jti: z.string(),
   expiresAt: z.string().datetime(),
 });
 export type QrTokenResponse = z.infer<typeof qrTokenResponseSchema>;
+
+/**
+ * Contract for `GET /api/qr-token/:jti` (#373): whether a Purchase has already
+ * earned on the caller's token, so the app can swap it before the next scan
+ * hits `token_used`. Only the caller's own Purchases count.
+ */
+export const qrTokenStatusSchema = z.object({ used: z.boolean() });
+export type QrTokenStatus = z.infer<typeof qrTokenStatusSchema>;
 
 /**
  * Platform-tunable QR-token settings, stored in `platform_config` under the
