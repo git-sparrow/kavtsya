@@ -209,7 +209,34 @@ Expo track itself.
 ## Expo track (deliberate, human-run)
 
 The native surface is realigned only through Expo's own tooling, keyed to SDK releases.
-For a full SDK jump, follow the `expo:upgrading-expo` skill; the core recipe:
+For a full SDK jump, follow the `expo:upgrading-expo` skill.
+
+`expo-camera` has a version-scoped native patch for adaptive Customer QR scanning
+(#372). Its SDK-governed version stays unchanged by the patch; iOS builds compile
+this module from source so the patch is used. Before an Expo realignment that moves
+its version:
+
+1. Preserve the current patch, then temporarily remove its exact-version entry
+   from `patchedDependencies` in `pnpm-workspace.yaml`. Otherwise pnpm rejects the
+   now-unused patch during installation. Do not build or ship the app in this
+   temporary unpatched state.
+2. Run the Expo track below. On the newly installed SDK-approved camera version,
+   use `pnpm patch expo-camera@<installed-version>`, port the adaptive scanner
+   changes, then run `pnpm patch-commit <edit-directory>` to register the new patch.
+   Remove the obsolete patch file after the replacement is registered.
+3. Keep `expo.autolinking.ios.buildFromSource` including `expo-camera` in the mobile
+   manifest. Regenerate iOS output/Pods and confirm the Pod report does not list
+   ExpoCamera among precompiled modules; rebuild and check that the patched Swift
+   source is compiled. Re-run the scanner's physical-device acceptance matrix
+   before treating the port as verified. If upstream replaces the patch, remove
+   the app's custom lens opt-in deliberately and verify equivalent behavior.
+
+Patch mechanics and source-build configuration checked 2026-10-27 against the
+[pnpm patch docs](https://pnpm.io/cli/patch),
+[Expo source-build docs](https://docs.expo.dev/guides/prebuilt-expo-modules/) and the
+installed Expo camera/autolinker sources.
+
+Core recipe:
 
 ```bash
 # From apps/mobile:

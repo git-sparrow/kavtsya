@@ -52,6 +52,6 @@ allowBuilds:
   # @sentry/cli-* package is missing (scripts/install.js, 3.8.0); pnpm installs
   # optional dependencies, so the binary always comes from there.
   "@sentry/cli": false
-# Port the scanner opt-in patch and retain the iOS source build when upgrading expo-camera.
+# Scanner patch upgrade procedure: docs/agents/dependency-updates.md#expo-track.
 patchedDependencies:
   expo-camera@57.0.6: patches/expo-camera@57.0.6.patch
