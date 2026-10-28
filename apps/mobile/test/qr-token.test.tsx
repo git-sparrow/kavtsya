@@ -14,8 +14,14 @@ import { act, cleanup, renderHook } from "./support/render-hook";
 const fetchQrToken = vi.fn<() => Promise<QrTokenResponse>>();
 const fetchQrTokenStatus = vi.fn<(jti: string) => Promise<QrTokenStatus>>();
 vi.mock("@/lib/api", () => ({ fetchQrToken, fetchQrTokenStatus }));
+const appStateListeners: ((state: string) => void)[] = [];
 vi.mock("react-native", () => ({
-  AppState: { addEventListener: vi.fn(() => ({ remove: vi.fn() })) },
+  AppState: {
+    addEventListener: (_: string, listener: (state: string) => void) => {
+      appStateListeners.push(listener);
+      return { remove: vi.fn() };
+    },
+  },
 }));
 
 const { useQrToken } = await import("../src/features/loyalty/use-qr-token");
@@ -53,6 +59,7 @@ beforeEach(() => {
   let n = 0;
   fetchQrToken.mockImplementation(async () => issued(++n));
   fetchQrTokenStatus.mockResolvedValue({ used: false });
+  appStateListeners.length = 0;
 });
 
 afterEach(() => {
@@ -93,6 +100,33 @@ describe("useQrToken", () => {
 
     expect(result.current.token).toBe("token-1");
     expect(fetchQrToken).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the newest token when two rotations overlap and the older one lands last", async () => {
+    const { result } = await open();
+    let releaseOlder!: (t: QrTokenResponse) => void;
+    fetchQrToken
+      .mockImplementationOnce(() => new Promise((r) => (releaseOlder = r)))
+      .mockImplementationOnce(async () => issued(3));
+
+    // The used check starts a rotation; the app returns to the foreground
+    // while it is still in flight and starts another.
+    fetchQrTokenStatus.mockResolvedValueOnce({ used: true });
+    await elapse(USED_CHECK_TICK);
+    await act(async () => {
+      appStateListeners.forEach((listener) => listener("active"));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(result.current.token).toBe("token-3");
+
+    await act(async () => {
+      releaseOlder(issued(2));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(result.current.token).toBe("token-3");
+    await elapse(USED_CHECK_TICK);
+    expect(fetchQrTokenStatus).toHaveBeenLastCalledWith("jti-3");
   });
 
   it("keeps the current QR and shows no error when the check fails", async () => {

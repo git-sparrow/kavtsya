@@ -1,6 +1,7 @@
 import type { Hono } from "hono";
 import type { QrTokenResponse, QrTokenStatus } from "@kavtsya/shared";
 import type { AppDeps } from "../app";
+import { tokenEarned } from "../purchases";
 import { signQrToken } from "../qr-token";
 import type { AuthedEnv } from "../require-user";
 import { uuidParamSchema } from "./params";
@@ -38,20 +39,12 @@ export function registerQrTokenRoutes(
   app.get("/api/qr-token/:jti", async (c) => {
     const user = c.get("user");
 
-    // Scoped to the caller's own Purchases, so someone else's jti reads as
-    // unused — the same answer as a jti that was never issued. A malformed one
-    // gets that answer too (every jti is a uuid).
+    // A malformed jti reads as unused, like one that was never issued: every
+    // jti is a uuid, so it can't have earned.
     const jti = uuidParamSchema.safeParse(c.req.param("jti"));
-    const [row] = jti.success
-      ? await db<{ used: boolean }[]>`
-          select exists (
-            select 1 from purchases
-            where "qr_jti" = ${jti.data} and "customer_user_id" = ${user.id}
-          ) as used
-        `
-      : [];
-
-    const body: QrTokenStatus = { used: row?.used ?? false };
+    const body: QrTokenStatus = {
+      used: jti.success && (await tokenEarned(db, user.id, jti.data)),
+    };
     return c.json(body);
   });
 }

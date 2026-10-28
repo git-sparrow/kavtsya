@@ -175,6 +175,25 @@ export async function issuePurchase(
   };
 }
 
+/**
+ * Whether a Purchase has already earned on the Customer's QR token `jti` — the
+ * single-use check (ADR 0006) read back for the app, so it can swap the token
+ * before the next scan. Someone else's `jti` reads as unused.
+ */
+export async function tokenEarned(
+  db: Queryable,
+  customerId: string,
+  jti: string,
+): Promise<boolean> {
+  const [row] = await db<{ earned: boolean }[]>`
+    select exists (
+      select 1 from purchases
+      where "qr_jti" = ${jti} and "customer_user_id" = ${customerId}
+    ) as earned
+  `;
+  return row?.earned ?? false;
+}
+
 /** The Customer's derived Зернятко balance at one Café (ADR 0010). */
 export async function balanceFor(
   db: Queryable,
