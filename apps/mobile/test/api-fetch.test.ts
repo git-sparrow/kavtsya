@@ -40,7 +40,11 @@ const { apiFetch } = await import("../src/lib/auth-client");
  * apiFetch must hand them to the schemas untouched.
  */
 it("hands date fields to the shared schemas as strings, not revived Dates (#85)", async () => {
-  const body = { token: "qr-token-1", expiresAt: "2026-07-10T12:00:00.000Z" };
+  const body = {
+    token: "qr-token-1",
+    jti: "jti-1",
+    expiresAt: "2026-07-10T12:00:00.000Z",
+  };
   fetchMock.mockResolvedValueOnce(
     new Response(JSON.stringify(body), {
       status: 200,
