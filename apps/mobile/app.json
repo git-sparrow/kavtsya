@@ -19,7 +19,7 @@
     "android": {
       "package": "com.kavtsya.app",
       "adaptiveIcon": {
-        "backgroundColor": "#291c40",
+        "backgroundColor": "#241b3a",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
