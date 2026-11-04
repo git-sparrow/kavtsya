@@ -13,6 +13,7 @@ review; switch roles whenever useful.
 | Argent skills | `.agents/skills/argent-*/` | `.claude/skills/` symlinks | Repository skill discovery |
 | Matt Pocock skills | `.agents/plugins/mattpocock-skills/` | Local plugin declared in `.claude/settings.json` | `.agents/skills/` symlinks to the same pin |
 | Argent MCP | Local pinned dependency | `.mcp.json` | `.codex/config.toml` |
+| Cloudflare MCP (read-only) | `mcp.cloudflare.com/mcp`, signed in per tool with Read scopes | `cloudflare` plugin in `.claude/settings.json` | `.codex/config.toml`; `execute` prompts every call |
 | Argent rules | `.claude/rules/argent.md` | Claude rule file | Explicit read directed by `AGENTS.md` |
 | Environment inspector | `.claude/agents/argent-environment-inspector.md` | Claude agent | Thin `.codex/agents/` adapter reads the same instructions |
 
@@ -163,7 +164,10 @@ running it from another worktree is not a database-isolation recipe.
 
 The default is serialized runtime work, so no extra database orchestration is
 required to start using both tools. Record ownership in the handoff and release it
-when done. Stop only task-owned processes and Argent device servers, naming the
+when done. After a PR merges, run `pnpm git:prune-merged` from the main checkout:
+it lists each local branch with a keep or prune decision, and `-- --apply`
+removes the merged branches with their worktrees. It keeps any worktree that
+holds uncommitted, untracked or non-build ignored files. Stop only task-owned processes and Argent device servers, naming the
 devices used. Never run a machine-wide cleanup or `db:reset` as handoff housekeeping.
 
 ## Maintenance and verification sources
