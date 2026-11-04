@@ -1,5 +1,11 @@
 {
   "extraKnownMarketplaces": {
+    "cloudflare": {
+      "source": {
+        "source": "github",
+        "repo": "cloudflare/skills"
+      }
+    },
     "expo-plugins": {
       "source": {
         "source": "github",
@@ -20,6 +26,7 @@
     }
   },
   "enabledPlugins": {
+    "cloudflare@cloudflare": true,
     "expo@expo-plugins": true,
     "mattpocock-skills@mattpocock": true,
     "pstack@pstack-claude": true
