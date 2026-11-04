@@ -58,6 +58,13 @@
       "exclude": [
         "@sentry/react-native"
       ]
+    },
+    "autolinking": {
+      "ios": {
+        "buildFromSource": [
+          "expo-camera"
+        ]
+      }
     }
   }
 }

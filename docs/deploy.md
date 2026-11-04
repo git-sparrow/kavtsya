@@ -76,6 +76,18 @@ rate limiter would see Cloudflare's addresses instead of users.
 Keep the `_railway-verify.api` TXT record Railway prints alongside it; the
 certificate isn't issued until it resolves (observed 2026-10-12).
 
+Mail for `kavtsya.com` arrives through Cloudflare Email Routing: `hello@` and
+`social@` forward to the project Gmail account, which is never published.
+Keep the three `route*.mx.cloudflare.net` MX records, the SPF TXT and the
+`cf2024-1._domainkey` DKIM record.
+
+Agents read the account through the Cloudflare MCP server (the `cloudflare`
+plugin in `.claude/settings.json`). The maintainer signs it in with read-only
+scopes: on 2026-11-04 it listed the zone's DNS records, the routing rules and
+the Workers, and a no-op DNS `PATCH` came back `403`. Every change to the
+account (DNS, routing, Workers, deploys) is the maintainer's to approve and
+run.
+
 ## Backups
 
 Enable the daily schedule on the `postgres` volume (Backups tab). Restores land
