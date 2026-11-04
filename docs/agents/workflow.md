@@ -13,6 +13,7 @@ review; switch roles whenever useful.
 | Argent skills | `.agents/skills/argent-*/` | `.claude/skills/` symlinks | Repository skill discovery |
 | Matt Pocock skills | `.agents/plugins/mattpocock-skills/` | Local plugin declared in `.claude/settings.json` | `.agents/skills/` symlinks to the same pin |
 | Argent MCP | Local pinned dependency | `.mcp.json` | `.codex/config.toml` |
+| Cloudflare MCP (read-only) | `mcp.cloudflare.com/mcp`, signed in per tool with Read scopes | `cloudflare` plugin in `.claude/settings.json` | `.codex/config.toml`; `execute` prompts every call |
 | Argent rules | `.claude/rules/argent.md` | Claude rule file | Explicit read directed by `AGENTS.md` |
 | Environment inspector | `.claude/agents/argent-environment-inspector.md` | Claude agent | Thin `.codex/agents/` adapter reads the same instructions |
 
