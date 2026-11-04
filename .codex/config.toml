@@ -241,3 +241,11 @@ approval_mode = "approve"
 [mcp_servers.argent.tools.await_user_selection]
 approval_mode = "approve"
 
+
+# Read-only by its OAuth scopes (docs/deploy.md, "DNS"); `execute` calls the
+# Cloudflare API, so every call asks first.
+[mcp_servers.cloudflare]
+url = "https://mcp.cloudflare.com/mcp"
+
+[mcp_servers.cloudflare.tools.execute]
+approval_mode = "prompt"

@@ -31,6 +31,8 @@ import {
   purchaseResultSchema,
   type QrTokenResponse,
   qrTokenResponseSchema,
+  type QrTokenStatus,
+  qrTokenStatusSchema,
   type RedemptionRejection,
   type RedemptionResult,
   redemptionResultSchema,
@@ -160,6 +162,13 @@ export async function fetchQrToken(): Promise<QrTokenResponse> {
   });
 }
 
+/** Whether a scan has already used the Customer's token `jti` (#373). */
+export async function fetchQrTokenStatus(jti: string): Promise<QrTokenStatus> {
+  return request(`/api/qr-token/${jti}`, qrTokenStatusSchema, {
+    fallback: "Не вдалося перевірити QR-код",
+  });
+}
+
 /** The platform-default Reward set the config screen offers (story 38). */
 export async function fetchRewardDefaults(): Promise<RewardDefaults> {
   return request("/api/reward-defaults", rewardDefaultsSchema, {
@@ -191,7 +200,8 @@ export class ScanRejectionError extends Error {
  * added there without copy here is a type error, not a fallback message.
  */
 const SCAN_REJECTIONS: Record<ScanRejection, string> = {
-  token_used: "Цей код уже використано — попросіть клієнта показати новий",
+  token_used:
+    "Цей код уже використано — зачекайте кілька секунд, QR клієнта оновиться сам",
   expired_token: "Код протермінувався — попросіть клієнта показати новий",
   invalid_token: "Це не QR-код Кавці",
   self_scan: "Власний код сканувати не можна",
