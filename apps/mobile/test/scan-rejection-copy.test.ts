@@ -29,9 +29,13 @@ test("expired token → «Код застарів» with the refresh recovery", 
   });
 });
 
-test("already-used token → «Код уже використано»", () => {
-  expect(SCAN_REJECTION_COPY.token_used.title).toBe("Код уже використано");
-  expect(SCAN_REJECTION_COPY.token_used.detail).toContain("оновити екран");
+test("already-used token → «Код уже використано», recovered by waiting", () => {
+  // The Customer's QR swaps a used token by itself (#373) — there is no screen
+  // for them to refresh, so the advice is to wait and scan again.
+  expect(SCAN_REJECTION_COPY.token_used).toEqual({
+    title: "Код уже використано",
+    detail: "Зачекай кілька секунд — QR клієнта оновиться сам",
+  });
 });
 
 test("unknown member code → «Клієнта не знайдено»", () => {
