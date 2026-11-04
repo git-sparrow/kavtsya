@@ -1,5 +1,11 @@
 {
   "extraKnownMarketplaces": {
+    "cloudflare": {
+      "source": {
+        "source": "github",
+        "repo": "cloudflare/skills"
+      }
+    },
     "expo-plugins": {
       "source": {
         "source": "github",
@@ -11,11 +17,19 @@
         "source": "directory",
         "path": "./.agents/plugins/mattpocock-skills"
       }
+    },
+    "pstack-claude": {
+      "source": {
+        "source": "github",
+        "repo": "michael-denyer/pstack-claude"
+      }
     }
   },
   "enabledPlugins": {
+    "cloudflare@cloudflare": true,
     "expo@expo-plugins": true,
-    "mattpocock-skills@mattpocock": true
+    "mattpocock-skills@mattpocock": true,
+    "pstack@pstack-claude": true
   },
   "permissions": {
     "allow": ["mcp__argent"]

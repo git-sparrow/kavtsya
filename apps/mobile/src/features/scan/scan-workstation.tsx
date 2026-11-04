@@ -11,7 +11,13 @@ import {
 } from "expo-camera";
 import type { ComponentType, ReactNode } from "react";
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { BeanRow } from "@/components/bean-row";
 import { Berehynia } from "@/components/berehynia";
@@ -33,6 +39,10 @@ import { fontFamily, toShadowStyle, useTheme } from "@/theme";
 // customer-qr.tsx: expo-camera declares CameraView as a class whose type React
 // 19 rejects; the runtime component is fine, only the type needs coercing.
 const CameraView = CameraViewBase as unknown as ComponentType<CameraViewProps>;
+
+// The version-scoped expo-camera patch resolves this opt-in using native camera
+// capabilities, with the ordinary rear camera as fallback.
+const scannerLens = Platform.OS === "ios" ? "kavtsya:adaptive-back" : undefined;
 
 /**
  * Whether the confirm-Redemption action is offered (#22, GLOSSARY → Redemption):
@@ -311,6 +321,7 @@ function Viewfinder({
     >
       <CameraView
         style={StyleSheet.absoluteFill}
+        selectedLens={scannerLens}
         barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
         onBarcodeScanned={({ data }) => onBarcodeScanned(data)}
       />

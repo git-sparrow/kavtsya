@@ -1,20 +1,19 @@
 # Brand mark
 
-The Кавця mark: a coffee bean inside a Берегиня-style nested diamond — the same
-protective ornament the app draws inline as `components/berehynia.tsx`.
+The Кавця mark is the Берегиня ornament: nested diamonds, a centre dot and four
+crossed rays, the same geometry the app draws inline as `components/berehynia.tsx`.
 
 ## Source of truth
 
-`kavtsya-mark.svg` is the mark. Everything else under `assets/images/` is derived
-from it and must not be hand-edited — regenerate instead:
+The ornament's paths live in `scripts/build-icons.mjs`. Everything under
+`assets/images/` and `kavtsya-mark.svg` is generated from them and must not be
+hand-edited — regenerate instead:
 
 ```sh
 pnpm --filter @kavtsya/mobile icons:build
 ```
 
-`mark-paths.json` holds the mark's sub-paths in their 2048 authoring grid, split
-so `scripts/build-icons.mjs` can recolour and recompose them per target. Both
-files are generated together; edit the mark upstream, not here.
+`kavtsya-mark.svg` is the full-bleed icon as a vector, for design tools.
 
 | Generated | Used by |
 | --- | --- |
@@ -30,23 +29,14 @@ files are generated together; edit the mark upstream, not here.
 
 | | Hex | Note |
 | --- | --- | --- |
-| Canvas | `#291c40` | also `android.adaptiveIcon.backgroundColor` |
+| Canvas | `#241b3a` | `secondary-900`; also `android.adaptiveIcon.backgroundColor` |
 | Canvas, iOS dark | `#1b142c` | `secondary-950` |
-| Diamond, corner strokes, bean | `#dab36d` | |
-| The bean's stripe | `#8a683c` | |
+| Ornament | `#e8b44a` | `primary-400` |
 
 The splash backgrounds are the app's own — `#fbf6ec` light, `#241b3a` dark — so
-the first painted frame continues the splash rather than replacing it.
-
-## Two rules the artwork does not carry itself
-
-- **The diamond's interior is a hole, not a fill.** The source paints it with the
-  canvas colour, which only reads correctly on an opaque square. The build merges
-  the diamond with its inner path under `fill-rule="evenodd"`, so the Android
-  foreground and the splash mark let the background through.
-- **The bean's stripe is punched out for the monochrome icon.** Android themed
-  icons tint from the alpha channel alone; painted, the stripe vanishes and the
-  bean flattens into a blank oval.
+the first painted frame continues the splash rather than replacing it. On the
+light splash the ornament is drawn in the canvas ink, because gold on cream
+lacks contrast.
 
 ## iOS layered icons
 

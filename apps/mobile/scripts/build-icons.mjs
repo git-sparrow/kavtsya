@@ -1,17 +1,6 @@
-// Derive every launcher and splash asset from one vector source
-// (`assets/brand/kavtsya-mark.svg`), so the committed PNGs stay in lockstep with
-// the mark and can be regenerated instead of hand-edited: `pnpm icons:build`.
-//
-// Two rules the artwork does not carry on its own and this script applies:
-//
-//  - The diamond's interior is painted with the background colour in the source.
-//    That reads correctly only on an opaque canvas, so here the diamond and its
-//    inner path are merged under `fill-rule="evenodd"` and the interior becomes a
-//    real hole — otherwise the Android foreground and the splash mark would show
-//    a purple slab where the canvas should show through.
-//  - Android themed icons are tinted from the alpha channel alone, so the bean's
-//    stripe is punched out of the bean rather than painted; left as a fill it
-//    disappears and the bean flattens into a blank oval.
+// Derive every launcher and splash asset from one vector source — the Берегиня
+// ornament below — so the committed PNGs stay in lockstep with the mark and can
+// be regenerated instead of hand-edited: `pnpm icons:build`.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,64 +12,58 @@ const ASSETS = path.join(
   "../assets",
 );
 
-// Brand hexes as the mark is drawn. The purples are the theme's own secondary-900
-// (app dark background) and secondary-950; the golds are the mark's.
-const INK = "#291c40"; // canvas
+// Theme hexes: secondary-900 (the app's dark background), secondary-950 and
+// primary-400.
+const INK = "#241b3a"; // canvas
 const DEEP = "#1b142c"; // canvas, iOS dark appearance
-const GOLD = "#dab36d"; // diamond, corner strokes, bean
-const BREW = "#8a683c"; // the bean's stripe
+const GOLD = "#e8b44a"; // the ornament
 
-// Sub-paths of the mark, lifted from the source SVG's 2048 authoring grid.
-const P = JSON.parse(
-  fs.readFileSync(path.join(ASSETS, "brand/mark-paths.json"), "utf8"),
-);
+// The ornament in its 48-unit grid, the same geometry `components/berehynia.tsx`
+// draws in-app, so the icon, splash and in-app mark stay one shape.
+const GRID = 48;
+const STROKE = 2.5;
+const ornament = (color) =>
+  `<g fill="none" stroke="${color}" stroke-width="${STROKE}" stroke-linecap="round" stroke-linejoin="round">` +
+  `<path d="M24 6 L38 24 L24 42 L10 24 Z"/>` +
+  `<path d="M24 15 L31 24 L24 33 L17 24 Z" stroke-width="2"/>` +
+  `<circle cx="24" cy="24" r="2.4" fill="${color}" stroke="none"/>` +
+  `<path d="M10 24 L4 19 M10 24 L4 29"/>` +
+  `<path d="M38 24 L44 19 M38 24 L44 29"/>` +
+  `<path d="M24 6 L20 1 M24 6 L28 1"/>` +
+  `<path d="M24 42 L20 47 M24 42 L28 47"/>` +
+  `</g>`;
 
 const svg = (w, h, inner) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${inner}</svg>`;
 
-/** The mark in 2048-space. Pass `stripe: null` to punch the stripe out instead. */
-const mark = ({ ring, bean, stripe }) =>
-  [
-    `<path fill="${ring}" fill-rule="evenodd" d="${P.diamond} ${P.hole}"/>`,
-    stripe
-      ? `<path fill="${bean}" d="${P.bean}"/><path fill="${stripe}" d="${P.stripe}"/>`
-      : `<path fill="${bean}" fill-rule="evenodd" d="${P.bean} ${P.stripe}"/>`,
-    ...["cornerNE", "cornerSW", "cornerNW", "cornerSE"].map(
-      (k) => `<path fill="${ring}" d="${P[k]}"/>`,
-    ),
-  ].join("");
+// The ornament's painted bounds, stroke caps included: the rays reach 1 and 47
+// vertically, 4 and 44 horizontally, plus half a stroke.
+const bb = {
+  x: 4 - STROKE / 2,
+  y: 1 - STROKE / 2,
+  width: 40 + STROKE,
+  height: 46 + STROKE,
+};
 
-// Measure the mark once so the derived crops and safe-zone fits are exact rather
-// than eyeballed.
-const bb = new Resvg(
-  svg(2048, 2048, mark({ ring: GOLD, bean: GOLD, stripe: BREW })),
-).getBBox();
-
-/** Full-bleed square: the mark over an opaque canvas, as the icon ships. */
-const fullBleed = (bg, colors) =>
-  svg(2048, 2048, `<path fill="${bg}" d="${P.bg}"/>${mark(colors)}`);
-
-/** The mark alone, scaled to `fill` of a square canvas' height and centred. */
-const centred = (colors, fill) => {
-  const s = (2048 * fill) / bb.height;
-  const tx = 1024 - (bb.x + bb.width / 2) * s;
-  const ty = 1024 - (bb.y + bb.height / 2) * s;
+/** The ornament on a `size` square, its grid scaled to `fill` of the side and centred. */
+const centred = (color, fill, size = 1024, bg) => {
+  const s = (size * fill) / GRID;
+  const t = size / 2 - (GRID / 2) * s;
   return svg(
-    2048,
-    2048,
-    `<g transform="translate(${tx} ${ty}) scale(${s})">${mark(colors)}</g>`,
+    size,
+    size,
+    (bg ? `<rect width="${size}" height="${size}" fill="${bg}"/>` : "") +
+      `<g transform="translate(${t} ${t}) scale(${s})">${ornament(color)}</g>`,
   );
 };
 
-/** The mark cropped to its own bounds plus `pad` (a fraction of its height). */
-const cropped = (colors, pad) => {
+/** The ornament cropped to its own bounds plus `pad` (a fraction of its height). */
+const cropped = (color, pad) => {
   const m = bb.height * pad;
-  const w = Math.round(bb.width + m * 2);
-  const h = Math.round(bb.height + m * 2);
   return svg(
-    w,
-    h,
-    `<g transform="translate(${m - bb.x} ${m - bb.y})">${mark(colors)}</g>`,
+    bb.width + m * 2,
+    bb.height + m * 2,
+    `<g transform="translate(${m - bb.x} ${m - bb.y})">${ornament(color)}</g>`,
   );
 };
 
@@ -94,57 +77,48 @@ const render = (file, markup, width) => {
   );
 };
 
-const full = { ring: GOLD, bean: GOLD, stripe: BREW };
-
+// The approved reference draws the grid at 19.6 units per 1200px.
+const ICON_FILL = (GRID * 19.6) / 1200;
 console.log("icon:");
 // `ios.icon.light` reuses this one — the light appearance is the base icon.
-render("images/icon.png", fullBleed(INK, full), 1024);
-render("images/ios-icon-dark.png", fullBleed(DEEP, full), 1024);
+render("images/icon.png", centred(GOLD, ICON_FILL, 1024, INK), 1024);
+render("images/ios-icon-dark.png", centred(GOLD, ICON_FILL, 1024, DEEP), 1024);
 // iOS grades the tinted appearance by luminance onto the Customer's chosen tint,
 // so this variant is greyscale, not gold.
 render(
   "images/ios-icon-tinted.png",
-  fullBleed("#000000", { ring: "#ffffff", bean: "#ffffff", stripe: "#8c8c8c" }),
+  centred("#ffffff", ICON_FILL, 1024, "#000000"),
   1024,
 );
 
-// The mark is tall, so what has to clear Android's 66dp safe circle (r = 11/36 of
-// the 108dp canvas) is the diagonal reach of the X tips, not the height. Measured
-// at this fill the furthest opaque pixel sits at r = 0.283 — comfortably inside;
-// 0.64 would put it at 0.323 and overrun the safe zone.
+// What has to clear Android's 66dp safe circle (r = 11/36 of the 108dp canvas)
+// is the reach of the top and bottom ray tips: 23.35 grid units from the centre
+// plus the stroke cap. At this fill that is r = 0.287 of the canvas, inside 0.306.
 const SAFE_ZONE_FILL = 0.56;
 console.log("android adaptive:");
 render(
   "images/android-icon-foreground.png",
-  centred(full, SAFE_ZONE_FILL),
+  centred(GOLD, SAFE_ZONE_FILL),
   1024,
 );
 render(
   "images/android-icon-monochrome.png",
-  centred({ ring: "#ffffff", bean: "#ffffff", stripe: null }, SAFE_ZONE_FILL),
+  centred("#ffffff", SAFE_ZONE_FILL),
   1024,
 );
 
-// Cropped to the mark so `imageWidth` in the splash config means the mark's own
-// width. Light inverts the diamond to ink so it holds contrast on the cream
-// background; dark is the icon's own gold.
+// Cropped to the ornament so `imageWidth` in the splash config means its own
+// width. Light draws it in ink so it holds contrast on the cream background;
+// dark is the icon's own gold.
 console.log("splash:");
-render(
-  "images/splash-icon.png",
-  cropped({ ring: INK, bean: GOLD, stripe: BREW }, 0.03),
-  900,
-);
-render("images/splash-icon-dark.png", cropped(full, 0.03), 900);
+render("images/splash-icon.png", cropped(INK, 0.03), 900);
+render("images/splash-icon-dark.png", cropped(GOLD, 0.03), 900);
 
 // The mark itself, kept readable and hand-off-able — this is what to feed a
 // design tool (Icon Composer, Figma) rather than the raster output.
 console.log("brand:");
 fs.writeFileSync(
   path.join(ASSETS, "brand/kavtsya-mark.svg"),
-  svg(
-    1024,
-    1024,
-    `<g transform="scale(0.5)"><path fill="${INK}" d="${P.bg}"/>${mark(full)}</g>`,
-  ) + "\n",
+  centred(GOLD, ICON_FILL, 1024, INK) + "\n",
 );
 console.log("  brand/kavtsya-mark.svg");
