@@ -3,6 +3,7 @@
 // Native consumers get plain numbers, then emit a committed `theme.generated.ts`.
 // Zero runtime dependencies. Pure transforms are exported for the unit test.
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -57,11 +58,13 @@ export function render(theme) {
   );
 }
 
-// --- CLI: read src/theme/design-tokens.json → write src/theme/theme.generated.ts
+// --- CLI: read @kavtsya/shared/design-tokens.json → write src/theme/theme.generated.ts
 function main() {
   const dir = path.dirname(fileURLToPath(import.meta.url));
   const themeDir = path.join(dir, "..", "src", "theme");
-  const src = path.join(themeDir, "design-tokens.json");
+  const src = createRequire(import.meta.url).resolve(
+    "@kavtsya/shared/design-tokens.json",
+  );
   const out = path.join(themeDir, "theme.generated.ts");
 
   const tokens = JSON.parse(fs.readFileSync(src, "utf8"));

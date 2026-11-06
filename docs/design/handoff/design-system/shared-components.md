@@ -1,6 +1,6 @@
 # Kavtsya — Customer Core Loop · Shared-component catalog
 Date: 2026-07-20 · Source: `Customer Core Loop.dc.html` (turns 1–9, all approved) · Companion to `../engineering-handoff.md`
-All values are semantic tokens from `mobile/src/theme/design-tokens.json` (+ the three additions in `../design-tokens-additions.md`: `qr-plate`, `shadow.reward`, `scrim`). No new hexes. Dark = same structure on `semantic.dark.*` unless a dark rule below says otherwise.
+All values are semantic tokens from `packages/shared/design-tokens.json` (+ the three additions in `../design-tokens-additions.md`: `qr-plate`, `shadow.reward`, `scrim`). No new hexes. Dark = same structure on `semantic.dark.*` unless a dark rule below says otherwise.
 
 Reconciliation legend, per component:
 - **EXTENDS `<existing>`** — grows a variant/state on a primitive already in `mobile/src/components/` (Button, Card, Surface, Text, TextField, RewardChip). Don't fork; add props.

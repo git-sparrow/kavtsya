@@ -1,6 +1,6 @@
 # Kavtsya — Customer Core Loop redesign · Engineering handoff
 Date: 2026-07-20 · Source canvas: `Customer Core Loop.dc.html` (screens marked «✓ ОБРАНО»)
-All values are semantic tokens from `apps/mobile/src/theme/design-tokens.json`. No new hexes.
+All values are semantic tokens from `packages/shared/design-tokens.json`. No new hexes.
 
 ## Approved screens — ALL screens on the canvas are approved (turns 1–9)
 - **1b home dark, 1c loading, 1e empty, 1l Ворожка reward-ready** — approved as drawn; specs for each are described inline above/below (1b = 1a structure on `semantic.dark.*`; 1c reserved QR square on `primary-surface` + «Готуємо твій код…»; 1e Берегиня empty state «Перше зернятко чекає»; 1l reward-ready fortune: beanrow on `primary-surface` + `primary` border, «★ ВИНАГОРОДА ГОТОВА», CTA «Отримати Винагороду» + ghost «Пізніше»).

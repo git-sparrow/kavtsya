@@ -100,3 +100,9 @@ jobs:
       - name: Test
         if: steps.scope.outputs.scope != 'web'
         run: pnpm test
+
+      # `pnpm test` already includes the web suite; a web-only PR skips it, so
+      # the web tests it most needs run here instead.
+      - name: Test web
+        if: steps.scope.outputs.scope == 'web'
+        run: pnpm --filter @kavtsya/web test
