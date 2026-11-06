@@ -195,14 +195,153 @@ Expo track itself.
 
 ## The maintainer's recurring task
 
-1. **The monthly grouped Dependabot PR:** if `ci` and `e2e-android` are green on its
-   head, the checks have done the mechanical review; merge it. **On red CI, or for a
-   major or `0.x` minor**, take it to merge-ready in an agent session (#345): diagnose,
-   then hold the package on a branch from `main` (#340) and `@dependabot recreate`.
+1. **Monthly grouped and individual Dependabot PRs:** review eligibility and use
+   [the procedure below](#take-a-dependency-pr-to-merge-ready). Required checks gate
+   merging. Android E2E is advisory, even on a grouped PR. Both green is a sufficient
+   mechanical-check fast path, not a requirement to wait for advisory E2E.
+   **On required-check failure, or for a major or `0.x` minor**, diagnose compatibility
+   in an agent session (#345). If the package must be held, follow #340 before asking
+   Dependabot to recreate the PR.
 2. **The Expo drift issue** (`expo-sdk-check.yml`, the 1st and 15th; one open at a time):
    run the Expo track below. A full SDK release follows the `expo:upgrading-expo` skill.
 3. **An Argent drift issue** (`argent-drift-check.yml`, monthly): decide upgrade or
    retain, as #263 did, per [Updating Argent](../argent-howto.md#updating-argent).
+
+### Take a dependency PR to merge-ready
+
+Keep one watcher per PR. Batch independent read-only compatibility and registry
+checks, but merge serially. Record commands, UTC observation times, head and base
+SHAs, check links and conclusions in the implementation PR or its linked evidence.
+Fetch only needed fields. Report changed findings and decisions, not repeated status
+lines. Reuse policy already read unless it changes.
+
+1. Review the diff, eligible release, advisories and compatibility. Choose runtime
+   verification from the affected behavior: an auth, routing or native change may
+   need a targeted flow beyond CI. Investigate any observed advisory failure using
+   its logs and artifacts. Record whether it is infrastructure, a product defect or
+   unresolved. A product defect or unresolved failure blocks readiness. An explained
+   infrastructure failure does not automatically make advisory E2E a merge gate.
+2. Capture the reviewed head and base branch. In a task-owned checkout, run the
+   following commands in order, stopping on any failed command. Set `pr` to the PR
+   number. Keep `reviewed_head` unchanged throughout this review.
+
+   ```sh
+   gh pr view "$pr" --json headRefOid,baseRefName,state
+   # Set reviewed_head and base to the returned headRefOid and baseRefName.
+   git fetch origin "$base"
+   base_sha=$(git rev-parse FETCH_HEAD)
+   git fetch origin "refs/pull/$pr/head"
+   test "$(git rev-parse FETCH_HEAD)" = "$reviewed_head"
+   git merge-base --is-ancestor "$base_sha" "$reviewed_head"
+   ```
+
+   Continue only for an open PR with matching head and exit 0 from the ancestry
+   check. A stale base requires an update and new checks, even when GitHub reports
+   `CLEAN`. Keep other editors and Dependabot off a manually edited branch.
+3. Read the base branch's required-check inventory from GitHub branch protection
+   and active rulesets. Do not infer it from the checks that happen to be present.
+   For this repository's `main`, inspect:
+
+   ```sh
+   gh api repos/{owner}/{repo}/branches/main/protection/required_status_checks
+   gh api --paginate repos/{owner}/{repo}/rules/branches/main
+   gh pr checks "$pr" --required --json name,state,bucket,link
+   ```
+
+   For another base, substitute its URL-encoded name. Match required contexts and
+   their expected apps to checks for the reviewed head. If inventory access fails,
+   a required check is absent or the selection disagrees, stop and reconcile.
+   An empty selection is not a passing gate. Require a successful result for every
+   required check. Failed, pending, cancelled or skipped required checks block this
+   procedure. Fetch all check pages when comparing inventory with check runs.
+4. If required checks are pending, start one watcher:
+
+   ```sh
+   gh pr checks "$pr" --required --watch --fail-fast --interval 30
+   ```
+
+   Stop that watcher after **2 minutes of unchanged queued observations**, or after
+   **10 minutes total**, whichever comes first. Use a timer or the tool's process
+   deadline and terminate the owned watcher before diagnosis. These are diagnostic
+   limits, not CI timeouts. Do not restart the clock by issuing equivalent reads.
+   Watch success still requires the inventory and head/base guards. Fetch advisory
+   results once at review and again before declaring readiness, without waiting for
+   pending advisory checks solely to turn green.
+5. On a limit or contradictory status, perform one reconciliation pass. Compare
+   PR checks with workflow runs, jobs and check runs for the same head, run attempt,
+   required context and app. Include timestamps, not just the latest status:
+
+   ```sh
+   gh api --paginate "repos/{owner}/{repo}/actions/runs?head_sha=$reviewed_head&per_page=100"
+   gh api --paginate "repos/{owner}/{repo}/actions/runs/$run_id/jobs?filter=latest&per_page=100"
+   gh api --paginate "repos/{owner}/{repo}/commits/$reviewed_head/check-runs?per_page=100"
+   gh api --paginate "repos/{owner}/{repo}/commits/$reviewed_head/statuses?per_page=100"
+   ```
+
+   Set `run_id` from the matching workflow run. Save detailed responses outside the
+   chat. Distinguish a recorded completion from an inference about queueing or caching.
+   If records agree and required checks pass, repeat the guards. If records agree
+   that work is still pending, or disagreement remains, record the blocker and end
+   this monitoring attempt. Resume on a completion notification or maintainer
+   direction, not another immediate polling loop. Never substitute a completed job
+   for a required check that GitHub still reports pending.
+6. Immediately before an authorized merge, re-read the open PR's head, base branch,
+   required inventory and results. Repeat the fetch and ancestry check against the
+   latest base. A changed head or base invalidates the previous readiness decision:
+   review the change and restart validation. Merge only with the reviewed head guard,
+   using `gh pr merge "$pr" --squash --match-head-commit "$reviewed_head"`. Do not use
+   `--admin` to bypass checks. The head guard does not lock the base. If the base
+   advances during the final check, stop and revalidate. After a serial merge,
+   refresh the base before considering the next PR. Readiness is not merge permission.
+
+CLI flags checked with `gh 2.103.0` help and a read-only dependency-PR trial on
+2026-11-06. Contracts checked against the [GitHub CLI checks manual](https://cli.github.com/manual/gh_pr_checks),
+[GitHub branch rules API](https://docs.github.com/en/rest/repos/rules#get-rules-for-a-branch)
+and [Git ancestry documentation](https://git-scm.com/docs/git-merge-base).
+The trial and fixture outcomes belong in the implementation PR's evidence (#392).
+
+### Bound bot regeneration
+
+After an authorized `@dependabot recreate`, record the starting head and request
+time. Allow **5 minutes** for a changed head or explicit completion response.
+An acknowledgement alone is not completion. Check once at that deadline rather
+than repeatedly polling. A changed head starts a fresh review and CI validation.
+
+While the bot works, prepare a fallback in a separate worktree and manually owned
+branch from current `main`. Inspect registry metadata and prepare a targeted update
+without writing to the bot's branch. If regeneration has not completed at the
+5-minute deadline, record the bot wait as ended and use the independent branch.
+A late bot response must not overwrite manual work. Choose one candidate for review
+and delivery, and identify any superseded PR without merging both.
+
+Use package tooling to regenerate the lockfile, never hand edits. Preserve the
+[version-authority model](#version-authority-model), release-age protection and
+Expo freeze. Select the latest eligible stable version, not a held or too-fresh
+release just to finish faster. Run `pnpm verify` and review the resulting diff on
+the fallback branch. Coordinate test databases, servers and devices through the
+[shared resource policy](workflow.md#working-concurrently).
+
+### Validate this procedure
+
+Replay these fixed scenarios when changing the procedure. For each fixture, assume
+an eligible, reviewed PR, an accessible required inventory containing `ci`, and
+matching head/base unless overridden. Record the decision and the step that stops
+or advances the review. These are manual procedure fixtures, not live CI outcomes.
+
+| Fixture input | Expected decision |
+| --- | --- |
+| Required `ci` succeeds; advisory Android pending | Checks allow progress without waiting for Android |
+| Required `ci` failed, pending, cancelled or skipped | Block readiness |
+| Required `ci` absent; advisory Android succeeds | Block readiness, even if the CLI selection is empty or incomplete |
+| Required inventory cannot be read | Block readiness |
+| Checks pass for an earlier head; current head changed | Review the new head and restart validation |
+| Checks pass; latest base is not an ancestor of the head | Update the branch and require fresh checks |
+| Base branch or SHA changes during validation | Invalidate readiness and repeat review and guards |
+| PR says queued for 2 minutes; matching job says completed | Stop the watcher, reconcile once, block while disagreement remains |
+| Required work remains pending after the 10-minute limit | Record the blocker and end the monitoring attempt |
+| Advisory failure is a demonstrated product defect or unresolved | Block readiness pending investigation or a fix |
+| Advisory failure is explained infrastructure failure | Record evidence and continue the required-check procedure |
+| Bot only acknowledges within 5 minutes; no completed regeneration | End the bot wait and use the independently owned fallback |
 
 <a id="expo-track"></a>
 
