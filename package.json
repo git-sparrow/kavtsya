@@ -22,7 +22,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "pnpm agents:check && pnpm deps:check && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "verify": "pnpm agents:check && pnpm deps:check && pnpm typecheck && pnpm lint && pnpm format:check && pnpm --filter @kavtsya/web build && pnpm test",
     "prepare": "husky",
     "agents:check": "node scripts/check-agent-setup.mjs",
     "deps:check": "node scripts/deps-check/check-deps.mjs",
