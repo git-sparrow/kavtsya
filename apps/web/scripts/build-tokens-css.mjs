@@ -2,17 +2,9 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveAlias } from "@kavtsya/shared/design-tokens.mjs";
 
 const kebab = (key) => key.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
-
-function resolveAlias(tokens, value) {
-  if (typeof value !== "string" || !value.startsWith("{")) return value;
-  const target = value
-    .slice(1, -1)
-    .split(".")
-    .reduce((node, key) => node[key], tokens);
-  return resolveAlias(tokens, target.$value);
-}
 
 function pxToRem(value) {
   const px = /^(-?\d+(?:\.\d+)?)px$/.exec(value);

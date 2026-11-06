@@ -1,11 +1,12 @@
 // Variant A theme build (docs/design/INTEGRATION.md): resolve the DTCG
 // `{alias}` references down to primitives and convert `"16px" → 16` so React
 // Native consumers get plain numbers, then emit a committed `theme.generated.ts`.
-// Zero runtime dependencies. Pure transforms are exported for the unit test.
+// No third-party dependencies. Pure transforms are exported for the unit test.
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveAlias } from "@kavtsya/shared/design-tokens.mjs";
 
 /**
  * Flatten a DTCG token document into a nested plain object keyed by token name.
@@ -14,21 +15,12 @@ import { fileURLToPath } from "node:url";
  *   colours, motion durations/easings, and font families are left untouched.
  */
 export function buildTheme(t) {
-  const resolve = (v) =>
-    typeof v === "string" && v.startsWith("{")
-      ? resolve(
-          v
-            .slice(1, -1)
-            .split(".")
-            .reduce((o, k) => o[k], t)["$value"],
-        )
-      : v;
-
   const num = (v) =>
     typeof v === "string" && /^-?\d+(\.\d+)?px$/.test(v) ? parseFloat(v) : v;
 
   const walk = (node) => {
-    if (node && node.$value !== undefined) return num(resolve(node.$value));
+    if (node && node.$value !== undefined)
+      return num(resolveAlias(t, node.$value));
     const out = {};
     for (const [k, val] of Object.entries(node))
       if (!k.startsWith("$")) out[k] = walk(val);

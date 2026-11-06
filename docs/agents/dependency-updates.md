@@ -132,7 +132,7 @@ Every update PR passes the gate in `.github/workflows/ci.yml` before it can merg
 - `pnpm verify`: `agents:check`, `deps:check` (peers clean, `apps/api` off the Expo
   graph, no `react-dom`), `typecheck`, `lint`, `format:check`, the web build, and `test`,
   where the API suite runs against a real Postgres. A PR that touches only `apps/web/`
-  skips `test` and Expo Doctor (`scripts/ci/changed-scope.mjs`); a push to `main` always
+  skips Expo Doctor and runs only the web tests (`scripts/ci/changed-scope.mjs`); a push to `main` always
   runs everything.
 - **Expo surface, Dependabot PRs only**: `scripts/deps-check/expo-surface.mjs` compares
   the lockfile's resolved versions of every `ignore`-list package with the PR's base,
