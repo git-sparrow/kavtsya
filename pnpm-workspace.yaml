@@ -12,7 +12,7 @@ packages:
 catalog:
   typescript: ~6.0.3
   vitest: ^5.0.5
-  vite: ^8.3.4
+  vite: ^8.3.5
   zod: ^4.6.7
   better-auth: ^1.7.12
   "@better-auth/expo": ^1.7.12
@@ -48,6 +48,9 @@ allowBuilds:
   tree-sitter-javascript: true
   tree-sitter-typescript: true
   unrs-resolver: true
+  # wrangler's local runtime; pnpm install fails with ERR_PNPM_IGNORED_BUILDS
+  # while its postinstall is unapproved.
+  workerd: true
   # Its postinstall only downloads a binary when the platform's optional
   # @sentry/cli-* package is missing (scripts/install.js, 3.8.0); pnpm installs
   # optional dependencies, so the binary always comes from there.
