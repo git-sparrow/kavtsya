@@ -45,6 +45,9 @@ updates:
     # @expo-google-fonts) are NOT Expo-governed and stay updatable — neither
     # pattern below matches them.
     ignore:
+      # Node types move major only with the runtime (Dockerfile, .nvmrc and engines).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
       - dependency-name: "expo"
       - dependency-name: "expo-*"
       - dependency-name: "@expo/*"
