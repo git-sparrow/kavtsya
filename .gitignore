@@ -61,3 +61,6 @@ learning/
 
 # Generated flow screenshots (regenerate via apps/mobile/.maestro/capture.sh)
 docs/flows/shots/
+
+apps/web/.astro/
+apps/web/.wrangler/

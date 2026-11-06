@@ -18,7 +18,7 @@ Twin goals: learn AI hands-on, and refresh JS/TS/React/React Native fundamentals
 - **Auth**: Better Auth — email/password + Google + Apple Sign-In
 - **AI**: custom provider abstraction, Claude (Sonnet 5) by default for Ukrainian quality (ADR 0007)
 - **Push**: Expo Push Notifications
-- **Repo**: monorepo — `apps/mobile` + `apps/api` + `packages/shared`
+- **Repo**: monorepo — `apps/mobile` + `apps/api` + `apps/web` + `packages/shared`
 
 Rationale: the Tech stack table in `PROJECT_BRIEF.md` and `docs/adr/`.
 
