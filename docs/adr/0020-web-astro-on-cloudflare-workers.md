@@ -1,6 +1,6 @@
 # The public site is a static Astro app in `apps/web`, served by Cloudflare Workers static assets
 
-Decided 2026-11-06 (#352). The stores need a privacy-policy URL, an account-deletion page (Google Play) and a Support URL (App Store Connect) before the first submission (#65), and ADR 0019 promised a privacy notice for crash reporting. This ADR picks the framework, host and CI shape. The pages themselves come in later PRs.
+Decided 2026-11-06 (#352). The stores need a privacy-policy URL, an account-deletion page (Google Play) and a Support URL (App Store Connect) before the first submission (#65). Google Play requires a web link where users can request account and data deletion without reinstalling the app (Play Console help, answer 13327111, read 2026-11-03). App Store Connect marks Support URL as required, and it "must lead to actual contact information" (Apple's platform version information reference, read 2026-11-03), and ADR 0019 promised a privacy notice for crash reporting. This ADR picks the framework, host and CI shape. The pages themselves come in later PRs.
 
 ## Decision
 
@@ -18,7 +18,7 @@ Decided 2026-11-06 (#352). The stores need a privacy-policy URL, an account-dele
 
 Branch protection on `main` requires the `ci` status context (`gh api repos/git-sparrow/kavtsya/branches/main/protection`, read 2026-11-03). A workflow-level `paths:` filter would leave that context pending forever on a web-only PR, so the workflow keeps its single job `ci` and decides inside it.
 
-`scripts/ci/changed-scope.mjs` lists the changed paths with `git diff --name-only --no-renames HEAD^1` and prints `web` only when every path is under `apps/web/`. Everything else prints `full`: any root file, lockfile, shared package or workflow edit, an empty diff, and any error running git. The filter fails open. `--no-renames` lists both sides of a move, so a file moved out of `apps/web/` still counts. On a `pull_request` run the checkout is the merge commit, so `HEAD^1` is the base (`fetch-depth: 2` is already set); on a push to `main` it is the previous commit.
+`scripts/ci/changed-scope.mjs` lists the changed paths with `git diff --name-only --no-renames HEAD^1` and prints `web` only when every path is under `apps/web/`. Everything else prints `full`: any root file, lockfile, shared package or workflow edit, an empty diff, and any error running git. The filter fails open. `--no-renames` lists both sides of a move, so a file moved out of `apps/web/` still counts. Only a `pull_request` run can print `web`: its checkout is the merge commit, so `HEAD^1` is the base (`fetch-depth: 2` is already set). Every other event, including a push to `main`, is `full`, because after a rebase merge `HEAD^1` covers only the last commit.
 
 On `web`, CI skips Expo Doctor and the test step (the API, mobile and script suites). It always runs install, `agents:check`, `deps:check`, typecheck, lint, the format check and the web build. `pnpm verify` runs the same web build locally. A PR that edits `ci.yml` or the root manifests is `full`, so it runs everything.
 

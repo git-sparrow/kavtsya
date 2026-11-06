@@ -62,6 +62,7 @@ Terms below are used verbatim in the UI, the code and the docs — see
 ```
 apps/api          Hono API on Node.js — postgres.js, raw SQL (no ORM), Zod, Better Auth
 apps/mobile       React Native + Expo app (single app, three role-derived Modes)
+apps/web          Astro static site (privacy, account deletion, support) on Cloudflare Workers
 packages/shared   Types + Zod schemas shared by api and mobile
 docker/           Local Postgres init scripts (creates kavtsya + kavtsya_test)
 docs/adr/         Architecture decision records

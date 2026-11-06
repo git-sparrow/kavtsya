@@ -1,7 +1,7 @@
 # Contributing to Kavtsya (Кавця)
 
 Thanks for helping out. This is a small monorepo (`apps/mobile` + `apps/api` +
-`packages/shared`) with a deliberately simple, strict workflow. Read this once;
+`apps/web` + `packages/shared`) with a deliberately simple, strict workflow. Read this once;
 it's short.
 
 ## The one rule: everything lands via a Pull Request
@@ -65,11 +65,11 @@ drift check reads the registry, so an offline push can land there too.
 3. **Run the gate locally before you push:**
 
    ```sh
-   pnpm verify   # agent setup + dependency graph + typecheck + lint + format:check + full test suite
+   pnpm verify   # agent setup + dependency graph + typecheck + lint + format:check + web build + full test suite
    ```
 
    The API suite needs Postgres — `pnpm db:up` first (see below). This is the
-   local gate; CI also runs Expo Doctor. Check the actual PR checks before merging.
+   local gate; CI also runs Expo Doctor, and skips it and the tests on a web-only PR. Check the actual PR checks before merging.
 
 4. **Push your branch and open a PR:**
 

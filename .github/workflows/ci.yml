@@ -50,7 +50,12 @@ jobs:
       # ADR 0020.
       - name: Detect changed scope
         id: scope
-        run: echo "scope=$(node scripts/ci/changed-scope.mjs HEAD^1)" >> "$GITHUB_OUTPUT"
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            echo "scope=$(node scripts/ci/changed-scope.mjs HEAD^1)" >> "$GITHUB_OUTPUT"
+          else
+            echo "scope=full" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -61,7 +66,7 @@ jobs:
       # by hand on the Expo track. Why both: docs/agents/dependency-updates.md,
       # "Gate vs monitor" and "Pin the gate's expo-doctor".
       - name: Expo Doctor (project health, excl. SDK version match)
-        if: steps.scope.outputs.scope == 'full'
+        if: steps.scope.outputs.scope != 'web'
         run: npx expo-doctor@1.20.4
         working-directory: apps/mobile
         env:
@@ -93,5 +98,5 @@ jobs:
         run: pnpm --filter @kavtsya/web build
 
       - name: Test
-        if: steps.scope.outputs.scope == 'full'
+        if: steps.scope.outputs.scope != 'web'
         run: pnpm test
