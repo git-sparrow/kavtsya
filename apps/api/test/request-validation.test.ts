@@ -113,7 +113,7 @@ test.each([
         body: new URLSearchParams([
           ["email", "form@example.com"],
           ["password", "hunter2-very-secret"],
-          ...fields.map(([key, value]) => [key, value]),
+          ...fields.map(([key, value]): [string, string] => [key, value]),
         ]).toString(),
       });
       expect(res.status).toBe(400);
