@@ -1,22 +1,32 @@
 ---
-import "@fontsource/manrope/latin-400.css";
-import "@fontsource/manrope/cyrillic-400.css";
-import "@fontsource/cormorant-garamond/latin-600.css";
-import "@fontsource/cormorant-garamond/cyrillic-600.css";
-import "../styles/tokens.css";
-import "../styles/base.css";
+import Page from "../layouts/Page.astro";
+import { BRAND, STORE_LISTINGS } from "../site";
 ---
 
-<!doctype html>
-<html lang="uk">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Кавця</title>
-  </head>
-  <body>
-    <main>
-      <h1>Кавця</h1>
-    </main>
-  </body>
-</html>
+<Page
+  title={BRAND}
+  description="Кавця — застосунок лояльності для кав'ярень: зернятка за кожну покупку, винагороди і Ворожка на кавовій гущі."
+>
+  <h1>{BRAND}</h1>
+  <p class="lead">
+    Кавця — застосунок лояльності для кав'ярень. Покажи свій QR-код на касі,
+    збирай зернятка за кожну покупку, отримуй винагороду й читай Ворожку на
+    кавовій гущі.
+  </p>
+  <h2>Завантажити застосунок</h2>
+  <ul class="stores">
+    {
+      STORE_LISTINGS.map(({ store, url }) => (
+        <li>
+          {url ? (
+            <a class="store" href={url}>
+              {store}
+            </a>
+          ) : (
+            <span class="store">{store}: скоро</span>
+          )}
+        </li>
+      ))
+    }
+  </ul>
+</Page>
