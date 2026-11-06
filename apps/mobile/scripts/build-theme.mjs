@@ -58,7 +58,6 @@ export function render(theme) {
   );
 }
 
-// --- CLI: read @kavtsya/shared/design-tokens.json → write src/theme/theme.generated.ts
 function main() {
   const dir = path.dirname(fileURLToPath(import.meta.url));
   const themeDir = path.join(dir, "..", "src", "theme");
