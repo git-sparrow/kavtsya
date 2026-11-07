@@ -1,10 +1,10 @@
 ---
 import Page from "../layouts/Page.astro";
 import {
-  BACKUP_NOTE,
   BRAND,
   CONTACT_EMAIL,
-  CONTROLLER,
+  CONTROLLER_LEAD,
+  CONTROLLER_NAME,
   PAGES,
   SENTRY_RETENTION,
 } from "../site";
@@ -15,7 +15,7 @@ import {
   description={`Як видалити акаунт у застосунку ${BRAND}: у самому застосунку або листом, і що при цьому видаляється.`}
 >
   <h1>Як видалити акаунт у застосунку «{BRAND}»</h1>
-  <p>{CONTROLLER}.</p>
+  <p>{CONTROLLER_LEAD} <span class="person-name">{CONTROLLER_NAME}</span>.</p>
   <p>
     Видалити акаунт можна двома способами. Обидва безкоштовні, і для
     другого не потрібно встановлювати застосунок.
@@ -79,7 +79,7 @@ import {
     їхні зернятка в ній заморожуються. Усі зміни в ній завершуються, постер
     перестає працювати.
   </p>
-  <p>{SENTRY_RETENTION} {BACKUP_NOTE}</p>
+  <p>{SENTRY_RETENTION}</p>
   <p>
     Код учасника і налаштування лишаються на твоєму телефоні, доки ти не
     видалиш застосунок.

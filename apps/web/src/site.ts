@@ -1,14 +1,12 @@
 export const BRAND = "Кавця";
 
-export const CONTROLLER = `${BRAND} (Kavtsya) розробляє та підтримує Олександр Горобець (Oleksandr Horobets)`;
+export const CONTROLLER_LEAD = `${BRAND} (Kavtsya) розробляє та підтримує`;
+
+export const CONTROLLER_NAME = "Олександр Горобець (Oleksandr Horobets)";
 
 export const CONTACT_EMAIL = "hello@kavtsya.com";
 
 export const POLICY_EFFECTIVE_DATE = "6 листопада 2026 року";
-
-const BACKUP_RETENTION = "{{BACKUP_RETENTION}}";
-
-export const BACKUP_NOTE = `Видалені дані лишаються в резервних копіях бази даних ще до ${BACKUP_RETENTION}, доки Railway не замінить їх новими копіями.`;
 
 export const SENTRY_RETENTION =
   "Звіти про збої Sentry зберігає 30 днів на нашому поточному безкоштовному плані і 90 днів на платному.";

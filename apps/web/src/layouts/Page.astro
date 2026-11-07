@@ -4,7 +4,7 @@ import "@fontsource/manrope/700.css";
 import "@fontsource/cormorant-garamond/600.css";
 import "../styles/tokens.css";
 import "../styles/base.css";
-import { BRAND, CONTACT_EMAIL, CONTROLLER, PAGES } from "../site";
+import { BRAND, CONTACT_EMAIL, CONTROLLER_LEAD, CONTROLLER_NAME, PAGES } from "../site";
 
 interface Props {
   title: string;
@@ -60,7 +60,7 @@ const footerLinks = [PAGES.privacy, PAGES.deleteAccount, PAGES.support];
           }
         </ul>
       </nav>
-      <p>{CONTROLLER}.</p>
+      <p>{CONTROLLER_LEAD} <span class="person-name">{CONTROLLER_NAME}</span>.</p>
       <p>
         Пошта: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
       </p>
