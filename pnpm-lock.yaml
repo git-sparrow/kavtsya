@@ -226,6 +226,15 @@ importers:
 
   apps/web:
     devDependencies:
+      '@fontsource/cormorant-garamond':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource/manrope':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@kavtsya/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       astro:
         specifier: ^7.4.5
         version: 7.4.6
@@ -1350,6 +1359,12 @@ packages:
   '@fails-components/webtransport@1.6.5':
     resolution: {integrity: sha512-koXusUuDXZKj4FL/hoRy/sUmmT1YWv1x6QbsnPoJkn3+ENYb+uJDh0W8qzgP/Xbhm91KxhSaea3Tm3b1cxv8VQ==}
     engines: {node: '>=20'}
+
+  '@fontsource/cormorant-garamond@5.3.0':
+    resolution: {integrity: sha512-weuGsCirGVWBWqpt6YUp0yLThTe4G8YO45noq8wxeJCRvEpq5lFrxNMFSTxcyOyV5k5otzJ8guDzYegdYlcLMQ==}
+
+  '@fontsource/manrope@5.3.0':
+    resolution: {integrity: sha512-obJ1Dv3+uCA6HlHgW8u4BGYxJR9In2HW7gjJhlflEvkrj1X1iSEwu0fToL+JYGC/FEKFfIz1sBuPduvcL2gIAA==}
 
   '@graphql-typed-document-node/core@3.2.0':
     resolution: {integrity: sha512-mB9oAsNCm9aM3/SOv4YtBMqZbYj10R7dkq8byBqxGY/ncFwhf2oQzMV+LCRlWoDSEBJ3COiR1yeDvMtsoOsuFQ==}
@@ -7988,6 +8003,10 @@ snapshots:
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
+
+  '@fontsource/cormorant-garamond@5.3.0': {}
+
+  '@fontsource/manrope@5.3.0': {}
 
   '@graphql-typed-document-node/core@3.2.0(graphql@16.14.2)':
     dependencies:

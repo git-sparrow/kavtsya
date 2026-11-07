@@ -6,7 +6,7 @@ Disposition legend: **RESTYLE** = existing screen, visual/UX overhaul · **NEW**
 
 | Turn | Issue | Screens | Existing code | Disposition | Flags / dependencies |
 |---|---|---|---|---|---|
-| **0 — Tokens** | #132 | — | `theme/design-tokens.json` | RESTYLE (foundation) | `qr-plate`, `shadow.reward`, `scrim`. Merges first; everything depends on it. |
+| **0 — Tokens** | #132 | — | `packages/shared/design-tokens.json` | RESTYLE (foundation) | `qr-plate`, `shadow.reward`, `scrim`. Merges first; everything depends on it. |
 | **1 — Customer home + redemption + Ворожка** | #133 | 1a–1r | `mode/customer-mode.tsx`, `loyalty/customer-qr.tsx`, `loyalty/cafe-balances.tsx`, `use-member-code`, `use-qr-token` | RESTYLE **+ NEW (1k) + MOVE** | **Ворожка reveal (1k) is customer-side & new** — today the fortune renders on the *barista* screen (`scan-workstation.tsx:155`). Couples #23. Redemption sheet (1g) — verify it exists customer-side vs. net-new. Bean-dot component is shared → build once here. |
 | **2 — Owner scan / Scanner Mode** | #134 | 2a–2l | `scan/scan-workstation.tsx`, `mode/scanner-mode.tsx`, `owner/scan.tsx` | RESTYLE **+ MOVE** | **Remove fortune from barista screen** (`:155`) — render-only, payload untouched. Rejection copy (2f) = spec exists via closed #50. Overlaps #67 (scan-success moment). |
 | **3 — Owner home + program config** | #135 | 3a–3f | `mode/owner-mode.tsx`, `loyalty/use-program-editor.ts`, `owner/[cafeId].tsx` | RESTYLE | ±stepper + radio reward cards + live bean preview. Pro pills → pitch (ADR 0011). |

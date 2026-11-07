@@ -69,7 +69,7 @@ drift check reads the registry, so an offline push can land there too.
    ```
 
    The API suite needs Postgres — `pnpm db:up` first (see below). This is the
-   local gate; CI also runs Expo Doctor, and skips it and the tests on a web-only PR. Check the actual PR checks before merging.
+   local gate; CI also runs Expo Doctor; a web-only PR skips it and runs only the web tests. Check the actual PR checks before merging.
 
 4. **Push your branch and open a PR:**
 
