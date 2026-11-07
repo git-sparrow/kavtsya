@@ -9,7 +9,7 @@ export const POLICY_EFFECTIVE_DATE = "6 листопада 2026 року";
 
 export const BACKUP_RETENTION = "{{BACKUP_RETENTION}}";
 
-export interface StoreListing {
+interface StoreListing {
   store: string;
   url: string | null;
 }
@@ -20,7 +20,7 @@ export const STORE_LISTINGS: readonly StoreListing[] = [
 ];
 
 export const PAGES = {
-  home: { path: "/", title: "Головна" },
+  home: { path: "/" },
   privacy: { path: "/privacy/", title: "Політика конфіденційності" },
   deleteAccount: { path: "/delete-account/", title: "Видалення акаунта" },
   support: { path: "/support/", title: "Підтримка" },
