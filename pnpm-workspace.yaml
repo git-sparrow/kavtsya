@@ -11,11 +11,11 @@ packages:
 # Expo SDK via `expo install` and managed on the deliberate Expo track.
 catalog:
   typescript: ~6.0.3
-  vitest: ^5.0.5
+  vitest: ^5.1.0
   vite: ^8.3.5
   zod: ^4.6.7
-  better-auth: ^1.7.12
-  "@better-auth/expo": ^1.7.12
+  better-auth: ^1.7.16
+  "@better-auth/expo": ^1.7.16
 # Peers are linked only where a package declares them, never auto-installed or
 # borrowed from another workspace package. Otherwise apps/api links
 # `@better-auth/expo`'s optional Expo peers from apps/mobile, resolves them apart
