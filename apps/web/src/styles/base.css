@@ -16,6 +16,8 @@ body {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-regular);
   line-height: var(--font-line-height-normal);
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 h1,
@@ -32,15 +34,18 @@ h1 {
 }
 
 h2 {
-  font-size: var(--font-size-3xl);
+  margin: var(--space-10) 0 var(--space-4);
+  font-size: var(--font-size-2xl);
 }
 
 h3 {
-  font-size: var(--font-size-2xl);
+  margin: var(--space-8) 0 var(--space-3);
+  font-size: var(--font-size-xl);
 }
 
 a {
   color: var(--semantic-link);
+  hyphens: manual;
 }
 
 a:focus-visible {
@@ -63,20 +68,8 @@ li + li {
   margin-top: var(--space-2);
 }
 
-h2 {
-  margin: var(--space-10) 0 var(--space-4);
-}
-
-h3 {
-  margin: var(--space-8) 0 var(--space-3);
-}
-
 strong {
   font-weight: var(--font-weight-bold);
-}
-
-a {
-  overflow-wrap: anywhere;
 }
 
 .skip-link {
@@ -149,22 +142,18 @@ main:focus {
   margin-top: 0;
 }
 
-.store {
+a.store {
   display: inline-block;
   padding: var(--space-3) var(--space-5);
   border-radius: var(--radius-full);
-  font-weight: var(--font-weight-bold);
-}
-
-a.store {
   background: var(--semantic-primary);
   color: var(--semantic-primary-foreground);
+  font-weight: var(--font-weight-bold);
   text-decoration: none;
 }
 
 span.store {
-  border: 0.0625rem solid var(--semantic-border-strong);
-  color: var(--semantic-foreground);
+  color: var(--semantic-text-secondary);
 }
 
 .site-footer {

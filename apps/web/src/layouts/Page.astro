@@ -13,6 +13,7 @@ interface Props {
 
 const { title, description } = Astro.props;
 const pageTitle = title === BRAND ? BRAND : `${title} · ${BRAND}`;
+const isHome = Astro.url.pathname === PAGES.home.path;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const footerLinks = [PAGES.privacy, PAGES.deleteAccount, PAGES.support];
 ---
@@ -27,10 +28,16 @@ const footerLinks = [PAGES.privacy, PAGES.deleteAccount, PAGES.support];
     <link rel="canonical" href={canonical} />
   </head>
   <body>
-    <a class="skip-link" href="#main">Перейти до змісту</a>
-    <header class="site-header">
-      <a class="brand" href={PAGES.home.path}>{BRAND}</a>
-    </header>
+    <a class="skip-link" href="#main">Перейти до основного вмісту</a>
+    {
+      !isHome && (
+        <header class="site-header">
+          <a class="brand" href={PAGES.home.path}>
+            {BRAND}
+          </a>
+        </header>
+      )
+    }
     <main id="main" tabindex="-1">
       <slot />
     </main>
