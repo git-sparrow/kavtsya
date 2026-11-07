@@ -5,4 +5,7 @@
   "assets": {
     "directory": "./dist",
   },
+  "routes": [{ "pattern": "kavtsya.com", "custom_domain": true }],
+  "workers_dev": true,
+  "preview_urls": true,
 }
