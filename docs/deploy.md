@@ -88,10 +88,52 @@ the Workers, and a no-op DNS `PATCH` came back `403`. Every change to the
 account (DNS, routing, Workers, deploys) is the maintainer's to approve and
 run.
 
+## Website (Cloudflare Workers)
+
+The public pages for the app stores ([ADR 0020](adr/0020-web-astro-on-cloudflare-workers.md))
+are a static Astro build in [`apps/web`](../apps/web), served by the Worker
+`kavtsya-web` at `https://kavtsya.com`. The URLs to enter in the store consoles
+(#65):
+
+| Store field | URL |
+|---|---|
+| Privacy policy | `https://kavtsya.com/privacy` |
+| Account deletion | `https://kavtsya.com/delete-account` |
+| Support | `https://kavtsya.com/support` |
+
+Merging to `main` is the release: Workers Builds (root directory `apps/web`,
+production branch `main`) runs `pnpm install --frozen-lockfile && pnpm build`,
+then `npx wrangler deploy`. It installs the whole workspace. After a merge that changes the site, confirm the change is live
+with `curl`; the Worker's **Builds** tab lists each run.
+
+[`apps/web/wrangler.jsonc`](../apps/web/wrangler.jsonc) is the config. Its `routes`
+entry makes `kavtsya.com` a Worker Custom Domain: `wrangler deploy` attaches it,
+and Cloudflare creates the proxied DNS record and the certificate. Never add an
+`A`, `AAAA` or `CNAME` record for the apex by hand; Cloudflare refuses a Custom
+Domain on a hostname that already has a `CNAME`. The apex coexists with the MX,
+SPF and DKIM records above, and nothing here touches `api.kavtsya.com`, which stays
+DNS only.
+
+`workers_dev` and `preview_urls` stay on, written out so Wrangler stops warning
+about the defaults. The `kavtsya-web.olek-horob.workers.dev` address then keeps
+serving the same files, which is the way to check a build when the apex
+misbehaves. The pages hold no per-user data, so a second hostname leaks nothing.
+Turn both off only if search engines start listing the duplicate address.
+
+To roll back a bad release, open the Worker's **Deployments** tab and roll back to
+the previous version, or run `npx wrangler rollback`. To take the apex down,
+delete the Custom Domain in the Worker's dashboard settings; removing the `routes`
+entry from the config does not detach it (unverified: Cloudflare's docs are
+silent on it). The Advanced Certificate it created stays until deleted under SSL/TLS.
+(Checked on 2026-11-07 against Cloudflare's Custom Domains, Workers Builds
+configuration, Rollbacks and Version URLs pages.)
+
 ## Backups
 
-Enable the daily schedule on the `postgres` volume (Backups tab). Restores land
-only in the same project and environment; wiping the volume deletes its backups.
+Planned, not running. Railway's Hobby plan can't create volume backups (maintainer, 2026-11-07;
+unverified against Railway's docs), so the `postgres` volume has none today. The plan
+(tracked on #310) is a nightly `pg_dump` on a Railway cron job that uploads to a
+Cloudflare R2 bucket with a 30-day lifecycle rule. Once dumps exist, record their retention in the privacy policy.
 
 ## Running the mobile app against production
 
