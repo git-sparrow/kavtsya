@@ -90,10 +90,10 @@ run.
 
 ## Website (Cloudflare Workers)
 
-The public pages for the app stores ([ADR 0020](adr/0020-web-astro-on-cloudflare-workers.md))
-are a static Astro build in [`apps/web`](../apps/web), served by the Worker
-`kavtsya-web` at `https://kavtsya.com`. The URLs to enter in the store consoles
-(#65):
+The public pages for the app stores
+([ADR 0020](adr/0020-web-astro-on-cloudflare-workers.md)) are a static Astro
+build in [`apps/web`](../apps/web), served by the Worker `kavtsya-web` at
+`https://kavtsya.com`. The URLs to enter in the store consoles (#65):
 
 | Store field | URL |
 |---|---|
@@ -113,12 +113,13 @@ start a build by hand from the **Builds** tab.
 [`apps/web/wrangler.jsonc`](../apps/web/wrangler.jsonc) is the config. Its
 `routes` entry makes `kavtsya.com` a Worker Custom Domain. `wrangler deploy`
 attaches it, and Cloudflare creates the proxied DNS record and the certificate.
-Never add an `A`, `AAAA` or `CNAME` record for the apex by hand. Cloudflare
-refuses a Custom Domain on a hostname that already has a `CNAME`, and in a
-non-interactive run such as Workers Builds Wrangler overrides an existing apex
-DNS record instead of prompting (`override_existing_dns_record`). The apex
-coexists with the MX, SPF and DKIM
-records above, and nothing here touches `api.kavtsya.com`, which stays DNS only.
+Never add an `A`, `AAAA` or `CNAME` record for the apex by hand. Cloudflare's
+docs say a Custom Domain can't be created on a hostname that already has a
+`CNAME`. In a non-interactive run such as Workers Builds, Wrangler sends
+`override_existing_dns_record: true` instead of prompting, so another existing
+apex record may be replaced without warning (unverified against the API). The
+apex coexists with the MX, SPF and DKIM records above, and nothing here touches
+`api.kavtsya.com`, which stays DNS only.
 
 `workers_dev` and `preview_urls` stay on, written out so Wrangler stops warning
 about the defaults. Wrangler 4.158.0 defaults `workers_dev` to false once a
