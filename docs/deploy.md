@@ -101,39 +101,54 @@ are a static Astro build in [`apps/web`](../apps/web), served by the Worker
 | Account deletion | `https://kavtsya.com/delete-account` |
 | Support | `https://kavtsya.com/support` |
 
-Merging to `main` is the release: Workers Builds (root directory `apps/web`,
-production branch `main`) runs `pnpm install --frozen-lockfile && pnpm build`,
-then `npx wrangler deploy`. It installs the whole workspace. After a merge that changes the site, confirm the change is live
-with `curl`; the Worker's **Builds** tab lists each run.
+Workers Builds deploys from `main` (root directory `apps/web`, production
+branch `main`). It runs `pnpm install --frozen-lockfile && pnpm build`, then
+`npx wrangler deploy`, and installs the whole workspace. A merge is the release
+only while the GitHub integration delivers push events to Workers Builds (see
+#407). After a site change, check that the Worker's
+**Builds** tab lists a run for the merge commit and that
+`curl -s https://kavtsya.com/privacy` serves the new page. If no run appears,
+start a build by hand from the **Builds** tab.
 
-[`apps/web/wrangler.jsonc`](../apps/web/wrangler.jsonc) is the config. Its `routes`
-entry makes `kavtsya.com` a Worker Custom Domain: `wrangler deploy` attaches it,
-and Cloudflare creates the proxied DNS record and the certificate. Never add an
-`A`, `AAAA` or `CNAME` record for the apex by hand; Cloudflare refuses a Custom
-Domain on a hostname that already has a `CNAME`. The apex coexists with the MX,
-SPF and DKIM records above, and nothing here touches `api.kavtsya.com`, which stays
-DNS only.
+[`apps/web/wrangler.jsonc`](../apps/web/wrangler.jsonc) is the config. Its
+`routes` entry makes `kavtsya.com` a Worker Custom Domain. `wrangler deploy`
+attaches it, and Cloudflare creates the proxied DNS record and the certificate.
+Never add an `A`, `AAAA` or `CNAME` record for the apex by hand. Cloudflare
+refuses a Custom Domain on a hostname that already has a `CNAME`, and in a
+non-interactive run such as Workers Builds Wrangler overrides an existing apex
+DNS record instead of prompting (`override_existing_dns_record`). The apex
+coexists with the MX, SPF and DKIM
+records above, and nothing here touches `api.kavtsya.com`, which stays DNS only.
 
 `workers_dev` and `preview_urls` stay on, written out so Wrangler stops warning
-about the defaults. The `kavtsya-web.olek-horob.workers.dev` address then keeps
-serving the same files, which is the way to check a build when the apex
-misbehaves. The pages hold no per-user data, so a second hostname leaks nothing.
-Turn both off only if search engines start listing the duplicate address.
+about the defaults. Wrangler 4.158.0 defaults `workers_dev` to false once a
+`routes` entry exists, so `workers_dev: true` is what keeps
+`kavtsya-web.olek-horob.workers.dev` alive. That address serves the same files,
+which is the way to check a build when the apex fails. The pages hold no
+per-user data, so a second hostname leaks nothing. Turn both off only if search
+engines start listing the duplicate address.
 
-To roll back a bad release, open the Worker's **Deployments** tab and roll back to
-the previous version, or run `npx wrangler rollback`. To take the apex down,
-delete the Custom Domain in the Worker's dashboard settings; removing the `routes`
-entry from the config does not detach it (unverified: Cloudflare's docs are
-silent on it). The Advanced Certificate it created stays until deleted under SSL/TLS.
+To roll back a bad release, open the Worker's **Deployments** tab and roll back
+to the previous version, or run `npx wrangler rollback`. To take the apex down,
+delete the Custom Domain in the Worker's dashboard settings. Removing the
+`routes` entry from the config does not detach it, because Wrangler 4.158.0
+calls the Custom Domains API only when the config lists at least one custom
+domain (`publishCustomDomains`, which runs only when
+`customDomainsOnly.length > 0`). The Advanced Certificate it created stays until
+deleted under SSL/TLS.
 (Checked on 2026-11-07 against Cloudflare's Custom Domains, Workers Builds
-configuration, Rollbacks and Version URLs pages.)
+configuration, Rollbacks and Version URLs pages, and against
+`getSubdomainValues`, `publishCustomDomains` and the `isTTY` branch in
+`apps/web/node_modules/wrangler/wrangler-dist/cli.js`, Wrangler 4.158.0.)
 
 ## Backups
 
-Planned, not running. Railway's Hobby plan can't create volume backups (maintainer, 2026-11-07;
-unverified against Railway's docs), so the `postgres` volume has none today. The plan
-(tracked on #310) is a nightly `pg_dump` on a Railway cron job that uploads to a
-Cloudflare R2 bucket with a 30-day lifecycle rule. Once dumps exist, record their retention in the privacy policy.
+Database backups are planned but not running. On the Hobby plan the `postgres`
+service's Backups tab says "Upgrade to Pro to create new backups" (maintainer,
+2026-11-07); docs.railway.com/volumes/backups, read the same day, names no plan.
+The plan, tracked on #310, is a nightly `pg_dump` on a Railway cron job that
+uploads to a Cloudflare R2 bucket with a 30-day lifecycle rule. Once dumps
+exist, record their retention in the privacy policy.
 
 ## Running the mobile app against production
 
