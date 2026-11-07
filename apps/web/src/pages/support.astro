@@ -6,10 +6,10 @@ import { BRAND, CONTACT_EMAIL, CONTROLLER, PAGES } from "../site";
 
 <Page
   title={PAGES.support.title}
-  description="Як зв'язатися з розробником застосунку Кавця."
+  description={`Як зв'язатися з розробником застосунку ${BRAND}.`}
 >
   <h1>{PAGES.support.title}</h1>
-  <p class="lead">
+  <p>
     Пиши на <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
   </p>
   <p>
@@ -33,7 +33,7 @@ import { BRAND, CONTACT_EMAIL, CONTROLLER, PAGES } from "../site";
   <h3>Мені не нарахували зернятко</h3>
   <p>
     Зернятка нараховує кав'ярня, коли сканує твій QR-код. Спершу скажи про це
-    баристі. Якщо не допомогло, напиши нам і вкажи кав'ярню й час покупки.
+    на касі. Якщо не допомогло, напиши нам і вкажи кав'ярню й час покупки.
   </p>
 
   <h2>Завантажити «{BRAND}»</h2>
