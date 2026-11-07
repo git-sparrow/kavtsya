@@ -1,0 +1,41 @@
+---
+import Page from "../layouts/Page.astro";
+import StoreLinks from "../components/StoreLinks.astro";
+import { BRAND, CONTACT_EMAIL, CONTROLLER, PAGES } from "../site";
+---
+
+<Page
+  title={PAGES.support.title}
+  description="Як зв'язатися з розробником застосунку Кавця."
+>
+  <h1>{PAGES.support.title}</h1>
+  <p class="lead">
+    Пиши на <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+  </p>
+  <p>
+    Ми відповідаємо українською. Щоб ми швидше допомогли, напиши, що сталося,
+    на якому телефоні і яка версія застосунку. Якщо питання про конкретну кав'ярню,
+    назви її.
+  </p>
+  <p>{CONTROLLER}.</p>
+
+  <h2>Часті запитання</h2>
+  <h3>Як видалити акаунт?</h3>
+  <p>
+    У застосунку або листом. Покроково написано на сторінці «<a
+      href={PAGES.deleteAccount.path}>{PAGES.deleteAccount.title}</a
+    >».
+  </p>
+  <h3>Які дані збирає застосунок?</h3>
+  <p>
+    Усе описано в <a href={PAGES.privacy.path}>політиці конфіденційності</a>.
+  </p>
+  <h3>Мені не нарахували зернятко</h3>
+  <p>
+    Зернятка нараховує кав'ярня, коли сканує твій QR-код. Спершу скажи про це
+    баристі. Якщо не допомогло, напиши нам і вкажи кав'ярню й час покупки.
+  </p>
+
+  <h2>Завантажити «{BRAND}»</h2>
+  <StoreLinks />
+</Page>

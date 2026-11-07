@@ -7,6 +7,8 @@ export const CONTACT_EMAIL = "hello@kavtsya.com";
 
 export const POLICY_EFFECTIVE_DATE = "6 листопада 2026 року";
 
+export const BACKUP_RETENTION = "{{BACKUP_RETENTION}}";
+
 export interface StoreListing {
   store: string;
   url: string | null;

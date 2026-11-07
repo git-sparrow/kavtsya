@@ -1,6 +1,7 @@
 ---
 import Page from "../layouts/Page.astro";
-import { BRAND, STORE_LISTINGS } from "../site";
+import StoreLinks from "../components/StoreLinks.astro";
+import { BRAND } from "../site";
 ---
 
 <Page
@@ -14,19 +15,5 @@ import { BRAND, STORE_LISTINGS } from "../site";
     кавовій гущі.
   </p>
   <h2>Завантажити застосунок</h2>
-  <ul class="stores">
-    {
-      STORE_LISTINGS.map(({ store, url }) => (
-        <li>
-          {url ? (
-            <a class="store" href={url}>
-              {store}
-            </a>
-          ) : (
-            <span class="store">{store}: скоро</span>
-          )}
-        </li>
-      ))
-    }
-  </ul>
+  <StoreLinks />
 </Page>
