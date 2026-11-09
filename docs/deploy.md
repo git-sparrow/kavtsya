@@ -97,9 +97,9 @@ build in [`apps/web`](../apps/web), served by the Worker `kavtsya-web` at
 
 | Store field | URL |
 |---|---|
-| Privacy policy | `https://kavtsya.com/privacy` |
-| Account deletion | `https://kavtsya.com/delete-account` |
-| Support | `https://kavtsya.com/support` |
+| Privacy policy | `https://kavtsya.com/privacy/` |
+| Account deletion | `https://kavtsya.com/delete-account/` |
+| Support | `https://kavtsya.com/support/` |
 
 Workers Builds deploys from `main` (root directory `apps/web`, production
 branch `main`). It runs `pnpm install --frozen-lockfile && pnpm build`, then
@@ -107,7 +107,7 @@ branch `main`). It runs `pnpm install --frozen-lockfile && pnpm build`, then
 only while the GitHub integration delivers push events to Workers Builds (see
 #407). After a site change, check that the Worker's
 **Builds** tab lists a run for the merge commit and that
-`curl -s https://kavtsya.com/privacy` serves the new page. If no run appears,
+`curl -s https://kavtsya.com/privacy/` serves the new page. If no run appears,
 start a build by hand from the **Builds** tab.
 
 [`apps/web/wrangler.jsonc`](../apps/web/wrangler.jsonc) is the config. Its
