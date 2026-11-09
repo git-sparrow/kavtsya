@@ -14,6 +14,20 @@ const lockfile = (...keys) =>
   `lockfileVersion: '9.0'\n\npackages:\n\n${keys.map((k) => `  ${k}:\n    resolution: {}\n`).join("\n")}\nsnapshots:\n\n  expo@99.0.0: {}\n`;
 
 describe("ignoredPatterns", () => {
+  it("excludes update-type holds from the Expo freeze", () => {
+    const yml = [
+      "updates:",
+      '  - package-ecosystem: "npm"',
+      "    ignore:",
+      '      - dependency-name: "@types/node"',
+      '        update-types: ["version-update:semver-major"]',
+      '      - dependency-name: "expo"',
+      '      - dependency-name: "test-renderer"',
+      '        versions: [">=1.3.0"]',
+    ].join("\n");
+    assert.deepEqual(ignoredPatterns(yml), ["expo", "test-renderer"]);
+  });
+
   it("reads the npm ignore list and not the other ecosystems", () => {
     const yml = [
       "updates:",

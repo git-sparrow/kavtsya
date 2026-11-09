@@ -9,15 +9,17 @@ import path from "node:path";
 const root = path.resolve(import.meta.dirname, "../..");
 const DOC = "docs/agents/dependency-updates.md";
 
-/** The `dependency-name` patterns of the npm ecosystem's `ignore` list. */
+/** npm ignore patterns frozen by package/version, excluding update-type holds. */
 export function ignoredPatterns(dependabotYml) {
   const npm = dependabotYml
     .split(/^ {2}- package-ecosystem:/m)
     .find((entry) => entry.trimStart().startsWith('"npm"'));
   if (!npm) throw new Error("no npm entry in .github/dependabot.yml");
-  return [...npm.matchAll(/^ +- dependency-name: "([^"]+)"/gm)].map(
-    (m) => m[1],
-  );
+  return npm
+    .split(/^ {6}- dependency-name: /m)
+    .slice(1)
+    .filter((entry) => !/^ {8}update-types:/m.test(entry))
+    .map((entry) => entry.match(/^"([^"]+)"/)[1]);
 }
 
 /** Resolved versions per package name, from the lockfile's `packages:` section. */

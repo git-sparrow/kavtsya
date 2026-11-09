@@ -18,6 +18,8 @@ Authority is layered by category: each kind of dependency has exactly one owner.
 
 - **Read resolved versions from `pnpm-lock.yaml`.** A `package.json` range is a
   constraint, not a fact.
+- Upgrade the Node runtime major and its types together: Dockerfile, `.nvmrc`,
+  `engines.node` and `@types/node`; Dependabot keeps type updates within that major.
 - **Expo-governed packages move only on the [Expo track](#expo-track)**, never by hand
   or by automation: the SDK dictates them as a known-good set, and an out-of-band bump
   breaks the native build.
