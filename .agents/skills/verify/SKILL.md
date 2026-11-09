@@ -14,9 +14,10 @@ commit; runtime verification drives the actual surface the diff touches.
 pnpm verify
 ```
 
-One root script = `agents:check && deps:check && typecheck && lint && format:check && test`
+One root script = `agents:check && deps:check && typecheck && lint && format:check && web build && test`
 (`typecheck`/`test` fan out with `pnpm -r`; `lint` is one repo-wide eslint) —
-also run in `.github/workflows/ci.yml`. CI additionally runs Expo Doctor. Green
+also run in `.github/workflows/ci.yml`. CI additionally runs Expo Doctor, and on a
+web-only PR (`scripts/ci/changed-scope.mjs`) skips Expo Doctor and `pnpm test`, and runs only `pnpm --filter @kavtsya/web test`. Green
 gate ≠ verified — exercise the changed surface next. For agent setup changes,
 that means configuration/skill discovery, not an unrelated simulator run.
 

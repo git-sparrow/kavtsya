@@ -8,19 +8,22 @@ A multi-café coffee loyalty mobile app for the Ukrainian market. Each Café run
 
 Twin goals: learn AI hands-on, and refresh JS/TS/React/React Native fundamentals.
 
-**Build phase**: scope and architecture are locked. Status (what's merged, what's next) lives only in the Status line + Roadmap of [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md) (#118); when a slice lands, update it there.
+**Build phase**: scope is locked. Status (what's merged, what's next) lives only in the Status line + Roadmap of [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md) (#118); when a slice lands, update it there.
 
-## Stack (locked)
+## Stack (current choice)
 
 - **Mobile**: React Native + Expo (iOS + Android), one app with a CafeOwner Mode
 - **Backend**: Hono on Node.js (Railway)
 - **Database**: PostgreSQL on Railway, raw SQL via `postgres.js` (no ORM), Zod for validation
-- **Auth**: Better Auth — email/password + Google + Apple Sign-In
+- **Auth**: Better Auth, email/password (Google + Apple Sign-In: open decision in #58)
 - **AI**: custom provider abstraction, Claude (Sonnet 5) by default for Ukrainian quality (ADR 0007)
 - **Push**: Expo Push Notifications
-- **Repo**: monorepo — `apps/mobile` + `apps/api` + `packages/shared`
+- **Website**: Astro static site on Cloudflare Workers (ADR 0020)
+- **Repo**: monorepo — `apps/mobile` + `apps/api` + `apps/web` + `packages/shared`
 
 Rationale: the Tech stack table in `PROJECT_BRIEF.md` and `docs/adr/`.
+
+The stack serves the product and the learning goal; it is not fixed. When another service, vendor or technology would fit Kavtsya noticeably better (cost, capability, reliability, or what it teaches), raise it with the maintainer: what it replaces, the trade-offs both ways, the migration cost, and your recommendation. The maintainer decides. Build on the current stack until then, and record an accepted change as an ADR that supersedes the old one.
 
 ## Working agreement
 

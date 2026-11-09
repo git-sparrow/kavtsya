@@ -12,8 +12,9 @@ apps/mobile/ios
 # Lockfiles & generated
 pnpm-lock.yaml
 skills-lock.json
-# Design tokens: emitted by scripts/build-theme.mjs, never hand-formatted
+# Design tokens: emitted by the token build scripts, never hand-formatted
 apps/mobile/src/theme/theme.generated.ts
+apps/web/src/styles/tokens.css
 
 # Vendored skills & plugins (not our code to format — matters for the plugins'
 # non-markdown files, since `*.md` below already covers every doc in the repo)

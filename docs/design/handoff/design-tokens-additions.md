@@ -1,6 +1,6 @@
 # design-tokens.json — additions (closes the last open handoff item)
 
-Target file: `mobile/src/theme/design-tokens.json`. Three additions, DTCG format, matching the file's existing style. Values reference existing ramps — no new hexes except alpha variants of approved brand colors.
+Target file: `packages/shared/design-tokens.json`. Three additions, DTCG format, matching the file's existing style. Values reference existing ramps — no new hexes except alpha variants of approved brand colors.
 
 ## 1. `qr-plate` — white QR surface (both themes)
 QR codes always render on a white plate for scanability (turns 1–2 dark rule). Add to BOTH `semantic.light` and `semantic.dark` (after `"primary-surface"`):

@@ -1,0 +1,19 @@
+---
+import { STORE_LISTINGS } from "../site";
+---
+
+<ul class="stores">
+  {
+    STORE_LISTINGS.map(({ store, url }) => (
+      <li>
+        {url ? (
+          <a class="store" href={url}>
+            {store}
+          </a>
+        ) : (
+          <span class="store">{store}: скоро</span>
+        )}
+      </li>
+    ))
+  }
+</ul>

@@ -1,6 +1,6 @@
 # Kavtsya — Customer Core Loop redesign · Engineering handoff
 Date: 2026-07-20 · Source canvas: `Customer Core Loop.dc.html` (screens marked «✓ ОБРАНО»)
-All values are semantic tokens from `apps/mobile/src/theme/design-tokens.json`. No new hexes.
+All values are semantic tokens from `packages/shared/design-tokens.json`. No new hexes.
 
 ## Approved screens — ALL screens on the canvas are approved (turns 1–9)
 - **1b home dark, 1c loading, 1e empty, 1l Ворожка reward-ready** — approved as drawn; specs for each are described inline above/below (1b = 1a structure on `semantic.dark.*`; 1c reserved QR square on `primary-surface` + «Готуємо твій код…»; 1e Берегиня empty state «Перше зернятко чекає»; 1l reward-ready fortune: beanrow on `primary-surface` + `primary` border, «★ ВИНАГОРОДА ГОТОВА», CTA «Отримати Винагороду» + ghost «Пізніше»).
@@ -86,4 +86,4 @@ New feature. Dark twins 9d–9f = `.dark` remap + standing dark rules (avatar `p
 - **9c/9f — Надіслано.** Standard waiting/success anatomy (5f/8b family): envelope glyph `success` on 76px `success-surface` circle, serif title 26 «Експорт надіслано», body restates count + address + spam-folder hint, «Готово» primary 48pt. Live region.
 
 ## Next scope
-None. Feature-complete (turns 1–9). Possible future: opt-in contact sharing (requires a customer-side consent toggle — design both sides). Token additions (`qr-plate`, `shadow.reward`, `scrim`) are specced as a ready-to-paste patch in `handoff/design-tokens-additions.md` — apply to `mobile/src/theme/design-tokens.json`.
+None. Feature-complete (turns 1–9). Possible future: opt-in contact sharing (requires a customer-side consent toggle — design both sides). Token additions (`qr-plate`, `shadow.reward`, `scrim`) are specced as a ready-to-paste patch in `handoff/design-tokens-additions.md` — apply to `packages/shared/design-tokens.json`.
