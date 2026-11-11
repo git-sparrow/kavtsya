@@ -450,12 +450,12 @@ The maintainer performs these steps:
 2. On **A as CafeOwner**, on a fresh install, open the scanner and record both
    Ukrainian permission texts: the app's own screen, then the iOS alert. Scan
    B’s Customer QR and verify a successful Purchase; on **B as Customer**, verify
-   the balance rises by one Зернятко. The QR changes about 75 seconds after it
-   appears and whenever the app returns to the foreground, so just before the
-   first scan bring B's app back to the foreground (a fresh QR) and finish both
-   scans within a minute of that, with B's app kept open: on **A as CafeOwner**
-   rescan the **same** QR and verify duplicate rejection; on **B as Customer**,
-   verify no second balance increase.
+   the balance rises by one Зернятко. B's app replaces a used QR within seconds
+   (#375), so the duplicate check scans a screenshot: just before the first
+   scan, take a screenshot of B's QR, then within a minute of it (the token
+   expires about 90 seconds after it appears) open that screenshot on **B** and
+   on **A as CafeOwner** scan it again. Verify duplicate rejection («Код уже
+   використано»); on **B as Customer**, verify no second balance increase.
    When the café-news consent card appears on **B** after the first Purchase,
    decline it. This leaves account-level consent off; step 4 enables it on A.
 3. Record HTTP `201` then `409` evidence for A’s scan requests as well as the
@@ -478,7 +478,7 @@ The maintainer performs these steps:
    intended receiving device. Stay on the app's home screen for about 15 seconds
    so the registration finishes before A leaves the app.
 5. On **A**, leave the app (iOS Home screen or lock): the app shows no notification
-   that arrives while it is open. On **B as CafeOwner**, send one test campaign
+   that arrives while it is open (#418). On **B as CafeOwner**, send one test campaign
    from the **same test Café created in step 1**, where the Customer earned
    their Purchase. Confirm the notification arrives on **A**.
 6. Steps 5, 7 and 8 each need their own Business day (one campaign per Café per
