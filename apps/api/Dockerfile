@@ -9,6 +9,9 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/api/package.json apps/api/
 COPY packages/shared/package.json packages/shared/
+# pnpm checks every patchedDependencies file at install, even for packages the
+# filter leaves out.
+COPY patches patches
 # Isolated linker: the repo's hoisted layout exists for Metro and would pull
 # the whole workspace into one tree.
 RUN pnpm install --frozen-lockfile --filter @kavtsya/api... \
