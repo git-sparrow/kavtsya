@@ -97,6 +97,12 @@ jobs:
       - name: Build web
         run: pnpm --filter @kavtsya/web build
 
+      # Railway builds this image only after merge, so this is the one
+      # pre-merge check that the Dockerfile still builds.
+      - name: Build API image
+        if: steps.scope.outputs.scope != 'web'
+        run: docker build --platform linux/amd64 -f apps/api/Dockerfile .
+
       - name: Test
         if: steps.scope.outputs.scope != 'web'
         run: pnpm test
