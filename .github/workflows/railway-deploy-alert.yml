@@ -1,0 +1,38 @@
+name: Railway deploy alert
+
+# A broken Railway deploy must not go unnoticed (#421). Railway reports each
+# service's deploy as a commit status; this turns a failure into one issue per
+# service and closes it when the next deploy succeeds. The logic lives in the
+# script so it can be run locally.
+
+on: status
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: railway-deploy-alert-${{ github.event.context }}
+  cancel-in-progress: false
+
+jobs:
+  alert:
+    if: startsWith(github.event.context, 'kavtsya - ') && github.event.state != 'pending'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/ci
+
+      - name: Open, update or close the deploy issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          CONTEXT: ${{ github.event.context }}
+          STATE: ${{ github.event.state }}
+          SHA: ${{ github.event.sha }}
+          TARGET_URL: ${{ github.event.target_url }}
+          MESSAGE: ${{ github.event.commit.commit.message }}
+        run: scripts/ci/railway-deploy-alert.sh

@@ -14,7 +14,8 @@ the image is [`apps/api/Dockerfile`](../apps/api/Dockerfile).
 
 Merge to `main`. Railway rebuilds the services whose watch paths changed, once
 the commit's GitHub checks pass. A failing migration stops the deploy and the
-previous version keeps serving.
+previous version keeps serving. A failed deploy opens a `railway-deploy` issue
+for its service, which closes on the next successful deploy.
 
 Each build applies Debian's current security updates, so two builds of one
 commit can differ. Scan the image Railway built, not a local one: check the
