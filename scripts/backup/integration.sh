@@ -46,7 +46,7 @@ docker run --detach --name "$source_db" --network "$network" \
   --env POSTGRES_DB=coffee postgres:18-trixie >/dev/null
 ready=false
 for ((attempt=0; attempt<60; attempt++)); do
-  if docker exec "$source_db" pg_isready --username=backup --dbname=coffee >/dev/null 2>&1; then
+  if docker exec "$source_db" psql --host=127.0.0.1 --username=backup --dbname=coffee --no-psqlrc --set=ON_ERROR_STOP=1 --command="select 1" >/dev/null 2>&1; then
     ready=true
     break
   fi

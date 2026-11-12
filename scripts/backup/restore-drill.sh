@@ -29,7 +29,7 @@ created=true
 docker start "$name" >/dev/null
 ready=false
 for ((attempt=0; attempt<60; attempt++)); do
-  if docker exec "$name" pg_isready --username=postgres --dbname=restore_drill >/dev/null 2>&1; then
+  if docker exec "$name" psql --host=127.0.0.1 --username=postgres --dbname=restore_drill --no-psqlrc --set=ON_ERROR_STOP=1 --command="select 1" >/dev/null 2>&1; then
     ready=true
     break
   fi
