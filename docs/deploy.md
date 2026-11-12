@@ -145,12 +145,135 @@ configuration, Rollbacks and Version URLs pages, and against
 
 ## Backups
 
-Database backups are planned but not running. On the Hobby plan the `postgres`
-service's Backups tab says "Upgrade to Pro to create new backups" (maintainer,
-2026-11-07); docs.railway.com/volumes/backups, read the same day, names no plan.
-The plan, tracked on #310, is a nightly `pg_dump` on a Railway cron job that
-uploads to a Cloudflare R2 bucket with a 30-day lifecycle rule. Once dumps
-exist, record their retention in the privacy policy.
+Backups are **not activated or proven against production**. #310 remains open
+until the maintainer records the production upload and restore receipts below.
+On Railway Hobby, the `postgres` service's Backups tab says "Upgrade to Pro to
+create new backups" (maintainer, 2026-11-07).
+
+The proposed `database-backup` service runs daily at **02:00 UTC**. Its dedicated
+[`ops/backup/Dockerfile`](../ops/backup/Dockerfile) contains PostgreSQL 18 clients
+and Debian's `awscli`, separate from the API image. It creates one complete
+custom archive, checks its archive inventory, uploads a unique UTC/random key
+under `postgres/`, then compares the remote object's size with the local file.
+A failed stage exits nonzero without printing database or S3 stderr. The whole
+job has a 30-minute limit, with a 10-second termination grace period. Temporary
+files have private permissions and are removed on exit or handled termination.
+A host crash or forced kill still depends on Railway disposing of the container.
+Single-object uploads are limited to 5 GiB; a larger database needs a reviewed
+multipart implementation before this limit is reached.
+
+This is a daily logical snapshot of one database, including auth records and
+personal data. It does not provide point-in-time recovery, database roles, or
+infrastructure recovery. A snapshot can miss changes since the last successful
+run. No application-layer `age` encryption is implemented. R2 access controls
+and transport/storage encryption protect the archive; anyone with object read
+access can restore its contents.
+
+### Activate backups (maintainer)
+
+1. Run `SHOW server_version;` against the live database and record its major on
+   #310. The image uses major 18; its preflight refuses a different server major.
+   Match the client image and disposable restore target to the actual server
+   major before activation if needed.
+2. Create a **private** R2 bucket, preferably with **EU jurisdiction**. Keep both
+   `r2.dev` and custom-domain public access disabled. Create a bucket-scoped
+   **Object Read & Write** token and save its Access Key ID and Secret Access
+   Key securely. This permission also permits deleting objects; it is not
+   write-only or immutable storage. Keep the token off the API and other jobs.
+3. Set a lifecycle rule for prefix `postgres/` to expire objects after **30 days**.
+   Record the accepted rule and bucket jurisdiction on #310. Lifecycle deletion
+   is asynchronous, so 30 days is the expiration setting, not an exact physical
+   deletion deadline. No backup script deletes remote objects.
+4. Review `railway config plan` for the new service before applying the IaC.
+   Set its preserved variables through the Secrets procedure above:
+   `R2_BUCKET`, `R2_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID`, and
+   `AWS_SECRET_ACCESS_KEY`. `DATABASE_URL` references the database service.
+   Use `https://<32-character-account-id>.eu.r2.cloudflarestorage.com` for an EU
+   jurisdiction bucket, or the default account endpoint without `.eu` for a
+   default-jurisdiction bucket. No path, credentials, port, or query is accepted
+   in the endpoint. The database URL accepts a single-host PostgreSQL URI with
+   percent-encoded components and libpq query options, including `sslmode`.
+   Newlines, NUL, surrounding whitespace in decoded values, and service-file
+   indirection are rejected.
+5. Before the first production dump, update both the privacy policy and account
+   deletion page to disclose the backup processor/location, archive contents,
+   30-day expiration setting and asynchronous deletion, restricted recovery
+   use, and what happens to deleted-account data after a restore. Do not claim
+   this retention is active before the service and lifecycle rule are enabled.
+6. Run the job once. Record the Railway deployment/run, sanitized
+   `backup complete key=... bytes=...` line, R2 object's private status and size,
+   and lifecycle rule on #310. Download that object using a separate read
+   credential and run the isolated drill below. Record the restore output and
+   schema revision. CI's local stand-in does not prove R2 authentication,
+   permissions, jurisdiction, lifecycle, or Railway scheduling.
+7. After the first scheduled run, record a second object and run receipt.
+   Assign a daily operator to check by 02:45 UTC for a new verified object and a
+   successful run, including days with no run. Investigate a missing object,
+   nonzero exit, or skipped run immediately. Railway skips the next cron when
+   the preceding run is still active, so failed-deploy alerts alone are
+   insufficient. Keep #310 open until this operational check is assigned and
+   demonstrated. Once activated, update this status and the production receipts.
+
+### Verify a downloaded archive
+
+Use a trusted machine with Docker, enough disk space, and this checkout at the
+snapshot's schema revision. Download to a private directory without putting
+credentials in shell arguments. Keep the archive out of the repository.
+
+```bash
+umask 077
+ARCHIVE_FILE=/private/path/database.dump bash scripts/backup/restore-drill.sh
+```
+
+The drill constructs a unique PostgreSQL 18 container with no network, host
+ports, or host mounts. It accepts only `ARCHIVE_FILE`, restores into an empty
+database with `--no-owner --no-privileges --single-transaction`, checks the
+migration inventory, tables, foreign-key validation, ledger membership, and
+nonnegative derived balances, then removes its exact container and volume on
+success, failure, or handled termination. It never accepts a destination URL.
+Compare the printed counts with independent expectations from the snapshot's
+time. Archive inspection and matching byte counts alone do not prove recovery.
+Delete the local archive after the drill according to the incident's handling
+requirements. If the host or script is forcibly killed, remove only the printed
+`kavtsya-restore-*` container and its volume after confirming its task ownership.
+
+For local verification and CI, run `bash scripts/backup/integration.sh`. It builds
+the backup image, applies the real app migrations to a disposable database,
+uploads synthetic Ukrainian data with the real AWS CLI to a local TLS S3
+stand-in, and restores the uploaded bytes. It checks UTF-8 data, the ledger,
+foreign-key enforcement, and sequence state. Every resource has a unique task
+name. This command never contacts R2 or a production database.
+
+### Recover service after data loss
+
+1. Stop application and cron writes. Identify the last successful snapshot and
+   the lost time interval before choosing an archive.
+2. Download the chosen private object and complete the isolated drill. Compare
+   its counts and migration inventory with the incident's expected state.
+3. Provision a separate database through the normal infrastructure procedure.
+   Restore there with the same `pg_restore` flags and validate the app against
+   that replacement. Recreate roles and connection secrets separately. Never
+   test a restore by overwriting the live database.
+4. Reconcile account deletions and consent changes made after the snapshot
+   using independent incident/support records. A restore can reintroduce old
+   auth sessions, deleted-account data, and push consent. Revoke restored auth
+   sessions and keep outbound push/AI jobs stopped until reconciliation passes.
+   If those independent records are unavailable, keep the replacement offline
+   and resolve the privacy/data-integrity gap before accepting traffic.
+5. Switch the application and jobs only after the maintainer accepts the
+   validated replacement and the lost-data interval. Check health and the
+   loyalty loop, then resume writes and scheduled jobs. Record the incident,
+   archive key, checks, and deletion reconciliation without personal data.
+
+Contracts checked against primary docs on **2026-11-12**:
+[PostgreSQL custom dumps](https://www.postgresql.org/docs/18/app-pgdump.html),
+[libpq connection services](https://www.postgresql.org/docs/18/libpq-pgservice.html),
+[R2 tokens and jurisdiction endpoints](https://developers.cloudflare.com/r2/api/tokens/),
+[R2 lifecycle expiration](https://developers.cloudflare.com/r2/buckets/object-lifecycles/),
+[the R2 AWS CLI example](https://developers.cloudflare.com/r2/examples/aws/aws-cli/),
+and the [official PostgreSQL image tags](https://github.com/docker-library/official-images/blob/master/library/postgres).
+Production configuration and recovery remain unverified until the receipts above
+exist.
 
 ## Running the mobile app against production
 

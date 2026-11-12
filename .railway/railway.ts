@@ -8,9 +8,6 @@ import {
   service,
 } from "railway/iac";
 
-// Production on Railway (#65). Plan/apply with the Railway CLI; the deploy
-// path is in docs/deploy.md. Every service runs the apps/api image.
-
 const REGION = "europe-west4-drams3a"; // Amsterdam — closest to Ukraine
 const API_DOMAIN = "api.kavtsya.com";
 // One value for the port the API listens on and the port its domain routes to.
@@ -82,6 +79,23 @@ export default defineRailway(() => {
       // Expo deletes receipts 24 hours after a send, so check well inside that.
       cron("prune-push-receipts", "0 */6 * * *"),
       cron("prune-expired-sessions", "30 1 * * *"),
+      service("database-backup", {
+        source,
+        build: {
+          builder: "DOCKERFILE",
+          dockerfilePath: "ops/backup/Dockerfile",
+          watchPatterns: ["/ops/backup/**", "/.dockerignore"],
+        },
+        replicas: { [REGION]: 1 },
+        deploy: { cronSchedule: "0 2 * * *", restartPolicyType: "NEVER" },
+        env: {
+          DATABASE_URL: db.env.DATABASE_URL,
+          R2_ENDPOINT_URL: preserve(),
+          R2_BUCKET: preserve(),
+          AWS_ACCESS_KEY_ID: preserve(),
+          AWS_SECRET_ACCESS_KEY: preserve(),
+        },
+      }),
     ],
   });
 });
