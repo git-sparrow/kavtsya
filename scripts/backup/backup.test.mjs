@@ -14,7 +14,7 @@ import { test } from "node:test";
 
 const script = resolve("ops/backup/backup.sh");
 const databaseUrl =
-  "postgresql://backup:db%40secret@localhost:5432/coffee?sslmode=require&application_name=backup";
+  "postgresql://backup:db%40secret@localhost:5432/coffee?sslmode=require&application_name=a+b";
 const credentials = {
   DATABASE_URL: databaseUrl,
   R2_ENDPOINT_URL: `https://${"a".repeat(32)}.r2.cloudflarestorage.com`,
@@ -175,7 +175,7 @@ test("uploads complete bytes under unique UTC keys and isolates child credential
   const service = readFileSync(join(f.dir, "service"), "utf8");
   assert.match(service, /^password=db@secret$/m);
   assert.match(service, /^sslmode=require$/m);
-  assert.match(service, /^application_name=backup$/m);
+  assert.match(service, /^application_name=a\+b$/m);
   for (const call of f.calls()) {
     for (const secret of [
       databaseUrl,
@@ -205,6 +205,16 @@ test("uploads complete bytes under unique UTC keys and isolates child credential
       assert.equal("AWS_ACCESS_KEY_ID" in call.env, false);
     }
   }
+  const dump = f
+    .calls()
+    .find(
+      (call) => call.name === "pg_dump" && !call.args.includes("--version"),
+    );
+  assert.ok(dump.args.includes("--exclude-table-data=public.session"));
+  assert.equal(
+    dump.args.filter((arg) => arg.startsWith("--exclude")).length,
+    1,
+  );
   assertCleaned(f.calls());
 });
 

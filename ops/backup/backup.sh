@@ -54,7 +54,7 @@ server_version=$(pg psql --no-psqlrc --tuples-only --no-align --set=ON_ERROR_STO
 (( server_version / 10000 == client_major )) || exit 1
 
 stage=dump
-pg pg_dump --format=custom --no-password --file="$archive"
+pg pg_dump --format=custom --exclude-table-data=public.session --no-password --file="$archive"
 [[ -s "$archive" ]] || exit 1
 stage=archive
 pg_restore --list "$archive" >/dev/null 2>&1

@@ -1,6 +1,9 @@
 insert into "user" (id, name, email, "emailVerified") values
   ('backup-owner', 'Олена Кавовар', 'owner@backup.test', true),
   ('backup-customer', 'Тарас Ґрунт', 'customer@backup.test', true);
+insert into "session" (id, "expiresAt", token, "updatedAt", "ipAddress", "userAgent", "userId") values
+  ('backup-active-session', now() + interval '1 day', 'backup-active-token', now(), '192.0.2.1', 'synthetic-active-agent', 'backup-customer'),
+  ('backup-expired-session', now() - interval '1 day', 'backup-expired-token', now(), '192.0.2.2', 'synthetic-expired-agent', 'backup-customer');
 insert into cafes (id, owner_user_id, name, poster_code) values
   ('00000000-0000-0000-0000-000000000310', 'backup-owner', 'Кав’ярня «Зернятко»', 'BCKP2026');
 insert into cafe_memberships (cafe_id, customer_user_id) values

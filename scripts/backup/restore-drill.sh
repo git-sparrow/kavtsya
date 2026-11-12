@@ -43,6 +43,15 @@ docker exec "$name" timeout --kill-after=10s 20m pg_restore \
 
 docker exec -i "$name" psql --no-psqlrc --username=postgres --dbname=restore_drill \
   --set=ON_ERROR_STOP=1 < "$script_dir/restore-check.sql"
+negative_balances=$(
+  {
+    printf 'select count(*) from (\n'
+    cat "$script_dir/../../apps/api/src/negative-balances.sql"
+    printf '\n) negative_balances;\n'
+  } | docker exec -i "$name" psql --no-psqlrc --username=postgres --dbname=restore_drill \
+    --set=ON_ERROR_STOP=1 --tuples-only --no-align
+)
+[[ "$negative_balances" == 0 ]] || { printf 'Negative derived balance.\n' >&2; exit 1; }
 expected=$(find "$script_dir/../../apps/api/migrations" -name '*.sql' -exec basename {} \; | LC_ALL=C sort)
 actual=$(docker exec "$name" psql --no-psqlrc --username=postgres --dbname=restore_drill \
   --tuples-only --no-align --command='select name from schema_migrations order by name')

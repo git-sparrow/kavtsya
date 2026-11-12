@@ -1,4 +1,4 @@
-"""Local TLS PUT/HEAD byte store; deliberately does not implement R2 authorization."""
+"""Local TLS PUT/HEAD/GET byte store; deliberately does not implement R2 authorization."""
 
 import hashlib
 import http.server
@@ -47,6 +47,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("ETag", '"standin"')
         self.send_header("Content-Length", "0")
         self.end_headers()
+
+    def do_GET(self):
+        file = self.object_file()
+        if not file.exists():
+            self.send_error(404)
+            return
+        data = file.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("ETag", '\"standin\"')
+        self.end_headers()
+        self.wfile.write(data)
 
     def do_HEAD(self):
         file = self.object_file()

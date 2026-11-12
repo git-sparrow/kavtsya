@@ -1,7 +1,7 @@
 import os
 import re
 import sys
-from urllib.parse import parse_qsl, unquote, urlsplit
+from urllib.parse import unquote, urlsplit
 
 uri = urlsplit(os.environ["DATABASE_URL"])
 if uri.scheme not in ("postgres", "postgresql") or not uri.hostname or uri.fragment:
@@ -14,7 +14,10 @@ parameters = {
     "dbname": unquote(uri.path.removeprefix("/")),
     "connect_timeout": "15",
 }
-parameters.update(parse_qsl(uri.query, keep_blank_values=True, strict_parsing=True))
+if uri.query:
+    for pair in uri.query.split("&"):
+        key, value = pair.split("=", 1)
+        parameters[unquote(key)] = unquote(value)
 for key, value in parameters.items():
     if (
         not re.fullmatch(r"[a-z_]+", key)

@@ -11,11 +11,12 @@ network="$prefix-network"
 source_db="$prefix-source"
 store="$prefix-store"
 job="$prefix-job"
+download="$prefix-download"
 endpoint_host=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.eu.r2.cloudflarestorage.com
 cleanup() {
   status=$?
   trap - EXIT
-  for container in "$job" "$store" "$source_db"; do
+  for container in "$download" "$job" "$store" "$source_db"; do
     docker rm --force --volumes "$container" >/dev/null 2>&1 || true
   done
   docker network rm "$network" >/dev/null 2>&1 || true
@@ -86,8 +87,16 @@ docker create --name "$job" --network "$network" \
 docker start --attach "$job"
 [[ $(docker inspect --format '{{.State.ExitCode}}' "$job") == 0 ]]
 docker exec "$store" sh -c 'test "$(find /tmp/objects -type f | wc -l)" -eq 1'
-object=$(docker exec "$store" find /tmp/objects -type f)
-docker cp "$store:$object" "$work_dir/database.dump"
+backup_log=$(docker logs "$job")
+[[ "$backup_log" =~ ^backup\ complete\ key=([^[:space:]]+)\ bytes=([0-9]+)$ ]]
+key=${BASH_REMATCH[1]}
+docker run --name "$download" --network "$network" \
+  --env AWS_DEFAULT_REGION=auto --env AWS_EC2_METADATA_DISABLED=true \
+  --env AWS_ACCESS_KEY_ID=synthetic-read-access --env AWS_SECRET_ACCESS_KEY=synthetic-read-secret \
+  --env AWS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt --entrypoint aws \
+  "$trusted_image" --endpoint-url "https://$endpoint_host" s3api get-object \
+  --bucket backup-test --key "$key" /tmp/database.dump >/dev/null
+docker cp "$download:/tmp/database.dump" "$work_dir/database.dump"
 ARCHIVE_FILE="$work_dir/database.dump" bash scripts/backup/restore-drill.sh
 
 docker exec "$source_db" createdb --username=backup restored
@@ -100,6 +109,9 @@ begin
     or (select count(*) from purchases) <> 3
     or (select sum(beans_spent) from redemptions) <> 2 then
     raise exception 'Restored fixture differs';
+  end if;
+  if exists (select 1 from "session") then
+    raise exception 'Auth sessions were retained in backup';
   end if;
   if (select nextval(pg_get_serial_sequence('backup_sequence_probe', 'id'))) <> 3 then
     raise exception 'Sequence state differs';
