@@ -103,6 +103,10 @@ jobs:
         if: steps.scope.outputs.scope != 'web'
         run: docker build --platform linux/amd64 -f apps/api/Dockerfile .
 
+      - name: Verify database backup and isolated restore
+        if: steps.scope.outputs.scope != 'web'
+        run: bash scripts/backup/integration.sh
+
       - name: Test
         if: steps.scope.outputs.scope != 'web'
         run: pnpm test
