@@ -153,8 +153,9 @@ function AppearanceSection() {
 
 /**
  * Settings (#96, ADR 0015; redesign turn 4, screens 4a–4c): the excursion drawer
- * where identity, appearance, notifications, role transitions, and account
- * actions live — so the Mode surfaces stay uncluttered. The email lives HERE now
+ * where identity, appearance, notifications, role transitions, the privacy
+ * policy, and account actions live — so the Mode surfaces stay uncluttered. The
+ * email lives HERE now
  * (moved off the Customer home). Renders in the theme chosen right here, in
  * ВИГЛЯД (#162; 4a/4b light, 4c dark).
  *
@@ -220,8 +221,8 @@ export default function Settings() {
     </Section>
   );
 
-  // App Review 5.1.1(i) wants the policy reachable from inside the app (#404).
-  const legal = (
+  // App Review 5.1.1(i) wants the policy reachable from inside the app.
+  const about = (
     <Section label="Про застосунок">
       <ListGroup>
         <ListRow
@@ -336,7 +337,7 @@ export default function Settings() {
           </Section>
 
           {notifications}
-          {legal}
+          {about}
           {account}
         </>
       ) : (
@@ -364,7 +365,7 @@ export default function Settings() {
             </Muted>
           </Section>
 
-          {legal}
+          {about}
           {account}
         </>
       )}
