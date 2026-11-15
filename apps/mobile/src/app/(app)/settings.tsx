@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
 import { BackHeader } from "@/components/back-header";
@@ -31,6 +31,8 @@ import {
 } from "@/theme";
 
 export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-fallback";
+
+const PRIVACY_POLICY_URL = "https://kavtsya.com/privacy/";
 
 /**
 /** The identity card (4a): avatar monogram, name, email, and the owner badge. */
@@ -151,8 +153,9 @@ function AppearanceSection() {
 
 /**
  * Settings (#96, ADR 0015; redesign turn 4, screens 4a–4c): the excursion drawer
- * where identity, appearance, notifications, role transitions, and account
- * actions live — so the Mode surfaces stay uncluttered. The email lives HERE now
+ * where identity, appearance, notifications, role transitions, the privacy
+ * policy, and account actions live — so the Mode surfaces stay uncluttered. The
+ * email lives HERE now
  * (moved off the Customer home). Renders in the theme chosen right here, in
  * ВИГЛЯД (#162; 4a/4b light, 4c dark).
  *
@@ -215,6 +218,22 @@ export default function Settings() {
       {error ? (
         <ErrorText style={{ textAlign: "left" }}>{error}</ErrorText>
       ) : null}
+    </Section>
+  );
+
+  // App Review 5.1.1(i) wants the policy reachable from inside the app.
+  const about = (
+    <Section label="Про застосунок">
+      <ListGroup>
+        <ListRow
+          testID="settings.privacy-policy"
+          icon="info"
+          title="Політика конфіденційності"
+          caption="Відкриється на kavtsya.com"
+          chevron={false}
+          onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+        />
+      </ListGroup>
     </Section>
   );
 
@@ -318,6 +337,7 @@ export default function Settings() {
           </Section>
 
           {notifications}
+          {about}
           {account}
         </>
       ) : (
@@ -345,6 +365,7 @@ export default function Settings() {
             </Muted>
           </Section>
 
+          {about}
           {account}
         </>
       )}
