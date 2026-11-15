@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
 import { BackHeader } from "@/components/back-header";
@@ -31,6 +31,8 @@ import {
 } from "@/theme";
 
 export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-fallback";
+
+const PRIVACY_POLICY_URL = "https://kavtsya.com/privacy/";
 
 /**
 /** The identity card (4a): avatar monogram, name, email, and the owner badge. */
@@ -218,6 +220,22 @@ export default function Settings() {
     </Section>
   );
 
+  // App Review 5.1.1(i) wants the policy reachable from inside the app (#404).
+  const legal = (
+    <Section label="Про застосунок">
+      <ListGroup>
+        <ListRow
+          testID="settings.privacy-policy"
+          icon="info"
+          title="Політика конфіденційності"
+          caption="Відкриється на kavtsya.com"
+          chevron={false}
+          onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+        />
+      </ListGroup>
+    </Section>
+  );
+
   // Leaving, in both its sizes: the reversible exit and the permanent one. The
   // delete row only OPENS the question — it fetches what deletion would cost
   // and hands it to the confirm (#81, #143), which is the only place the
@@ -318,6 +336,7 @@ export default function Settings() {
           </Section>
 
           {notifications}
+          {legal}
           {account}
         </>
       ) : (
@@ -345,6 +364,7 @@ export default function Settings() {
             </Muted>
           </Section>
 
+          {legal}
           {account}
         </>
       )}
