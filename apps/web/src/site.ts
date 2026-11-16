@@ -6,6 +6,8 @@ export const CONTROLLER_NAME = "Олександр Горобець (Oleksandr H
 
 export const CONTACT_EMAIL = "hello@kavtsya.com";
 
+export const CONTACT_MAILTO = `mailto:${CONTACT_EMAIL}`;
+
 export const POLICY_EFFECTIVE_DATE = "6 листопада 2026 року";
 
 export const SENTRY_RETENTION =

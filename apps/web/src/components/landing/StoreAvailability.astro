@@ -1,0 +1,23 @@
+---
+import { STORE_LISTINGS } from "../../site";
+---
+
+<p class="store-availability">
+  {
+    STORE_LISTINGS.map(({ store, url }, i) => (
+      <>
+        {i > 0 && " · "}
+        {url ? <a href={url}>{store}</a> : `${store} — скоро`}
+      </>
+    ))
+  }
+</p>
+
+<style>
+  .store-availability {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--l-muted);
+  }
+</style>

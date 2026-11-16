@@ -1,0 +1,266 @@
+---
+import ownerHome from "../../assets/landing/owner-home.png";
+import scan from "../../assets/landing/scan.png";
+import { CONTACT_MAILTO } from "../../site";
+import Screenshot from "./Screenshot.astro";
+
+const benefits = [
+  {
+    icon: '<path d="M4 8h9M19 8h1M4 16h1M11 16h9"/><circle cx="16" cy="8" r="2.5"/><circle cx="8" cy="16" r="2.5"/>',
+    title: "Правила задаєш ти",
+    text: "Обери, скільки зерняток треба зібрати і яку винагороду отримає гість — із варіантів, доступних у застосунку.",
+  },
+  {
+    icon: '<path d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3M8 12h8"/>',
+    title: "Сканують ті, кому довіряєш",
+    text: "Надай доступ своїм баристам — вони зараховують покупки й підтверджують винагороди зі своїх телефонів. Доступом керуєш ти.",
+  },
+  {
+    icon: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.2a3.2 3.2 0 0 1 0 5.6M18 14.6c1.8.9 3 2.9 3 5.4"/>',
+    title: "Видно, хто повертається",
+    text: "На головному екрані — скільки гостей повернулося за останні 30 днів.",
+  },
+];
+
+const proFeatures = [
+  {
+    icon: '<path d="M4 10v4l3 .5V9.5L4 10zM7 9.5 19 5v14L7 14.5M9 15.2V19h3v-2.7"/>',
+    title: "Розсилка новин",
+    text: "Push-сповіщення з новинами твоєї кав’ярні — лише гостям, які дали на це згоду.",
+  },
+  {
+    icon: '<path d="M3 20h18M7 20v-8M12 20V5M17 20v-11"/>',
+    title: "Аналітика",
+    text: "Години пік, а також скільки гостей нових і скільки повертається.",
+  },
+];
+
+const screens = [
+  {
+    src: ownerHome,
+    alt: "Головний екран режиму кавовара: лічильник гостей, що повернулися за 30 днів, кнопка «Сканувати QR клієнта», розділи «Програма лояльності», «Зміни», «Ростер бариста», а також «Розсилка» й «Аналітика» з позначкою Pro.",
+    title: "Головний екран кав’ярні.",
+    caption: "Назва й числа — приклад.",
+  },
+  {
+    src: scan,
+    alt: "Екран сканера в режимі кавовара: рамка камери з підказкою «Наведи камеру на QR-код клієнта» і поле для ручного введення коду.",
+    title: "Сканер.",
+    caption: "Камера на QR-код гостя — або введи код вручну.",
+  },
+];
+---
+
+<section id="cafe" class="band" aria-labelledby="cafe-title">
+  <div class="container inner">
+    <div class="columns">
+      <div class="copy">
+        <p class="eyebrow">Для кав’ярні</p>
+        <h2 id="cafe-title" class="h2">Твоя програма лояльності — у твоєму телефоні.</h2>
+        <p class="text lead">
+          У Кавці є окремий «Режим кавовара» — для тих, хто за стійкою: власника
+          та барист. Касу підключати не потрібно.
+        </p>
+        <ul class="plain-list benefits">
+          {
+            benefits.map(({ icon, title, text }) => (
+              <li class="benefit">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" set:html={icon} />
+                <div>
+                  <h3 class="item-title">{title}</h3>
+                  <p class="text item-text">{text}</p>
+                </div>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+      <div class="screens">
+        {
+          screens.map(({ src, alt, title, caption }) => (
+            <figure class="screen">
+              <Screenshot src={src} alt={alt} shadow="card" width={318} />
+              <figcaption class="screen-caption">
+                <strong>{title}</strong> {caption}
+              </figcaption>
+            </figure>
+          ))
+        }
+      </div>
+    </div>
+
+    <aside class="pro" aria-labelledby="pro-title">
+      <div class="pro-intro">
+        <span class="pill">PRO</span>
+        <h3 id="pro-title" class="h3-serif pro-title">Додатково — у Pro</h3>
+        <p class="text pro-text">
+          Pro підключаємо за домовленістю. <a class="pro-link" href={CONTACT_MAILTO}>Напиши нам</a> — обговоримо.
+        </p>
+      </div>
+      <ul class="plain-list pro-features">
+        {
+          proFeatures.map(({ icon, title, text }) => (
+            <li class="feature">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" set:html={icon} />
+              <div>
+                <h4 class="item-title feature-title">{title}</h4>
+                <p class="text item-text">{text}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<style>
+  .inner {
+    padding-block: var(--l-section-pad);
+  }
+
+  .columns {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-12) clamp(2.5rem, 6vw, 6rem);
+  }
+
+  .copy {
+    flex: 1 1 23.75rem;
+    min-width: 0;
+  }
+
+  .lead {
+    max-width: 32.5rem;
+    margin-top: var(--space-5);
+    font-size: var(--font-size-lg);
+  }
+
+  .benefits {
+    margin-top: 2.25rem;
+  }
+
+  .benefit,
+  .feature {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+
+  .benefit {
+    padding: 1.375rem 0;
+    border-top: 1px solid var(--l-hairline);
+  }
+
+  .benefit:last-child {
+    border-bottom: 1px solid var(--l-hairline);
+  }
+
+  .icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    fill: none;
+    stroke: var(--l-fg);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .item-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: var(--font-weight-bold);
+    line-height: var(--font-line-height-tight);
+  }
+
+  .item-text {
+    margin-top: 0.375rem;
+  }
+
+  .screens {
+    flex: 1.4 1 33.75rem;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 1.75rem var(--space-6);
+  }
+
+  .screen {
+    flex: 1 1 15rem;
+    max-width: 18.75rem;
+    min-width: 0;
+    margin: 0;
+    --l-phone-border: var(--l-hairline-band);
+  }
+
+  .screen-caption {
+    margin-top: 0.875rem;
+    font-size: var(--font-size-sm);
+    line-height: 1.45;
+    color: var(--l-text);
+  }
+
+  .pro {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.75rem clamp(2rem, 5vw, 4.5rem);
+    margin-top: clamp(3rem, 6vw, 5rem);
+    padding: clamp(1.5rem, 3.5vw, 2.5rem);
+    border: 1px solid var(--l-hairline-band);
+    border-radius: var(--radius-xl);
+    background: var(--l-panel);
+    --l-text: var(--semantic-text-secondary);
+  }
+
+  .pro-intro {
+    flex: 1 1 16.25rem;
+    min-width: 0;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.75rem;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-full);
+    background: var(--l-pill-bg);
+    color: var(--l-pill-fg);
+    font-size: var(--l-caption);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.1em;
+  }
+
+  .pro-title {
+    margin-top: var(--space-4);
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+  }
+
+  .pro-text {
+    margin-top: var(--space-3);
+  }
+
+  .pro-link {
+    display: inline-block;
+    padding: var(--space-1) 0;
+    font-weight: var(--font-weight-bold);
+  }
+
+  .pro-features {
+    flex: 2 1 26.25rem;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: var(--space-6) clamp(1.5rem, 3vw, 3rem);
+  }
+
+  .feature {
+    gap: 0.875rem;
+  }
+
+  .feature-title {
+    font-size: var(--font-size-lg);
+  }
+</style>

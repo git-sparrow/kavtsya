@@ -1,19 +1,26 @@
 ---
-import Page from "../layouts/Page.astro";
-import StoreLinks from "../components/StoreLinks.astro";
+import Faq from "../components/landing/Faq.astro";
+import ForCafe from "../components/landing/ForCafe.astro";
+import Header from "../components/landing/Header.astro";
+import Hero from "../components/landing/Hero.astro";
+import HowItWorks from "../components/landing/HowItWorks.astro";
+import Invitation from "../components/landing/Invitation.astro";
+import Vorozhka from "../components/landing/Vorozhka.astro";
+import Landing from "../layouts/Landing.astro";
 import { BRAND } from "../site";
 ---
 
-<Page
-  title={BRAND}
+<Landing
+  title={`${BRAND} — програма лояльності для кав’ярень`}
   description={`${BRAND} — застосунок програм лояльності для кав'ярень: зернятка за кожну покупку, винагороди і Ворожка на кавовій гущі.`}
 >
-  <h1>{BRAND}</h1>
-  <p class="lead">
-    Застосунок програм лояльності для кав'ярень. Покажи свій QR-код на касі,
-    збирай зернятка за кожну покупку, отримуй винагороду й дізнавайся, що
-    наворожить Ворожка на кавовій гущі.
-  </p>
-  <h2>Завантажити застосунок</h2>
-  <StoreLinks />
-</Page>
+  <Header />
+  <main id="main" tabindex="-1">
+    <Hero />
+    <HowItWorks />
+    <ForCafe />
+    <Vorozhka />
+    <Faq />
+    <Invitation />
+  </main>
+</Landing>

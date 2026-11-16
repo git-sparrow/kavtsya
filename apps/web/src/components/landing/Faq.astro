@@ -1,0 +1,215 @@
+---
+import { CONTACT_EMAIL, CONTACT_MAILTO } from "../../site";
+
+type Answer = string | { beforeEmail: string; afterEmail: string };
+
+const items: { question: string; answer: Answer }[] = [
+  {
+    question: "Як збирати зернятка?",
+    answer:
+      "Покажи свій QR-код у Кавці біля каси — власник або бариста його відсканує. Кожна покупка додає одне Зернятко в цій кав’ярні.",
+  },
+  {
+    question: "Чи можна об’єднати зернятка з різних кав’ярень?",
+    answer:
+      "Ні. У кожної кав’ярні своя програма і свій баланс. Зернятка, зібрані в одній кав’ярні, не переходять в іншу.",
+  },
+  {
+    question: "Хто обирає винагороду й кількість зерняток?",
+    answer:
+      "Кав’ярня. Власник задає, скільки зерняток треба зібрати, і обирає винагороду з варіантів, доступних у застосунку. Тому умови в різних кав’ярнях можуть відрізнятися.",
+  },
+  {
+    question: "Чи потрібна інтеграція з касовою системою?",
+    answer:
+      "Ні. Щоб зараховувати покупки й видавати винагороди, вистачить Кавці на телефоні власника або баристи.",
+  },
+  {
+    question: "Чи потрібно гостям встановлювати застосунок?",
+    answer:
+      "Так. Гості збирають зернятка в мобільному застосунку Кавця — там їхній QR-код і баланс. У App Store та Google Play застосунок з’явиться згодом: публічний запуск ще попереду.",
+  },
+  {
+    question: "Що додає Pro?",
+    answer:
+      "Розсилку новин кав’ярні push-сповіщеннями — гостям, які дали на це згоду. І аналітику: години пік та скільки гостей нових, а скільки повертається. Pro підключаємо за домовленістю — напиши нам.",
+  },
+  {
+    question: "Як обговорити підключення кав’ярні?",
+    answer: {
+      beforeEmail: "Напиши на ",
+      afterEmail:
+        " і коротко розкажи про свою кав’ярню. Ми відповімо й домовимося про наступні кроки.",
+    },
+  },
+];
+---
+
+<section id="faq" aria-labelledby="faq-title">
+  <div class="container inner">
+    <div class="intro">
+      <p class="eyebrow">Питання</p>
+      <h2 id="faq-title" class="h2">Коротко про головне</h2>
+      <p class="text intro-text">
+        Не знайшов відповіді? Напиши на <a class="email" href={CONTACT_MAILTO}>{CONTACT_EMAIL}</a>.
+      </p>
+    </div>
+    <div class="list" data-faq>
+      {
+        items.map(({ question, answer }, i) => {
+          const open = i === 0;
+          return (
+            <div class="item">
+              <h3 class="question">
+                <button
+                  type="button"
+                  id={`faq-b${i + 1}`}
+                  class="toggle"
+                  aria-expanded={String(open)}
+                  aria-controls={`faq-p${i + 1}`}
+                >
+                  <span>{question}</span>
+                  <span class="indicator" aria-hidden="true" />
+                </button>
+              </h3>
+              <div
+                id={`faq-p${i + 1}`}
+                class="panel"
+                role="region"
+                aria-labelledby={`faq-b${i + 1}`}
+                hidden={!open}
+              >
+                <p class="text answer">
+                  {typeof answer === "string" ? (
+                    answer
+                  ) : (
+                    <>
+                      {answer.beforeEmail}
+                      <a class="email" href={CONTACT_MAILTO}>
+                        {CONTACT_EMAIL}
+                      </a>
+                      {answer.afterEmail}
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+          );
+        })
+      }
+    </div>
+  </div>
+</section>
+
+<script>
+  const list = document.querySelector("[data-faq]");
+  const toggles = list ? [...list.querySelectorAll<HTMLButtonElement>("button[aria-controls]")] : [];
+
+  list?.addEventListener("click", (event) => {
+    const clicked = (event.target as Element).closest("button[aria-controls]");
+    if (!clicked) return;
+    const opening = clicked.getAttribute("aria-expanded") !== "true";
+    for (const toggle of toggles) {
+      const open = toggle === clicked && opening;
+      toggle.setAttribute("aria-expanded", String(open));
+      const panel = document.getElementById(toggle.getAttribute("aria-controls") ?? "");
+      if (panel) panel.hidden = !open;
+    }
+  });
+</script>
+
+<style>
+  .inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-8) clamp(2.5rem, 6vw, 6rem);
+    padding-block: var(--l-section-pad);
+  }
+
+  .intro {
+    flex: 1 1 18.75rem;
+    min-width: 0;
+  }
+
+  .intro-text {
+    max-width: 22.5rem;
+    margin-top: 1.125rem;
+    font-size: 1.0625rem;
+  }
+
+  .email {
+    font-weight: var(--font-weight-bold);
+  }
+
+  .list {
+    flex: 2 1 30rem;
+    min-width: 0;
+    border-top: 2px solid var(--l-fg);
+  }
+
+  .item {
+    border-bottom: 1px solid var(--l-hairline);
+  }
+
+  .question {
+    margin: 0;
+  }
+
+  .toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-5);
+    width: 100%;
+    min-height: 4.25rem;
+    padding: var(--space-4) 0;
+    border: 0;
+    background: none;
+    color: var(--l-fg);
+    font: var(--font-weight-bold) clamp(1.125rem, 1.6vw, 1.3125rem) / 1.3
+      var(--font-family-body);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  /* Plus when closed, minus when open: the glyph changes shape, not only colour. */
+  .indicator {
+    position: relative;
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--semantic-border-strong);
+    border-radius: var(--radius-full);
+  }
+
+  .indicator::before,
+  .indicator::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 12px;
+    height: 1.6px;
+    background: currentColor;
+    transform: translate(-50%, -50%);
+  }
+
+  .indicator::after {
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+
+  .toggle[aria-expanded="true"] .indicator::after {
+    display: none;
+  }
+
+  .panel {
+    padding: 0 3.25rem var(--space-6) 0;
+  }
+
+  .answer {
+    max-width: 40rem;
+    font-size: 1.0625rem;
+    line-height: 1.55;
+  }
+</style>
