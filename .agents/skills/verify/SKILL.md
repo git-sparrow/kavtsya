@@ -55,7 +55,7 @@ Roles & states:
 - CafeOwner `pro.owner@kavtsya.test` — **Pro** café «Кавярня «Про»» with seeded backdated
   analytics history (busiest hour ~19:00). The **unlocked** side of every Plan gate.
 - Customer `barista@kavtsya.test`, code `BRST-2026` — a `rostered` Barista at «Кавярня «Про»»
-  (Зміна scanner grants #80 / roster #97).
+  (Зміна scanner grants and roster).
 - CafeOwner `new.owner@kavtsya.test` — no café (register-café / empty owner state).
 - Customer `new.customer@kavtsya.test`, code `NEWC-2026` — no зернята (empty customer state).
 
@@ -98,6 +98,6 @@ and permissions. Do not copy simulator IDs or assume another session's app mode.
 - If Argent tools are missing, check the client-specific setup in
   `docs/agents/workflow.md`; do not treat a config file as proof of a connection.
 - `pnpm db:reset` wipes the volume — re-run `db:seed-demo` after.
-- API dates cross the wire as strings (PR #86): `apiFetch` deliberately
+- API dates cross the wire as strings: `apiFetch` deliberately
   overrides Better Auth's Date-reviving parser — don't "fix" string dates you
   see in responses.
