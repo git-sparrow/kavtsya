@@ -8,7 +8,7 @@ A multi-café coffee loyalty mobile app for the Ukrainian market. Each Café run
 
 Twin goals: learn AI hands-on, and refresh JS/TS/React/React Native fundamentals.
 
-**Build phase**: scope is locked. Status (what's merged, what's next) lives only in the Status line + Roadmap of [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md) (#118); when a slice lands, update it there.
+**Build phase**: scope is locked. Status (what's merged, what's next) lives only in the Status line + Roadmap of [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md); when a slice lands, update it there.
 
 ## Stack (current choice)
 
