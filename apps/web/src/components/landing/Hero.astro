@@ -1,0 +1,155 @@
+---
+import home from "../../assets/landing/home.png";
+import { CONTACT_MAILTO } from "../../site";
+import Screenshot from "./Screenshot.astro";
+import StoreAvailability from "./StoreAvailability.astro";
+
+const legend = [
+  { term: "QR-код гостя", detail: "Його сканує власник або бариста." },
+  { term: "Зернятка цієї кав’ярні", detail: "Одна покупка — одне Зернятко." },
+  { term: "Винагорода", detail: "Її та кількість зерняток задає кав’ярня." },
+];
+---
+
+<section id="top" class="container hero">
+  <div class="copy">
+    <p class="eyebrow hero-eyebrow">Для власників кав’ярень</p>
+    <h1 class="title">Кава.<br />Зернятка.<br /><em>Привід повернутися.</em></h1>
+    <p class="text lead">
+      Кавця — застосунок лояльності для незалежних кав’ярень. Гість показує
+      QR-код, бариста сканує його телефоном, а зернятка складаються у
+      винагороду, яку обираєш ти.
+    </p>
+    <div class="actions">
+      <a class="btn btn--primary" href={CONTACT_MAILTO}>Обговорити підключення</a>
+      <a class="btn btn--secondary" href="#how">Як це працює <span aria-hidden="true">↓</span></a>
+    </div>
+    <div class="stores"><StoreAvailability /></div>
+  </div>
+  <div class="visual">
+    <figure class="phone-figure">
+      <Screenshot
+        src={home}
+        alt="Головний екран гостя в Кавці: QR-код учасника, під ним картка кав’ярні з чотирма зернятками й винагородою «Безкоштовний напій»."
+        shadow="raised"
+        width={318}
+        priority
+      />
+    </figure>
+    <div class="legend">
+      <ol class="plain-list">
+        {
+          legend.map(({ term, detail }) => (
+            <li>
+              <strong>{term}</strong>
+              <span>{detail}</span>
+            </li>
+          ))
+        }
+      </ol>
+      <p class="caption legend-caption">
+        Екран застосунку. Назва кав’ярні, числа й винагорода — приклад.
+      </p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: clamp(2.5rem, 6vw, 5.5rem);
+    padding-top: clamp(2.5rem, 7vw, 6rem);
+    padding-bottom: clamp(3.5rem, 8vw, 7rem);
+  }
+
+  .copy {
+    flex: 2 1 27.5rem;
+    min-width: 0;
+  }
+
+  .hero-eyebrow {
+    margin-bottom: var(--space-5);
+  }
+
+  .title {
+    margin: 0;
+    font-family: var(--font-family-display);
+    font-size: clamp(2.625rem, 5vw, 4.125rem);
+    font-weight: var(--font-weight-semibold);
+    line-height: 0.98;
+    letter-spacing: -0.01em;
+  }
+
+  .title em {
+    font-weight: var(--font-weight-medium);
+  }
+
+  .lead {
+    max-width: 33.75rem;
+    margin-top: 1.75rem;
+    font-size: var(--l-lead);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: 2.25rem;
+  }
+
+  .actions .btn--secondary {
+    padding: 0 var(--space-6);
+  }
+
+  .stores {
+    margin-top: var(--space-6);
+  }
+
+  .visual {
+    flex: 1 1 31.875rem;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+  }
+
+  .phone-figure {
+    flex: 0 1 18.75rem;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .legend {
+    flex: 1 1 10.625rem;
+    max-width: 21.875rem;
+    min-width: 0;
+  }
+
+  .legend li {
+    padding: var(--space-4) 0;
+    border-top: 1px solid var(--l-hairline);
+  }
+
+  .legend li:last-child {
+    border-bottom: 1px solid var(--l-hairline);
+  }
+
+  .legend strong {
+    display: block;
+    color: var(--l-fg);
+  }
+
+  .legend span {
+    font-size: 0.9375rem;
+    line-height: 1.45;
+    color: var(--l-text);
+  }
+
+  .legend-caption {
+    margin-top: 0.875rem;
+  }
+</style>

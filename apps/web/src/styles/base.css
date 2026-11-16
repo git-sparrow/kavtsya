@@ -90,8 +90,7 @@ strong {
 }
 
 .site-header,
-main,
-.site-footer {
+main {
   max-width: 40rem;
   margin: 0 auto;
   padding-left: var(--space-4);
@@ -121,11 +120,6 @@ main:focus {
 
 .person-name {
   hyphens: manual;
-}
-
-.lead {
-  font-size: var(--font-size-lg);
-  line-height: var(--font-line-height-snug);
 }
 
 .note {
@@ -159,29 +153,4 @@ a.store {
 
 span.store {
   color: var(--semantic-text-secondary);
-}
-
-.site-footer {
-  padding-top: var(--space-6);
-  padding-bottom: var(--space-10);
-  border-top: 0.0625rem solid var(--semantic-border-strong);
-  color: var(--semantic-text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.site-footer ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-5);
-  padding: 0;
-  list-style: none;
-}
-
-.site-footer li + li {
-  margin-top: 0;
-}
-
-.site-footer a[aria-current="page"] {
-  color: var(--semantic-foreground);
-  font-weight: var(--font-weight-bold);
 }

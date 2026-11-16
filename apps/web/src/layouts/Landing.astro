@@ -1,0 +1,85 @@
+---
+import "@fontsource/manrope/400.css";
+import "@fontsource/manrope/600.css";
+import "@fontsource/manrope/700.css";
+import "@fontsource/cormorant-garamond/500.css";
+import "@fontsource/cormorant-garamond/500-italic.css";
+import "@fontsource/cormorant-garamond/600.css";
+import "../styles/tokens.css";
+import "../styles/landing.css";
+import { getImage } from "astro:assets";
+import Footer from "../components/Footer.astro";
+import tokens from "@kavtsya/shared/design-tokens.json";
+import mark from "../assets/kavtsya-mark.svg";
+import { BRAND, CONTACT_EMAIL } from "../site";
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const markPng = await getImage({ src: mark, format: "png", width: 512, height: 512 });
+const touchIcon = await getImage({ src: mark, format: "png", width: 180, height: 180 });
+const ogImage = new URL(markPng.src, Astro.site).href;
+const themeColor = {
+  light: tokens.color.neutral["50"].$value,
+  dark: tokens.color.secondary["900"].$value,
+};
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${Astro.site}#organization`,
+      name: BRAND,
+      alternateName: "Kavtsya",
+      url: Astro.site?.href,
+      logo: ogImage,
+      email: CONTACT_EMAIL,
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${Astro.site}#website`,
+      name: BRAND,
+      alternateName: "Kavtsya",
+      url: Astro.site?.href,
+      inLanguage: "uk",
+      publisher: { "@id": `${Astro.site}#organization` },
+    },
+  ],
+};
+---
+
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={mark.src} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={touchIcon.src} />
+    <meta name="theme-color" content={themeColor.light} media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content={themeColor.dark} media="(prefers-color-scheme: dark)" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="uk_UA" />
+    <meta property="og:site_name" content={BRAND} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta name="twitter:card" content="summary" />
+    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Перейти до змісту</a>
+    <slot />
+    <Footer />
+  </body>
+</html>

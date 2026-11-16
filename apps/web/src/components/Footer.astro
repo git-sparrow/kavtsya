@@ -1,0 +1,149 @@
+---
+import Mark from "../assets/kavtsya-mark.svg";
+import {
+  BRAND,
+  CONTACT_EMAIL,
+  CONTACT_MAILTO,
+  CONTROLLER_LEAD,
+  CONTROLLER_NAME,
+  PAGES,
+} from "../site";
+
+const links = [PAGES.privacy, PAGES.support, PAGES.deleteAccount];
+---
+
+<footer class="footer">
+  <div class="inner">
+    <div class="row">
+      <div class="identity">
+        <Mark class="mark" width={36} height={36} aria-hidden="true" />
+        <div>
+          <p class="name">{BRAND}</p>
+          <p class="descriptor">Застосунок лояльності для кав’ярень</p>
+        </div>
+      </div>
+      <nav aria-label="Службові посилання">
+        <ul class="links">
+          {
+            links.map(({ path, title }) => (
+              <li>
+                <a
+                  class="link"
+                  href={path}
+                  aria-current={Astro.url.pathname === path ? "page" : undefined}
+                >
+                  {title}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+    </div>
+    <div class="legal">
+      <p>{CONTROLLER_LEAD} <span class="person-name">{CONTROLLER_NAME}</span>.</p>
+      <p>Пошта: <a href={CONTACT_MAILTO}>{CONTACT_EMAIL}</a></p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  /* Shared by every page, so it uses the generated tokens directly rather than
+     either layout's stylesheet. */
+  .footer {
+    border-top: 1px solid var(--semantic-border);
+    color: var(--semantic-foreground);
+  }
+
+  .inner {
+    max-width: 79rem;
+    margin-inline: auto;
+    padding: var(--space-8) clamp(1.25rem, 4.5vw, 4rem) var(--space-10);
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-5) var(--space-10);
+  }
+
+  .identity {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .mark {
+    flex: none;
+    border-radius: 9px;
+  }
+
+  .name {
+    margin: 0;
+    font-family: var(--font-family-display);
+    font-size: 1.5rem;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+  }
+
+  .descriptor {
+    margin: var(--space-1) 0 0;
+    font-size: 0.8125rem;
+    line-height: var(--font-line-height-normal);
+    color: var(--semantic-text-muted);
+  }
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .links > li {
+    margin: 0;
+  }
+
+  .link {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    color: var(--semantic-link);
+    font-size: 0.9375rem;
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .link[aria-current="page"] {
+    color: var(--semantic-foreground);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .legal {
+    margin-top: var(--space-6);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--semantic-border);
+    font-size: 0.8125rem;
+    line-height: var(--font-line-height-normal);
+    color: var(--semantic-text-muted);
+  }
+
+  .legal p {
+    margin: 0;
+  }
+
+  .legal p + p {
+    margin-top: var(--space-1);
+  }
+
+  .legal a {
+    color: var(--semantic-link);
+  }
+
+  .person-name {
+    hyphens: manual;
+  }
+</style>

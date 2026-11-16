@@ -1,0 +1,236 @@
+---
+import home from "../../assets/landing/home.png";
+import rewardReady from "../../assets/landing/reward-ready.png";
+import BeanProgress from "./BeanProgress.astro";
+import Screenshot from "./Screenshot.astro";
+
+const steps = [
+  {
+    title: "Покажи QR-код",
+    text: "Відкрий Кавцю біля каси. Власник або бариста сканує твій код своїм телефоном — так покупка зараховується.",
+    image: home,
+    alt: "Картка «Твій код учасника» з QR-кодом і запасним текстовим кодом для баристи.",
+    crop: { aspect: "560 / 710", top: "-23.24%" },
+    caption: "Сканує персонал — гість лише показує екран.",
+  },
+  {
+    title: "Збирай зернятка",
+    text: "Одна покупка — одне Зернятко в цій кав’ярні. Скільки зібрано і скільки лишилося, видно одразу.",
+    image: home,
+    alt: "Картка кав’ярні в застосунку: чотири зернятка зібрано, ще одне до винагороди.",
+    crop: { aspect: "560 / 260", top: "-355.8%" },
+    caption: "Приклад: винагорода за 5 зерняток.",
+  },
+  {
+    title: "Отримуй винагороду",
+    text: "Коли зерняток стільки, скільки визначила кав’ярня, винагорода готова. Бариста підтверджує видачу.",
+    image: rewardReady,
+    alt: "Картка кав’ярні з позначкою «Винагорода готова», десятьма зібраними зернятками та кнопкою «Як отримати».",
+    crop: { aspect: "560 / 425", top: "-18.8%" },
+    caption: "Приклад: безкоштовний напій за 10 зерняток.",
+  },
+];
+
+const balances = [
+  { cafe: "Кав’ярня А", collected: 4, total: 5 },
+  { cafe: "Кав’ярня Б", collected: 3, total: 10 },
+];
+---
+
+<section id="how" class="section" aria-labelledby="how-title">
+  <div class="container inner">
+    <div class="intro">
+      <div class="intro-heading">
+        <p class="eyebrow">Як це працює</p>
+        <h2 id="how-title" class="h2">Три кроки для гостя. Один скан для баристи.</h2>
+      </div>
+      <p class="text intro-lead">
+        Усе відбувається біля каси, у двох телефонах: гостя і того, хто за
+        стійкою.
+      </p>
+    </div>
+
+    <ol class="plain-list steps">
+      {
+        steps.map((step, i) => (
+          <li class="step">
+            <div class="step-head">
+              <span class="numeral" aria-hidden="true">
+                {i + 1}
+              </span>
+              <h3 class="step-title">{step.title}</h3>
+            </div>
+            <p class="text step-text">{step.text}</p>
+            <div class="step-shot">
+              <Screenshot src={step.image} alt={step.alt} crop={step.crop} width={429} />
+            </div>
+            <p class="caption step-caption">{step.caption}</p>
+          </li>
+        ))
+      }
+    </ol>
+
+    <div class="programs">
+      <div class="programs-copy">
+        <h3 class="h3-serif">У кожної кав’ярні — своя програма</h3>
+        <p class="text programs-text">
+          Баланс у кожному закладі окремий. Зернятка з однієї кав’ярні не
+          переходять в іншу, а умови можуть відрізнятися.
+        </p>
+      </div>
+      <div class="balances">
+        <div
+          role="img"
+          aria-label="Приклад: у кав’ярні А зібрано 4 зернятка з 5, у кав’ярні Б — 3 з 10. Баланси окремі."
+        >
+          {
+            balances.map(({ cafe, collected, total }) => (
+              <div class="balance">
+                <div>
+                  <div class="balance-cafe">{cafe}</div>
+                  <div class="balance-label">
+                    {collected} з {total} зерняток
+                  </div>
+                </div>
+                <BeanProgress collected={collected} total={total} />
+              </div>
+            ))
+          }
+        </div>
+        <p class="caption balances-caption">
+          Приклад. Кількість зерняток і винагороду кожна кав’ярня обирає сама.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .section {
+    border-top: 1px solid var(--l-hairline);
+  }
+
+  .inner {
+    padding-block: var(--l-section-pad);
+  }
+
+  .intro {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-5) var(--space-16);
+    margin-bottom: clamp(2.25rem, 5vw, 4.5rem);
+  }
+
+  .intro-heading {
+    flex: 1 1 23.75rem;
+    min-width: 0;
+  }
+
+  .intro-lead {
+    flex: 1 1 20rem;
+    max-width: 27.5rem;
+    font-size: var(--font-size-lg);
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17.5rem), 1fr));
+    gap: var(--space-12) clamp(1.5rem, 3.5vw, 3.5rem);
+  }
+
+  .step {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding-top: var(--space-5);
+    border-top: 2px solid var(--l-fg);
+  }
+
+  .step-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.875rem;
+  }
+
+  .numeral {
+    font-family: var(--font-family-display);
+    font-size: 2.75rem;
+    font-style: italic;
+    font-weight: var(--font-weight-medium);
+    line-height: 1;
+    color: var(--l-eyebrow);
+  }
+
+  .step-title {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--font-line-height-tight);
+  }
+
+  .step-text {
+    margin: var(--space-3) 0 var(--space-6);
+  }
+
+  .step-shot {
+    margin-top: auto;
+  }
+
+  .step-caption {
+    margin-top: 0.625rem;
+  }
+
+  .programs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-8) clamp(2rem, 6vw, 6rem);
+    margin-top: clamp(3rem, 6vw, 5.5rem);
+    padding-top: clamp(2rem, 4vw, 3rem);
+    border-top: 1px solid var(--l-hairline);
+  }
+
+  .programs-copy {
+    flex: 1 1 22.5rem;
+    min-width: 0;
+  }
+
+  .programs-text {
+    max-width: 32.5rem;
+    margin-top: 0.875rem;
+    font-size: 1.0625rem;
+  }
+
+  .balances {
+    flex: 1 1 20rem;
+    min-width: 0;
+  }
+
+  .balance {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.625rem var(--space-5);
+    padding: 1.125rem 0;
+  }
+
+  .balance + .balance {
+    border-top: 1px solid var(--l-hairline);
+  }
+
+  .balance-cafe {
+    font-weight: var(--font-weight-bold);
+  }
+
+  .balance-label {
+    font-size: var(--font-size-sm);
+    color: var(--l-text);
+  }
+
+  .balances-caption {
+    margin-top: 0.375rem;
+  }
+</style>

@@ -1,0 +1,90 @@
+---
+import type { ImageMetadata } from "astro";
+import { Image } from "astro:assets";
+
+interface Crop {
+  /** Visible box as `width/height` of the source pixels it shows. */
+  aspect: string;
+  /** Vertical offset of the image inside the box, as a percentage of the box height. */
+  top: string;
+}
+
+interface Props {
+  src: ImageMetadata;
+  alt: string;
+  /** Show a cropped region instead of the whole framed phone screen. */
+  crop?: Crop;
+  shadow?: "raised" | "card" | "none";
+  /** Rendered width of the image in CSS pixels, for `sizes`. */
+  width: number;
+  priority?: boolean;
+}
+
+const { src, alt, crop, shadow = "none", width, priority = false } = Astro.props;
+const style = crop
+  ? `--crop-aspect: ${crop.aspect}; --crop-top: ${crop.top}`
+  : undefined;
+---
+
+<div class:list={[crop ? "crop" : "phone", `shadow-${shadow}`]} style={style}>
+  <Image
+    src={src}
+    alt={alt}
+    widths={[width, src.width]}
+    sizes={`${width}px`}
+    loading={priority ? "eager" : "lazy"}
+    fetchpriority={priority ? "high" : undefined}
+    class="shot"
+  />
+</div>
+
+<style>
+  .phone,
+  .crop {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  /* The source PNGs carry a baked-in device shadow on the right and bottom
+     edges; the frame shows only the screen area (598 of 632 px). */
+  .phone {
+    aspect-ratio: 598 / 1278;
+    border: 1px solid var(--l-phone-border);
+    border-radius: 9.5% / 4.45%;
+    background: var(--l-bg);
+  }
+
+  .phone .shot {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 105.7%;
+    max-width: none;
+    height: auto;
+  }
+
+  .crop {
+    max-width: 23.75rem;
+    aspect-ratio: var(--crop-aspect);
+    /* Invisible on the cream page; frames the crop as a card on dark. */
+    border-radius: var(--radius-lg);
+  }
+
+  .crop .shot {
+    position: absolute;
+    left: -3.57%;
+    top: var(--crop-top);
+    width: 112.86%;
+    max-width: none;
+    height: auto;
+  }
+
+  .shadow-raised {
+    box-shadow: var(--l-phone-shadow-raised);
+  }
+
+  .shadow-card {
+    box-shadow: var(--l-phone-shadow-card);
+  }
+</style>

@@ -1,0 +1,129 @@
+---
+import vorozhka from "../../assets/landing/vorozhka.png";
+import Berehynia from "./Berehynia.astro";
+import Screenshot from "./Screenshot.astro";
+---
+
+<section id="vorozhka" class="vorozhka" aria-labelledby="vor-title">
+  <div class="container inner">
+    <div class="copy">
+      <div class="kicker">
+        <Berehynia size={30} />
+        <p class="eyebrow kicker-label">Ворожка</p>
+      </div>
+      <h2 id="vor-title" class="title">Після кави — <em>кілька теплих слів.</em></h2>
+      <p class="text lead">
+        В Україні здавна ворожили на кавовій гущі. Ворожка — наш усміхнений
+        уклін цій традиції: щойно покупку зараховано, гість бачить коротке
+        побажання разом із новим Зернятком.
+      </p>
+      <p class="text note">
+        Тексти створює штучний інтелект. Це не передбачення і не читання твоєї
+        чашки — просто маленька приємність, заради якої хочеться зазирнути ще.
+      </p>
+    </div>
+    <figure class="figure">
+      <Screenshot
+        src={vorozhka}
+        alt="Екран «Ворожка» після покупки: коротке побажання «Бачу тепло, яке ти тримаєш для когось. Можливо, час його сказати вголос», нижче — «+1 Зернятко, ще 5 до Винагороди»."
+        width={360}
+      />
+      <figcaption class="caption figure-caption">
+        Екран застосунку. Текст і числа — приклад.
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<style>
+  /* The one plum section: re-points the page variables so everything inside
+     (focus ring included) reads as dark. */
+  .vorozhka {
+    --l-bg: var(--color-secondary-900);
+    --l-fg: var(--color-neutral-100);
+    --l-text: var(--color-neutral-100);
+    --l-muted: var(--color-neutral-300);
+    --l-eyebrow: var(--color-primary-400);
+    --l-focus: var(--color-primary-400);
+    --l-link: var(--color-primary-300);
+    --l-link-hover: var(--color-primary-200);
+    --l-phone-border: var(--color-secondary-700);
+    --vor-note: var(--color-neutral-200);
+    background: var(--l-bg);
+    color: var(--l-fg);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .vorozhka {
+      --l-bg: var(--color-secondary-800);
+      --l-muted: var(--color-neutral-200);
+      --l-phone-border: var(--color-secondary-600);
+    }
+  }
+
+  .inner {
+    display: flex;
+    flex-direction: row-reverse;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-12) clamp(2.5rem, 7vw, 7rem);
+    padding-block: clamp(4rem, 9vw, 8.5rem);
+  }
+
+  .copy {
+    flex: 1 1 26.25rem;
+    min-width: 0;
+  }
+
+  .kicker {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    margin-bottom: var(--space-6);
+    color: var(--l-eyebrow);
+  }
+
+  .kicker-label {
+    margin: 0;
+    letter-spacing: 0.28em;
+  }
+
+  .title {
+    margin: 0;
+    font-family: var(--font-family-display);
+    font-size: clamp(2.625rem, 6.4vw, 5.5rem);
+    font-weight: var(--font-weight-medium);
+    line-height: 1;
+    text-wrap: balance;
+  }
+
+  .title em {
+    color: var(--l-eyebrow);
+  }
+
+  .lead {
+    max-width: 35rem;
+    margin-top: var(--space-8);
+    font-size: var(--l-lead);
+    line-height: 1.55;
+  }
+
+  .note {
+    max-width: 35rem;
+    margin-top: var(--space-5);
+    line-height: 1.55;
+    color: var(--vor-note);
+  }
+
+  .figure {
+    flex: 0 1 21.25rem;
+    min-width: 0;
+    margin: 0 auto;
+  }
+
+  .figure-caption {
+    margin-top: 0.875rem;
+    font-size: var(--font-size-sm);
+    text-align: center;
+  }
+</style>

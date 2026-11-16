@@ -1,0 +1,69 @@
+---
+import { CONTACT_EMAIL, CONTACT_MAILTO } from "../../site";
+import Berehynia from "./Berehynia.astro";
+import StoreAvailability from "./StoreAvailability.astro";
+---
+
+<section class="band" aria-labelledby="cta-title">
+  <div class="container inner">
+    <span class="ornament"><Berehynia size={36} /></span>
+    <h2 id="cta-title" class="h2 title">Хочеш Кавцю у своїй кав’ярні?</h2>
+    <p class="text body">
+      Ми готуємося до публічного запуску й знайомимося з кав’ярнями. Напиши нам
+      — розкажемо, як усе влаштовано, і відповімо на твої питання.
+    </p>
+    <a class="btn btn--primary cta" href={CONTACT_MAILTO}>Обговорити підключення</a>
+    <p class="email-line"><a class="email" href={CONTACT_MAILTO}>{CONTACT_EMAIL}</a></p>
+    <div class="stores"><StoreAvailability /></div>
+  </div>
+</section>
+
+<style>
+  .inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 60rem;
+    padding-block: clamp(4rem, 9vw, 8rem);
+    text-align: center;
+  }
+
+  .ornament {
+    display: flex;
+    color: var(--l-eyebrow);
+  }
+
+  .title {
+    margin-top: var(--space-6);
+    font-size: clamp(2.5rem, 6vw, 4.75rem);
+    line-height: 1.02;
+  }
+
+  .body {
+    max-width: 35rem;
+    margin-top: var(--space-5);
+    font-size: var(--font-size-lg);
+  }
+
+  .cta {
+    min-height: 3.75rem;
+    margin-top: 2.25rem;
+    padding: 0 var(--space-8);
+    font-size: 1.1875rem;
+  }
+
+  .email-line {
+    margin: var(--space-4) 0 0;
+    color: var(--l-text);
+  }
+
+  .email {
+    display: inline-block;
+    padding: 0.625rem var(--space-1);
+  }
+
+  .stores {
+    margin-top: var(--space-5);
+    --l-muted: var(--semantic-text-secondary);
+  }
+</style>
