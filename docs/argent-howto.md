@@ -27,7 +27,7 @@ per-machine global installs:
   > and this is exactly that.
 - **Skills** in `.agents/skills/argent-*` with `.claude/skills/` symlinks, tracked in
   `skills-lock.json` — the wizard followed our vendored-skills layout on its own.
-- **Rules & agent**: `.claude/rules/argent.md` (always-on guidance),
+- **Rules & agent**: `.claude/rules/argent.md` (loaded for mobile work, see below),
   `.claude/agents/argent-environment-inspector.md`.
 - **`.codex/config.toml`** is rewritten by `init` as well: it registers the same MCP server for
   Codex, inlines the rules file into `developer_instructions` (Codex has no always-on rules file),
@@ -58,6 +58,12 @@ the failure mode that makes the set look tracked when it is not. `pnpm agents:ch
 the TV prune outright (#263), so a forgotten re-prune fails the gate instead of silently widening
 the vendored set — and it sweeps the routing in **both** vendored files, since 0.25 inlines the
 same rules text into `.codex/config.toml`.
+
+The rule is **scoped to mobile work**, and that too is re-applied after each bump. `init` writes
+it with `alwaysApply: true`, which Claude Code ignores; a rule without `paths:` loads into every
+session (checked 2026-11-16, code.claude.com/docs/en/memory). Replace that line with the `paths:`
+list (`apps/mobile/**`, `docs/flows/**`) so API- and web-only sessions skip it; mobile sessions
+still get it from a matching file read or the explicit read `AGENTS.md` asks for. `pnpm agents:check` asserts it (#430).
 
 A few of the vendored skills are worth calling out, because what they are for is not obvious from
 the name:

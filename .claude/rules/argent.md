@@ -1,6 +1,8 @@
 ---
 description: Argent iOS Simulator and Android Emulator Agent — always-on guidance for methodology and tools for working with, interacting, testing and profiling mobile app work
-alwaysApply: true
+paths:
+  - "apps/mobile/**"
+  - "docs/flows/**"
 ---
 
 <description>

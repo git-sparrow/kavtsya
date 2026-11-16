@@ -209,6 +209,17 @@ async function checkArgentVendoring() {
   );
   assert((await stat(path.join(root, ".claude/rules/argent.md"))).size > 0);
 
+  // Claude Code loads a rule without `paths:` into every session, and
+  // `argent init --local` rewrites the file without it (docs/argent-howto.md).
+  const ruleFrontmatter =
+    (await read(".claude/rules/argent.md")).match(
+      /^---\n([\s\S]*?)\n---\n/,
+    )?.[1] ?? "";
+  assert(
+    /^paths:\n {2}- "apps\/mobile\/\*\*"$/m.test(ruleFrontmatter),
+    '.claude/rules/argent.md must scope itself to mobile work with `paths:` (first entry "apps/mobile/**") — `argent init --local` drops it on every bump; re-apply it (docs/argent-howto.md)',
+  );
+
   return argentSkills;
 }
 
