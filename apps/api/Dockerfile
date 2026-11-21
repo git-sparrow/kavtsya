@@ -1,6 +1,6 @@
 # Production image for the API and its cron jobs (#65). Build context is the
-# repo root; the runtime stage gets the bundles from scripts/build.ts and the
-# SQL migrations, nothing else.
+# repo root; the runtime stage gets dist/ from scripts/build.ts and the SQL
+# migrations.
 FROM node:24-trixie-slim AS build
 
 WORKDIR /app

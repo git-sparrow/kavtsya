@@ -1,6 +1,7 @@
-// Bundles the production entrypoints into dist/. The image ships these bundles
-// and migrations/ only, so packages the code never imports — the optional Expo
+// Builds the production entrypoints and ledger SQL into dist/. The image ships
+// dist/ and migrations/ only, so packages the code never imports — the optional Expo
 // peers of @better-auth/expo among them — stay out of it.
+import { copyFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { build } from "esbuild";
 
@@ -35,4 +36,5 @@ if (import.meta.main) {
     },
     logLevel: "info",
   });
+  await copyFile("src/negative-balances.sql", "dist/negative-balances.sql");
 }

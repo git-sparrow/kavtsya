@@ -123,6 +123,8 @@ labels and triage are described under `docs/agents/`.
 - Prefer test-first at the seams (there's a `/tdd` workflow skill).
 - API tests run against a **real** Postgres (no mocks) and drive the app through
   the HTTP seam — see `apps/api/test/`.
+- CI also runs `bash scripts/backup/integration.sh` with Docker for the backup
+  and isolated restore round trip. This check is outside `pnpm verify`.
 - Run a single file while iterating; run the full suite (`pnpm verify`) before
   pushing.
 

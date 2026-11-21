@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { CafeBalance, Reward, LoyaltyProgram } from "@kavtsya/shared";
 import { kyivDayOf, kyivDaySql, type Clock } from "./clock";
 import type { Database, Queryable } from "./db";
@@ -9,15 +10,20 @@ import {
   CounterAuthorizationError,
 } from "./shifts";
 
+const negativeBalancesSql = readFileSync(
+  new URL("./negative-balances.sql", import.meta.url),
+  "utf8",
+);
+
 /**
  * Issuing a Зернятко — the append-only Purchase ledger (#20, ADR 0010). The
  * scan slice's core write: one validated scan appends one `purchases` row; the
  * Customer's balance is derived from the ledger, never mutated.
  *
  * The balance formula — count(purchases) − sum(redemptions.beans_spent) — has
- * exactly one home: here, inside the ledger module (#52). The read functions
- * below are the only balance interface; nothing outside this module spends or
- * counts Зернятка.
+ * exactly one home: the ledger module, including negative-balances.sql (#52).
+ * The read functions below are the only balance interface; nothing outside this
+ * module spends or counts Зернятка.
  */
 function deriveBalance(purchases: number, beansSpent: number): number {
   return purchases - beansSpent;
@@ -317,43 +323,21 @@ export interface NegativeBalance {
  * the whole ledger after the fact so the promise becomes a monitored invariant.
  * An empty result means the invariant holds.
  *
- * Two consumers share this one query: a cross-suite assertion in the test suite,
- * and `scripts/check-ledger-invariant.ts` runnable against a live database before
- * and during pilots. The returned balance is computed by {@link deriveBalance} —
- * the formula's one home; the `where` predicate below mirrors that same
- * subtraction only because a SQL filter can't call the JS helper.
+ * The test suite, live invariant script, and offline restore drill share the
+ * ledger-owned negative-balances.sql query. The returned balance is computed by
+ * {@link deriveBalance}; the SQL predicate mirrors its subtraction for filtering.
  */
 export async function findNegativeBalances(
   db: Database,
 ): Promise<NegativeBalance[]> {
-  const rows = await db<
+  const rows = await db.unsafe<
     {
       cafe_id: string;
       customer_user_id: string;
       purchases: number;
       beans_spent: number;
     }[]
-  >`
-    select
-      m."cafe_id",
-      m."customer_user_id",
-      coalesce(p."purchases", 0) as purchases,
-      coalesce(r."beans_spent", 0) as beans_spent
-    from cafe_memberships m
-    left join (
-      select "cafe_id", "customer_user_id", count(*)::int as purchases
-      from purchases group by "cafe_id", "customer_user_id"
-    ) p on p."cafe_id" = m."cafe_id"
-      and p."customer_user_id" = m."customer_user_id"
-    left join (
-      select "cafe_id", "customer_user_id", sum("beans_spent")::int as beans_spent
-      from redemptions group by "cafe_id", "customer_user_id"
-    ) r on r."cafe_id" = m."cafe_id"
-      and r."customer_user_id" = m."customer_user_id"
-    -- Mirrors deriveBalance (count(purchases) − sum(beans_spent)) in SQL: a
-    -- filter can't call the JS helper, but the returned balance still does.
-    where coalesce(p."purchases", 0) - coalesce(r."beans_spent", 0) < 0
-  `;
+  >(negativeBalancesSql);
   return rows.map((row) => ({
     cafeId: row.cafe_id,
     customerId: row.customer_user_id,
