@@ -27,5 +27,6 @@
   },
   "permissions": {
     "allow": ["mcp__argent"]
-  }
+  },
+  "skillListingBudgetFraction": 0.02
 }
