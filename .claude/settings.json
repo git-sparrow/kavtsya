@@ -6,12 +6,6 @@
         "repo": "cloudflare/skills"
       }
     },
-    "expo-plugins": {
-      "source": {
-        "source": "github",
-        "repo": "expo/skills"
-      }
-    },
     "mattpocock": {
       "source": {
         "source": "directory",
@@ -27,7 +21,7 @@
   },
   "enabledPlugins": {
     "cloudflare@cloudflare": true,
-    "expo@expo-plugins": true,
+    "expo@claude-plugins-official": true,
     "mattpocock-skills@mattpocock": true,
     "pstack@pstack-claude": true
   },
