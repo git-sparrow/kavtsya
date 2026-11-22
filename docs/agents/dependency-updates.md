@@ -207,7 +207,7 @@ Expo track itself.
    in an agent session (#345). If the package must be held, follow #340 before asking
    Dependabot to recreate the PR.
 2. **The Expo drift issue** (`expo-sdk-check.yml`, the 1st and 15th; one open at a time):
-   run the Expo track below. A full SDK release follows the `expo:upgrading-expo` skill.
+   run the Expo track below. A full SDK release follows the `expo:expo-upgrade` skill.
 3. **An Argent drift issue** (`argent-drift-check.yml`, monthly): decide upgrade or
    retain, as #263 did, per [Updating Argent](../argent-howto.md#updating-argent).
 
@@ -352,7 +352,7 @@ or advances the review. These are manual procedure fixtures, not live CI outcome
 ## Expo track (deliberate, human-run)
 
 The native surface is realigned only through Expo's own tooling, keyed to SDK releases.
-For a full SDK jump, follow the `expo:upgrading-expo` skill.
+For a full SDK jump, follow the `expo:expo-upgrade` skill.
 
 `expo-camera` has a version-scoped native patch for adaptive Customer QR scanning
 (#372). Its SDK-governed version stays unchanged by the patch; iOS builds compile
