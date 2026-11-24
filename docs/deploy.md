@@ -477,11 +477,11 @@ The maintainer performs these steps:
    **CafeOwner** account used on A. On **A as Customer**, enable café news consent
    and OS notifications; push-token registration must happen on **A**, the
    intended receiving device. Stay on the app's home screen for about 15 seconds
-   so the registration finishes before A leaves the app.
-5. On **A**, leave the app (iOS Home screen or lock): the app shows no notification
-   that arrives while it is open (#418). On **B as CafeOwner**, send one test campaign
+   so the registration finishes.
+5. With the app still open on **A**, on **B as CafeOwner** send one test campaign
    from the **same test Café created in step 1**, where the Customer earned
-   their Purchase. Confirm the notification arrives on **A**.
+   their Purchase. Confirm the notification shows on **A** as a banner while the
+   app is in the foreground and stays in Notification Center (#418).
 6. Steps 5, 7 and 8 each need their own Business day (one campaign per Café per
    Business day), so they run on consecutive days. Record the result line the
    campaign screen shows after each send; a release build shows no HTTP status.
@@ -490,7 +490,7 @@ The maintainer performs these steps:
 7. **Day N+1:** on **B as CafeOwner**, send from «Розсилка». Expect «Поки нема
    кому…» (0 recipients), and nothing arrives on **A**.
 8. On **A**, sign back in as the same Customer, **without opening Settings**,
-   wait on the app's home screen for about 15 seconds, then leave the app.
+   wait on the app's home screen for about 15 seconds.
    **Day N+2:** on **B**, send again. Expect «Отримають 1 твоїх клієнтів», and
    the notification arrives on **A**.
 
