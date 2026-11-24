@@ -58,6 +58,10 @@ export async function registerDeviceForPush({
     }
     if (!permission.granted) return;
 
+    // Read before the token wait: a sign-out during it must not mint a new id
+    // after sign-out forgot the old one (#402). The late upsert then carries a
+    // dead session and is refused.
+    const device = await deviceId();
     const { data: token } = await Promise.race([
       Notifications.getExpoPushTokenAsync(),
       new Promise<never>((_, reject) =>
@@ -67,7 +71,7 @@ export async function registerDeviceForPush({
         ),
       ),
     ]);
-    await registerPushToken(token, await deviceId());
+    await registerPushToken(token, device);
   } catch {
     // No push surface here (Expo Go / simulator / declined) — nothing to do.
   }
