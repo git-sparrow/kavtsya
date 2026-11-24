@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { RenderErrorFallback } from "@/components/render-error-fallback";
-import { showForegroundNotifications } from "@/features/push/foreground-notifications";
+import { initForegroundNotifications } from "@/features/push/foreground-notifications";
 import { authClient } from "@/lib/auth-client";
 import { initCrashReporting } from "@/lib/crash-reporting";
 import { ThemePreferenceProvider, fontAssets, useTheme } from "@/theme";
@@ -14,7 +14,7 @@ import { ThemePreferenceProvider, fontAssets, useTheme } from "@/theme";
 // As early as the root module allows. Its imports evaluate before this line,
 // so a throw while they load is the one kind it cannot report.
 initCrashReporting();
-showForegroundNotifications();
+initForegroundNotifications();
 
 // Hold the splash until both the cached session and the brand fonts resolve, so
 // the app never flashes a wrong-font or signed-out frame on launch.
