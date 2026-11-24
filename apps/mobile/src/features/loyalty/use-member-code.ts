@@ -1,19 +1,9 @@
 import { useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 
+import { memberCodeKey } from "@/features/account/account-storage";
 import { useMe } from "@/features/account/me-context";
 import { fetchMemberCode } from "@/lib/api";
-
-/**
- * Where a code lives on the device — same store as the session cookie, one
- * entry PER ACCOUNT (#91): the member code is an earning identity, so on a
- * shared or handed-over device account B must never inherit account A's cached
- * code. SecureStore keys allow only [A-Za-z0-9._-]; user ids are sanitized
- * into that alphabet.
- */
-function storageKeyFor(userId: string): string {
-  return `kavtsya.member_code.${userId.replace(/[^A-Za-z0-9._-]/g, "_")}`;
-}
 
 /** The pre-#91 account-less entry — deleted on sight so nobody inherits it. */
 const LEGACY_STORAGE_KEY = "kavtsya.member_code";
@@ -64,7 +54,9 @@ export function useMemberCode(): string | null {
       }
     }
 
-    void load(storageKeyFor(userId));
+    // One entry PER ACCOUNT (#91): the member code is an earning identity, so
+    // on a shared or handed-over device account B never inherits A's code.
+    void load(memberCodeKey(userId));
     return () => {
       active = false;
     };

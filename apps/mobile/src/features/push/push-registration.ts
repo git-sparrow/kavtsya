@@ -4,10 +4,11 @@ import * as SecureStore from "expo-secure-store";
 import { registerPushToken } from "@/lib/api";
 
 /**
- * One opaque id per INSTALL, deliberately shared across accounts — it names
- * the device, and `push_tokens` is per device (#24). Uniqueness is all it
- * needs (it keys a refresh, and the sign-out release, not a secret). Minted on
- * first read.
+ * One opaque id per signed-in stretch on this install — it names the device,
+ * and `push_tokens` is per device (#24). Uniqueness is all it needs (it keys a
+ * refresh, and the sign-out release, not a secret). Minted on first read and
+ * forgotten at sign-out (#402), so the server can't link the accounts that
+ * shared a phone; `unique (token)` still re-homes the token to the next one.
  */
 const DEVICE_ID_KEY = "kavtsya.device_id";
 
@@ -17,6 +18,11 @@ export async function deviceId(): Promise<string> {
   const minted = `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
   await SecureStore.setItemAsync(DEVICE_ID_KEY, minted);
   return minted;
+}
+
+/** Drop the device id; the next {@link deviceId} mints a fresh one. Never throws. */
+export async function forgetDeviceId(): Promise<void> {
+  await SecureStore.deleteItemAsync(DEVICE_ID_KEY).catch(() => {});
 }
 
 /**

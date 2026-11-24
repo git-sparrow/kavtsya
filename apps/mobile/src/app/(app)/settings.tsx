@@ -20,7 +20,7 @@ import {
   useDeleteAccount,
 } from "@/features/account/delete-account";
 import { useMe } from "@/features/account/me-context";
-import { signOut } from "@/features/account/sign-out";
+import { useSignOut } from "@/features/account/sign-out";
 import { useMode } from "@/features/mode/mode-context";
 import { updatePushConsent } from "@/lib/api";
 import {
@@ -167,6 +167,7 @@ function AppearanceSection() {
 export default function Settings() {
   const t = useTheme();
   const { me, reload } = useMe();
+  const signOut = useSignOut();
   const { mode, switchTo, clearExcursion } = useMode();
   const deletion = useDeleteAccount();
   const [busy, setBusy] = useState(false);
