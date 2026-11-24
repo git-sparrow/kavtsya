@@ -4,10 +4,11 @@ import * as SecureStore from "expo-secure-store";
 import { registerPushToken } from "@/lib/api";
 
 /**
- * One opaque id per INSTALL, deliberately shared across accounts — it names
- * the device, and `push_tokens` is per device (#24). Uniqueness is all it
- * needs (it keys a refresh, and the sign-out release, not a secret). Minted on
- * first read.
+ * One opaque id per signed-in stretch on this install — it names the device,
+ * and `push_tokens` is per device (#24). Uniqueness is all it needs (it keys a
+ * refresh, and the sign-out release, not a secret). Minted on first read and
+ * forgotten at sign-out (#402), so the server can't link the accounts that
+ * shared a phone; `unique (token)` still re-homes the token to the next one.
  */
 const DEVICE_ID_KEY = "kavtsya.device_id";
 
@@ -17,6 +18,11 @@ export async function deviceId(): Promise<string> {
   const minted = `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
   await SecureStore.setItemAsync(DEVICE_ID_KEY, minted);
   return minted;
+}
+
+/** Drop the device id; the next {@link deviceId} mints a fresh one. Never throws. */
+export async function forgetDeviceId(): Promise<void> {
+  await SecureStore.deleteItemAsync(DEVICE_ID_KEY).catch(() => {});
 }
 
 /**
@@ -52,6 +58,10 @@ export async function registerDeviceForPush({
     }
     if (!permission.granted) return;
 
+    // Read before the token wait: a sign-out during it must not mint a new id
+    // after sign-out forgot the old one (#402). The late upsert then carries a
+    // dead session and is refused.
+    const device = await deviceId();
     const { data: token } = await Promise.race([
       Notifications.getExpoPushTokenAsync(),
       new Promise<never>((_, reject) =>
@@ -61,7 +71,7 @@ export async function registerDeviceForPush({
         ),
       ),
     ]);
-    await registerPushToken(token, await deviceId());
+    await registerPushToken(token, device);
   } catch {
     // No push surface here (Expo Go / simulator / declined) — nothing to do.
   }

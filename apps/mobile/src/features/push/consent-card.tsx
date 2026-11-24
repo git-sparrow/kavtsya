@@ -5,19 +5,11 @@ import { Text, View } from "react-native";
 import { Berehynia } from "@/components/berehynia";
 import { Button } from "@/components/button";
 import { Surface } from "@/components/surface";
+import { accountKey } from "@/features/account/account-storage";
 import { useMe } from "@/features/account/me-context";
 import { useBalances } from "@/features/loyalty/use-balances";
 import { updatePushConsent } from "@/lib/api";
 import { fontFamily, useTheme } from "@/theme";
-
-/**
- * Whether THIS account already answered the consent question on this device —
- * keyed per account (the #91 lesson), so a shared phone never inherits the
- * previous user's "already asked".
- */
-function decidedKeyFor(userId: string): string {
-  return `kavtsya.push_consent_decided.${userId.replace(/[^A-Za-z0-9._-]/g, "_")}`;
-}
 
 /**
  * The café-news consent prompt (#24): asked at the moment of demonstrated
@@ -36,7 +28,9 @@ export function ConsentCard() {
   useEffect(() => {
     if (!userId) return;
     let active = true;
-    void SecureStore.getItemAsync(decidedKeyFor(userId)).then((stored) => {
+    void SecureStore.getItemAsync(
+      accountKey("push_consent_decided", userId),
+    ).then((stored) => {
       if (active) setDecided(stored !== null);
     });
     return () => {
@@ -55,7 +49,7 @@ export function ConsentCard() {
     try {
       await updatePushConsent(consent);
       await SecureStore.setItemAsync(
-        decidedKeyFor(userId!),
+        accountKey("push_consent_decided", userId!),
         consent ? "yes" : "no",
       );
       setDecided(true);

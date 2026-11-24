@@ -8,7 +8,7 @@ import { NoticeBanner } from "@/components/notice-banner";
 import { Screen } from "@/components/screen";
 import { ErrorText } from "@/components/text";
 import { useMe } from "@/features/account/me-context";
-import { signOut } from "@/features/account/sign-out";
+import { useSignOut } from "@/features/account/sign-out";
 import { CustomerMode } from "@/features/mode/customer-mode";
 import { useMode } from "@/features/mode/mode-context";
 import { OwnerMode } from "@/features/mode/owner-mode";
@@ -43,6 +43,7 @@ const SHIFT_CHECK_FAILED_DETAIL = "Якщо ви на зміні, сканер �
 export default function Home() {
   const t = useTheme();
   const { me, error, reload } = useMe();
+  const signOut = useSignOut();
   const {
     mode,
     loading,

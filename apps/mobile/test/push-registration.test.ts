@@ -14,9 +14,15 @@ vi.mock("expo-notifications", () => ({
   requestPermissionsAsync,
   getExpoPushTokenAsync,
 }));
+const store = new Map<string, string>();
 vi.mock("expo-secure-store", () => ({
-  getItemAsync: async () => "device-1",
-  setItemAsync: async () => {},
+  getItemAsync: async (key: string) => store.get(key) ?? null,
+  setItemAsync: async (key: string, value: string) => {
+    store.set(key, value);
+  },
+  deleteItemAsync: async (key: string) => {
+    store.delete(key);
+  },
 }));
 const registerPushToken =
   vi.fn<(token: string, deviceId: string) => Promise<void>>();
@@ -27,6 +33,8 @@ const { registerDeviceForPush } =
 
 beforeEach(() => {
   vi.resetAllMocks();
+  store.clear();
+  store.set("kavtsya.device_id", "device-1");
   getExpoPushTokenAsync.mockResolvedValue({ data: "ExponentPushToken[x]" });
   registerPushToken.mockResolvedValue(undefined);
 });
@@ -67,5 +75,21 @@ describe("registerDeviceForPush", () => {
 
     expect(requestPermissionsAsync).toHaveBeenCalledOnce();
     expect(registerPushToken).toHaveBeenCalledOnce();
+  });
+
+  it("leaves no device id behind when sign-out lands during the token wait (#402)", async () => {
+    getPermissionsAsync.mockResolvedValue({ granted: true, canAskAgain: true });
+    let deliverToken!: (value: { data: string }) => void;
+    getExpoPushTokenAsync.mockReturnValue(
+      new Promise((resolve) => (deliverToken = resolve)),
+    );
+
+    const registering = registerDeviceForPush({ askPermission: false });
+    await vi.waitFor(() => expect(getExpoPushTokenAsync).toHaveBeenCalled());
+    store.delete("kavtsya.device_id"); // sign-out
+    deliverToken({ data: "ExponentPushToken[x]" });
+    await registering;
+
+    expect(store.has("kavtsya.device_id")).toBe(false);
   });
 });

@@ -3,9 +3,9 @@ import { useCallback, useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { deleteAccount, fetchDeletionPreview } from "@/lib/api";
-import { authClient } from "@/lib/auth-client";
 
 import { cafeOwnerCopy, customerCopy } from "./delete-account-copy";
+import { useSignOut } from "./sign-out";
 
 /**
  * The account-deletion exit (#143, redesign turns 6b/6e and 7d/7h) — the UI in
@@ -49,6 +49,7 @@ export function useDeleteAccount(): {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const signOut = useSignOut();
 
   const open = useCallback(async () => {
     setLoading(true);
@@ -71,11 +72,11 @@ export function useDeleteAccount(): {
     setError(null);
     try {
       await deleteAccount();
-      // The account is gone; sign the app out so the router's session guard
-      // swaps back to the sign-in screen. The Expo client clears its cached
-      // session as the request goes OUT, so this holds even though the server
-      // no longer recognises the cookie it is signing out with.
-      await authClient.signOut().catch(() => {});
+      // The account is gone; sign out like any sign-out, so the router's
+      // session guard swaps back to the sign-in screen and the account's data
+      // leaves the device. It holds although the server no longer recognises
+      // the cookie: see `signOut`.
+      await signOut();
     } catch (e) {
       // Nothing was deleted — close the dialog and say so, rather than leaving
       // a spinning confirm the account can't get out of.
@@ -83,7 +84,7 @@ export function useDeleteAccount(): {
       setPreview(null);
       setError(e instanceof Error ? e.message : "Не вдалося видалити акаунт");
     }
-  }, []);
+  }, [signOut]);
 
   return { open, cancel, confirm, preview, loading, deleting, error };
 }
