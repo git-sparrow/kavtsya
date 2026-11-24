@@ -1,26 +1,23 @@
 import * as SecureStore from "expo-secure-store";
 
 /**
- * Every SecureStore entry the app keeps PER ACCOUNT (#91), named in one place
- * so sign-out can remove them all (#402). A new per-account entry gets its key
- * here, or sign-out leaves it behind. SecureStore keys allow only
- * [A-Za-z0-9._-]; user ids are sanitized into that alphabet.
+ * Every SecureStore entry the app keeps PER ACCOUNT (#91). Sign-out removes
+ * each one (#402), so a per-account entry exists only by being listed here.
  */
-function accountKey(name: string, userId: string): string {
-  return `kavtsya.${name}.${userId.replace(/[^A-Za-z0-9._-]/g, "_")}`;
+const ACCOUNT_ENTRIES = ["member_code", "push_consent_decided"] as const;
+
+type AccountEntry = (typeof ACCOUNT_ENTRIES)[number];
+
+/** SecureStore keys allow only [A-Za-z0-9._-]; user ids are sanitized into it. */
+export function accountKey(entry: AccountEntry, userId: string): string {
+  return `kavtsya.${entry}.${userId.replace(/[^A-Za-z0-9._-]/g, "_")}`;
 }
-
-export const memberCodeKey = (userId: string) =>
-  accountKey("member_code", userId);
-
-export const pushConsentDecidedKey = (userId: string) =>
-  accountKey("push_consent_decided", userId);
 
 /** Remove the account's entries from this device; never throws. */
 export async function forgetAccount(userId: string): Promise<void> {
   await Promise.allSettled(
-    [memberCodeKey(userId), pushConsentDecidedKey(userId)].map((key) =>
-      SecureStore.deleteItemAsync(key),
+    ACCOUNT_ENTRIES.map((entry) =>
+      SecureStore.deleteItemAsync(accountKey(entry, userId)),
     ),
   );
 }

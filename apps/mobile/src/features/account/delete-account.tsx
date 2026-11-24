@@ -72,11 +72,10 @@ export function useDeleteAccount(): {
     setError(null);
     try {
       await deleteAccount();
-      // The account is gone; sign the app out like any sign-out, so the
-      // router's session guard swaps back to the sign-in screen and the
-      // account's data leaves the device too (#402). The Expo client clears
-      // its cached session as the request goes OUT, so this holds even though
-      // the server no longer recognises the cookie it is signing out with.
+      // The account is gone; sign out like any sign-out, so the router's
+      // session guard swaps back to the sign-in screen and the account's data
+      // leaves the device. It holds although the server no longer recognises
+      // the cookie: see `signOut`.
       await signOut();
     } catch (e) {
       // Nothing was deleted — close the dialog and say so, rather than leaving

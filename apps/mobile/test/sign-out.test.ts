@@ -77,6 +77,17 @@ it("keeps other accounts' data and the device's appearance choice", async () => 
   });
 });
 
+it("still names the device and forgets its id when the account isn't known", async () => {
+  store.set("kavtsya.device_id", "device-1");
+
+  await signOut(undefined);
+
+  expect(authSignOut).toHaveBeenCalledExactlyOnceWith({
+    fetchOptions: { headers: { [DEVICE_ID_HEADER]: "device-1" } },
+  });
+  expect(store.has("kavtsya.device_id")).toBe(false);
+});
+
 it("clears the account's data even when the sign-out request fails", async () => {
   store.set("kavtsya.member_code.user-a", "K7-1234");
   authSignOut.mockRejectedValueOnce(new Error("network down"));

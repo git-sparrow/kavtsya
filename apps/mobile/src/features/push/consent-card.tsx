@@ -5,7 +5,7 @@ import { Text, View } from "react-native";
 import { Berehynia } from "@/components/berehynia";
 import { Button } from "@/components/button";
 import { Surface } from "@/components/surface";
-import { pushConsentDecidedKey } from "@/features/account/account-storage";
+import { accountKey } from "@/features/account/account-storage";
 import { useMe } from "@/features/account/me-context";
 import { useBalances } from "@/features/loyalty/use-balances";
 import { updatePushConsent } from "@/lib/api";
@@ -28,11 +28,11 @@ export function ConsentCard() {
   useEffect(() => {
     if (!userId) return;
     let active = true;
-    void SecureStore.getItemAsync(pushConsentDecidedKey(userId)).then(
-      (stored) => {
-        if (active) setDecided(stored !== null);
-      },
-    );
+    void SecureStore.getItemAsync(
+      accountKey("push_consent_decided", userId),
+    ).then((stored) => {
+      if (active) setDecided(stored !== null);
+    });
     return () => {
       active = false;
     };
@@ -49,7 +49,7 @@ export function ConsentCard() {
     try {
       await updatePushConsent(consent);
       await SecureStore.setItemAsync(
-        pushConsentDecidedKey(userId!),
+        accountKey("push_consent_decided", userId!),
         consent ? "yes" : "no",
       );
       setDecided(true);

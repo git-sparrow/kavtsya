@@ -7,7 +7,8 @@ import { authClient } from "@/lib/auth-client";
 import { forgetAccount } from "./account-storage";
 
 /**
- * Sign `userId` out of this device and leave none of its data behind (#402).
+ * Sign `userId` out of this device and leave none of its data behind (#402);
+ * with no known account, only the device id is forgotten.
  * The request names the device, so the server stops its pushes for this
  * account in the same step (#330). If the device id can't be read, sign-out
  * goes ahead without it and the token stays active until another account
@@ -17,19 +18,16 @@ import { forgetAccount } from "./account-storage";
  * device is signed out even when the request fails, and the cleanup runs
  * regardless.
  */
-export async function signOut(userId: string): Promise<void> {
+export async function signOut(userId: string | undefined): Promise<void> {
   const headers = await deviceId()
     .then((id) => ({ [DEVICE_ID_HEADER]: id }))
     .catch(() => undefined);
   await authClient.signOut({ fetchOptions: { headers } }).catch(() => {});
-  await Promise.all([forgetAccount(userId), forgetDeviceId()]);
+  await Promise.all([userId && forgetAccount(userId), forgetDeviceId()]);
 }
 
 /** {@link signOut} for whichever account is signed in on this device. */
 export function useSignOut(): () => Promise<void> {
   const userId = authClient.useSession().data?.user.id;
-  return useCallback(async () => {
-    if (userId) await signOut(userId);
-    else await authClient.signOut().catch(() => {});
-  }, [userId]);
+  return useCallback(() => signOut(userId), [userId]);
 }

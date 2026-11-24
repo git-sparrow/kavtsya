@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 
-import { memberCodeKey } from "@/features/account/account-storage";
+import { accountKey } from "@/features/account/account-storage";
 import { useMe } from "@/features/account/me-context";
 import { fetchMemberCode } from "@/lib/api";
 
@@ -46,8 +46,10 @@ export function useMemberCode(): string | null {
       }
       try {
         const fetched = await fetchMemberCode();
+        // Signed out mid-fetch: don't write back what sign-out cleared (#402).
+        if (!active) return;
         await SecureStore.setItemAsync(storageKey, fetched);
-        if (active) setEntry({ userId, code: fetched });
+        setEntry({ userId, code: fetched });
       } catch {
         // Offline before the first fetch ever succeeded: nothing to show yet.
         // The QR path still works when back online; we retry on next mount.
@@ -56,7 +58,7 @@ export function useMemberCode(): string | null {
 
     // One entry PER ACCOUNT (#91): the member code is an earning identity, so
     // on a shared or handed-over device account B never inherits A's code.
-    void load(memberCodeKey(userId));
+    void load(accountKey("member_code", userId));
     return () => {
       active = false;
     };
