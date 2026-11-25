@@ -57,8 +57,9 @@ COMMON_ENV=(--env "APP_ID=$APP_ID" --env "DEMO_PASSWORD=$DEMO_PASSWORD"
 mkdir -p "$SHOTS"/customer "$SHOTS"/owner "$SHOTS"/scanner
 
 # Maestro types through whatever keyboard iOS last had up; pin it to en_US first.
-# A nicety, not the job: a failure must not abort the capture.
-"$REPO/scripts/sim-pin-keyboard.sh" || true
+# A nicety, not the job: no simulator (or an Android MAESTRO_DEVICE) must neither
+# abort the capture nor print an error.
+"$REPO/scripts/sim-pin-keyboard.sh" ${MAESTRO_DEVICE:-} >/dev/null 2>&1 || true
 
 # With more than one simulator/emulator attached, Maestro cannot pick one on its
 # own — MAESTRO_DEVICE (a UDID or adb serial) names the target explicitly.

@@ -66,8 +66,7 @@ review rather than Matt's. Implement tickets one at a time with `implement` or
 
 Matt's `tdd` asks you to confirm the test seams with the user before writing a
 test. On a `ready-for-agent` issue nobody is there to confirm: choose the seams
-yourself and name them in the PR body, where the reviewer checks them. The vendored
-skill stays unchanged.
+yourself and name them in the PR body, where the reviewer checks them.
 
 The Expo plugin remains configured for Claude in `.claude/settings.json`. It is
 not installed for Codex by this change. For Codex Expo work, use the shared Argent

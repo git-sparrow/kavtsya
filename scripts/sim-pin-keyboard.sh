@@ -1,15 +1,9 @@
 #!/usr/bin/env bash
-# Pin an iOS simulator's keyboard to en_US before anything types into it.
+# Pin an iOS simulator's keyboard to en_US before anything types into it: Maestro
+# and Argent type through whatever layout iOS last had up, and on a Cyrillic layout
+# the Latin characters of a credential have no keys (docs/flows/README.md).
 #
 # Usage: pnpm sim:pin-keyboard [UDID]   (default: the first booted simulator)
-#
-# Maestro's `inputText` and Argent's keyboard tool type through whatever layout
-# iOS last had up, and iOS remembers it: with a Ukrainian keyboard installed it
-# can come back on the Cyrillic layout, where the Latin characters of an email or
-# password have no keys. The credential is typed partially and sign-in fails with
-# «Invalid email or password», which looks nothing like a keyboard problem (#249,
-# #440); on iOS 26.5, 2026-09-07, a Cyrillic layout truncated `demo-password-1`
-# to three characters. Takes effect for the next keyboard iOS shows.
 set -euo pipefail
 
 udid="${1:-}"
