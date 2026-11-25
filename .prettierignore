@@ -28,5 +28,7 @@ docs/design/handoff
 # Misc
 *.md
 
-# Machine-local harness state (gitignored; written by Claude Code)
+# Machine-local harness state (written by Claude Code). Agent worktrees are
+# other checkouts, ignored only via .git/info/exclude, which Prettier doesn't read.
 .claude/settings.local.json
+.claude/worktrees

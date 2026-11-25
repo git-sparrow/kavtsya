@@ -219,9 +219,10 @@ Android 15, 2026-09-28.)
   keyboard installed on the simulator, iOS can return to the Cyrillic layout, where
   the Latin characters of an email or password have no keys — the credential is typed
   *partially* and sign-in fails with «Invalid email or password», which looks like a
-  seed or API problem and is not. `capture.sh` pins the simulator to `en_US` before
-  the first flow; if you drive Maestro by hand, pin it yourself:
-  `xcrun simctl spawn booted defaults write .GlobalPreferences AppleKeyboards -array "en_US@sw=QWERTY;hw=Automatic" "emoji@sw=Emoji"`.
+  seed or API problem and is not. Argent's keyboard tool does the same (observed
+  in the #402 session, 2026-11-24). `capture.sh` pins the simulator to `en_US` before
+  the first flow; if you drive Maestro (or Argent) by hand, run `pnpm sim:pin-keyboard`
+  first.
 - **`hideKeyboard` works on some screens and not others.** It dismisses the keyboard
   fine on the register-café subscreen, but fails outright on the auth screen
   (`Couldn't hide the keyboard`), where the flows tap the «Кавця» wordmark instead.
