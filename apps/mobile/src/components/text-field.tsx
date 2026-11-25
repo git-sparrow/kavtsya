@@ -1,9 +1,16 @@
+import type { Ref } from "react";
 import { TextInput, type TextInputProps } from "react-native";
 
 import { fontFamily, useTheme } from "@/theme";
 
-/** A text input carrying the shared field styling; forwards all TextInput props. */
-export function TextField({ style, ...rest }: TextInputProps) {
+/**
+ * A text input carrying the shared field styling; forwards all TextInput props,
+ * and `ref` so a form can move focus to the next field.
+ */
+export function TextField({
+  style,
+  ...rest
+}: TextInputProps & { ref?: Ref<TextInput> }) {
   const t = useTheme();
   return (
     <TextInput

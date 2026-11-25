@@ -1,90 +1,78 @@
-import { useState } from "react";
-import { Pressable, Text } from "react-native";
+import { useRef } from "react";
+import { Pressable, Text, type TextInput } from "react-native";
 
 import { Button } from "@/components/button";
 import { Card } from "@/components/card";
 import { Screen } from "@/components/screen";
 import { ErrorText } from "@/components/text";
 import { TextField } from "@/components/text-field";
-import { authClient } from "@/lib/auth-client";
+import { useSignInForm } from "@/features/account/use-sign-in-form";
 import { fontFamily, useTheme } from "@/theme";
 
 export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-fallback";
-
-type Mode = "signin" | "signup";
 
 export default function SignIn() {
   // Read the live theme, not the static light snapshot: the remembered ВИГЛЯД
   // choice (#162) is already applied here, before anyone has signed in.
   const t = useTheme();
-  const [mode, setMode] = useState<Mode>("signin");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const isSignup = mode === "signup";
-
-  async function submit() {
-    setError(null);
-    setBusy(true);
-    const result = isSignup
-      ? await authClient.signUp.email({ email, password, name })
-      : await authClient.signIn.email({ email, password });
-    setBusy(false);
-    // On success useSession picks up the new session and the root layout swaps
-    // this screen for the authenticated home.
-    if (result.error) {
-      setError(result.error.message ?? "Не вдалося увійти");
-    }
-  }
+  const form = useSignInForm();
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
 
   return (
     <Screen>
       <Card>
-        {isSignup && (
+        {form.isSignup && (
           <TextField
             testID="sign-in.name"
             placeholder="Ім'я"
             autoCapitalize="words"
-            value={name}
-            onChangeText={setName}
+            value={form.name}
+            onChangeText={form.setName}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => emailRef.current?.focus()}
           />
         )}
         <TextField
+          ref={emailRef}
           testID="sign-in.email"
           placeholder="Email"
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
+          value={form.email}
+          onChangeText={form.setEmail}
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => passwordRef.current?.focus()}
         />
         <TextField
+          ref={passwordRef}
           testID="sign-in.password"
           placeholder="Пароль"
           secureTextEntry
-          value={password}
-          onChangeText={setPassword}
+          value={form.password}
+          onChangeText={form.setPassword}
+          returnKeyType="go"
+          onSubmitEditing={form.submit}
         />
 
-        {error && <ErrorText testID="sign-in.error">{error}</ErrorText>}
+        {form.error && (
+          <ErrorText testID="sign-in.error">{form.error}</ErrorText>
+        )}
 
         <Button
           testID="sign-in.submit"
-          title={isSignup ? "Зареєструватися" : "Увійти"}
-          onPress={submit}
-          busy={busy}
+          title={form.isSignup ? "Зареєструватися" : "Увійти"}
+          onPress={form.submit}
+          busy={form.busy}
         />
 
         <Pressable
           testID="sign-in.toggle-mode"
           accessibilityRole="button"
-          onPress={() => {
-            setError(null);
-            setMode(isSignup ? "signin" : "signup");
-          }}
+          onPress={form.toggleMode}
         >
           <Text
             style={{
@@ -95,7 +83,7 @@ export default function SignIn() {
               marginTop: 4,
             }}
           >
-            {isSignup
+            {form.isSignup
               ? "Вже маєте акаунт? Увійти"
               : "Немає акаунта? Зареєструватися"}
           </Text>
