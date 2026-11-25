@@ -21,6 +21,10 @@ web-only PR (`scripts/ci/changed-scope.mjs`) skips Expo Doctor and `pnpm test`, 
 gate ≠ verified — exercise the changed surface next. For agent setup changes,
 that means configuration/skill discovery, not an unrelated simulator run.
 
+To fix `format:check`, run the root `pnpm format`, never `prettier` from a package
+directory: Prettier reads `.prettierignore` only from where it runs, so a package-level
+run reformats generated files.
+
 **Read the gate's own exit code.** Run it directly and inspect the tool's exit
 code; do not infer success from the last line of a piped log.
 
@@ -84,12 +88,20 @@ and permissions. Do not copy simulator IDs or assume another session's app mode.
 
 - Coordinate device and Metro ownership before interacting; see
   `docs/agents/workflow.md`.
+- Run `pnpm sim:pin-keyboard [UDID]` before the first typed input. Otherwise iOS can
+  type an email or password through the Cyrillic layout, and sign-in fails with
+  «Invalid email or password».
 - Use the standalone dev-build workflow documented in `docs/flows/README.md`
   for the Maestro gallery/E2E flows; inspect `docs/argent-howto.md` and the flow's
   prerequisites for other runtime checks.
 - Prefer an existing recorded flow when it matches the acceptance criteria;
   verify its account, app and device prerequisites before replay.
 - For camera access, use `argent-settings-permissions` as directed by that skill.
+- **Observe device storage** (SecureStore) from the JS runtime with
+  `debugger-evaluate`. The read is async, so park the result in a global with one
+  call, then read the global with a second:
+  `globalThis.expo.modules.ExpoSecureStore.getValueWithKeyAsync(key, {}).then((v) => (globalThis.__probe = v))`,
+  then `globalThis.__probe`. `null` means the entry is absent.
 - Capture the actual behavior and report the build, device, account role and
   flow/check used. Static checks are not UI evidence.
 
