@@ -163,7 +163,8 @@ as E2E smoke tests; [`docs/flows/README.md`](docs/flows/README.md) covers runnin
 | --- | --- |
 | `pnpm dev:api` | Run the API (auto-migrates first) with watch reload |
 | `pnpm dev:mobile` | Start the Expo dev server |
-| `pnpm db:up` / `db:down` | Start / stop local Postgres |
+| `pnpm db:up` / `db:down` | Start / stop this checkout's Postgres (port `DB_PORT`, default 5432) |
+| `pnpm env:worktree` | Give a new worktree its `.env`, on a Postgres port of its own |
 | `pnpm db:reset` | Drop the volume and recreate a fresh Postgres |
 | `pnpm db:seed-demo` | Seed the demo world (`db:seed-demo-fresh` resets first) |
 | `pnpm migrate` | Apply pending migrations to the dev database |

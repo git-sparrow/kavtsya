@@ -57,12 +57,14 @@ A client's built-in review command is a different review. If a pinned skill
 mentions a client-specific command, follow its intent using available tools,
 report any unavailable capability, and leave the vendored copy unchanged.
 
-`implement-spec` is pinned but **not adopted**. Its parallel implementers would all
-run `tdd` against the shared `kavtsya_test` database (see below), and its close-out
-asks for `code-review` by bare name, which in Claude resolves to the built-in
-review rather than Matt's. Implement tickets one at a time with `implement` or
-`tdd` until per-task test databases are provisioned; then run
-`mattpocock-skills:code-review` explicitly.
+`implement-spec` is pinned but **not adopted**. Each implementer works in its own
+worktree, which needs `pnpm env:worktree` and `pnpm db:up` before any test: a
+worktree without a `.env` nested inside the main checkout (such as
+`.claude/worktrees/`) silently loads the main checkout's `.env` and tests against
+its database. Its close-out also asks for `code-review` by bare name, which in
+Claude resolves to the built-in review rather than Matt's. Implement tickets one
+at a time with `implement` or `tdd`, then run `mattpocock-skills:code-review`
+explicitly.
 
 Matt's `tdd` asks you to confirm the test seams with the user before writing a
 test. On a `ready-for-agent` issue nobody is there to confirm: choose the seams
@@ -141,6 +143,7 @@ git fetch origin
 git worktree add -b feat/issue-123 ../kavtsya-issue-123 origin/main
 cd ../kavtsya-issue-123
 pnpm install --frozen-lockfile
+pnpm env:worktree
 pnpm agents:check
 ```
 
@@ -148,26 +151,27 @@ Choose a unique task branch, and put the worktree you implement in beside the ma
 checkout (`../kavtsya-<slug>`): macOS purges `/tmp`, which deletes a worktree there
 and leaves its branch locked until `git worktree prune`. A new worktree starts without dependencies,
 ignored environment files or generated native builds: provision each one it
-needs, environment files per the README.
+needs; `pnpm env:worktree` writes its `.env` from the main checkout's.
 
-Worktrees separate source edits; this project's default runtime resources are
-still shared. Agree on these before starting services or checks:
+Worktrees separate source edits and, through `DB_PORT`, Postgres. Agree on the
+other runtime resources before starting services or checks:
 
-| Resource | Default policy | If concurrent runtime work is necessary |
-| --- | --- | --- |
-| API test database | One test run at a time against the default `kavtsya_test` | Provision a separate test database for each task and set `TEST_DATABASE_URL` for every test/verify run. The test harness migrates it. |
-| Development database | One session owns seeding and migrations | Use a separately provisioned database and task-local environment. Never reset another session's data. |
-| API / Metro | One owner of the default ports and checkout | Coordinate distinct ports and matching mobile API/Metro configuration before starting a second stack. |
-| Simulator / emulator | One owner per device | Use distinct devices and identify the app/build and attached Metro instance. |
+| Resource | Policy |
+| --- | --- |
+| API test database | Each checkout runs its own Postgres via `DB_PORT`; one test run at a time per checkout. |
+| Development database | Each checkout runs its own Postgres via `DB_PORT`. Never reset or seed another checkout's. |
+| API / Metro | One owner at a time of the default ports. |
+| Simulator / emulator | One owner per device; identify the app/build and attached Metro instance. |
 
 The test harness reads `TEST_DATABASE_URL` in
 `apps/api/test/helpers/testDb.ts`. Its `fileParallelism: false` setting coordinates
 files within a run; it is not a cross-agent lock. Do not run simultaneous suites
-against one database. `docker-compose.yml` fixes the container name and host port;
-running it from another worktree is not a database-isolation recipe.
+against one database. `pnpm db:up` starts the checkout's own `db` service: Compose
+names the container and data volume after the checkout folder and publishes
+`DB_PORT` (5432 when unset) from the checkout's `.env`. Both outlive the folder, so
+run `docker compose down -v` in a merged worktree before removing it.
 
-The default is serialized runtime work, so no extra database orchestration is
-required to start using both tools. Record ownership in the handoff and release it
+Record ownership in the handoff and release it
 when done. After a PR merges, run `pnpm git:prune-merged` from the main checkout:
 it lists each local branch with a keep or prune decision, and `-- --apply`
 removes the merged branches with their worktrees. It keeps any worktree that

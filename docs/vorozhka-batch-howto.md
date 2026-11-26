@@ -43,7 +43,7 @@ pnpm --filter ./apps/api generate-fortunes
 ## View the batch
 
 ```
-docker exec kavtsya-db psql -U kavtsya -d kavtsya -c "select pool_day, text from fortunes order by created_at;"
+docker compose exec db psql -U kavtsya -d kavtsya -c "select pool_day, text from fortunes order by created_at;"
 ```
 
 Shows every stored fortune with the Kyiv calendar day it belongs to.
@@ -71,5 +71,5 @@ _Марі: якщо якесь ворожіння звучить криво аб
 | `Invalid AI environment: ANTHROPIC_API_KEY` | Add the key line to `.env` (see Prerequisites #2) |
 | `Invalid FORTUNES_BATCH_SIZE` | The `.env` override must be a whole number above 0 — fix or remove the line |
 | `relation "fortunes" does not exist` | Run the migrate command (Prerequisites #3) |
-| `ECONNREFUSED ... 5432` | Start Docker Desktop, then `docker compose up -d` |
+| `ECONNREFUSED` on the database port | Start Docker Desktop, then `pnpm db:up` |
 | `Claude Messages API responded 401` | The key is wrong or revoked — mint a new one at console.anthropic.com |
