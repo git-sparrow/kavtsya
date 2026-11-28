@@ -86,6 +86,26 @@ export function planPrune({ worktrees, branches, mergedPrs, statusByPath }) {
   });
 }
 
+/**
+ * The Compose project name `docker compose` would use in `dir`:
+ * COMPOSE_PROJECT_NAME from the environment, else from the directory's `.env`,
+ * else its base name lowercased with every character outside [a-z0-9_-] and
+ * any leading dash or underscore dropped.
+ */
+export function composeProjectName(dir, env = process.env) {
+  const file = path.join(dir, ".env");
+  const fromFile = existsSync(file)
+    ? parseEnv(readFileSync(file, "utf8")).COMPOSE_PROJECT_NAME
+    : undefined;
+  const explicit = env.COMPOSE_PROJECT_NAME || fromFile;
+  if (explicit) return explicit;
+  return path
+    .basename(dir)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "")
+    .replace(/^[-_]+/, "");
+}
+
 function git(args, cwd) {
   return execFileSync("git", args, { cwd, encoding: "utf8" });
 }
@@ -93,16 +113,29 @@ function git(args, cwd) {
 /**
  * Carries out the prune decisions. A worktree's Postgres (its Compose project,
  * container and volume) goes before the worktree does; when that fails the
- * worktree and branch stay, so a later run finishes the job. Returns the
+ * worktree and branch stay, so a later run finishes the job. So do they when
+ * another checkout in `worktrees` shares the Compose project name, since
+ * `down -v` would delete that checkout's database too. Returns the
  * `{ branch, reason }` of each one kept.
  */
 export function applyPrune(
   decisions,
-  { composeDown, removeWorktree, deleteBranch, log },
+  { worktrees, projectName, composeDown, removeWorktree, deleteBranch, log },
 ) {
   const kept = [];
   for (const { branch, worktree } of decisions) {
     if (worktree) {
+      const name = projectName(worktree.path);
+      const clash = worktrees.find(
+        (other) =>
+          other.path !== worktree.path && projectName(other.path) === name,
+      );
+      if (clash) {
+        const reason = `Compose project "${name}" is shared with ${clash.path}; docker compose down -v would delete its Postgres too`;
+        kept.push({ branch, reason });
+        log(`kept   ${branch}: ${reason}`);
+        continue;
+      }
       try {
         composeDown(worktree.path);
       } catch (error) {
@@ -201,6 +234,8 @@ function main() {
     return;
   }
   const kept = applyPrune(prunable, {
+    worktrees,
+    projectName: composeProjectName,
     composeDown: (cwd) =>
       execFileSync("docker", ["compose", "down", "-v"], {
         cwd,

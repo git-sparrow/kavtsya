@@ -176,7 +176,8 @@ Record ownership in the handoff and release it
 when done. After a PR merges, run `pnpm git:prune-merged` from the main checkout:
 it lists each local branch with a keep or prune decision, and `-- --apply`
 removes the merged branches with their worktrees and each worktree's Postgres
-(`docker compose down -v`; a worktree stays, with the reason, when that fails). It
+(`docker compose down -v`; a worktree stays, with the reason, when that fails or
+when another checkout shares its Compose project name). It
 keeps any worktree that holds uncommitted, untracked or non-build ignored files,
 including a `.env` that differs from what `pnpm env:worktree` would write. Stop only task-owned processes and Argent device servers, naming the
 devices used. Never run a machine-wide cleanup or `db:reset` as handoff housekeeping.

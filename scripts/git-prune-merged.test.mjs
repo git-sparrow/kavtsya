@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, it } from "node:test";
 import {
   applyPrune,
+  composeProjectName,
   isProvisionedEnv,
   planPrune,
   workAtStake,
@@ -162,10 +166,58 @@ describe("isProvisionedEnv", () => {
   });
 });
 
+describe("composeProjectName", () => {
+  const withEnv = (content, fn) => {
+    const root = mkdtempSync(path.join(tmpdir(), "compose-name-"));
+    const dir = path.join(root, "My_Proj");
+    mkdirSync(dir);
+    try {
+      if (content !== null) writeFileSync(path.join(dir, ".env"), content);
+      fn(dir);
+    } finally {
+      rmSync(root, { recursive: true });
+    }
+  };
+
+  it("normalizes the folder name the way Compose does", () => {
+    assert.equal(composeProjectName("/r/My Proj.X_ü-1", {}), "myprojx_-1");
+    assert.equal(composeProjectName("/r/_lead", {}), "lead");
+  });
+
+  it("prefers the environment, then the .env, over the folder name", () => {
+    withEnv("COMPOSE_PROJECT_NAME=from-file\n", (dir) => {
+      assert.equal(composeProjectName(dir, {}), "from-file");
+      assert.equal(
+        composeProjectName(dir, { COMPOSE_PROJECT_NAME: "from-env" }),
+        "from-env",
+      );
+    });
+  });
+
+  it("falls back to the folder name when .env sets no project", () => {
+    withEnv("DB_PORT=5440\n", (dir) => {
+      assert.equal(composeProjectName(dir, {}), "my_proj");
+    });
+    withEnv(null, (dir) => {
+      assert.equal(composeProjectName(dir, {}), "my_proj");
+    });
+  });
+});
+
 describe("applyPrune", () => {
-  function run(decisions, composeDown) {
+  function run(
+    decisions,
+    composeDown,
+    others = [],
+    projectName = (dir) => dir,
+  ) {
     const calls = [];
     const kept = applyPrune(decisions, {
+      worktrees: [
+        ...decisions.map((d) => d.worktree).filter(Boolean),
+        ...others,
+      ],
+      projectName,
       composeDown: (dir) => {
         calls.push(`down ${dir}`);
         composeDown(dir);
@@ -201,6 +253,25 @@ describe("applyPrune", () => {
     );
     assert.deepEqual(
       calls.filter((call) => /^(remove|branch) /.test(call)),
+      [],
+    );
+  });
+
+  it("keeps a worktree whose Compose project another checkout shares, without running down -v", () => {
+    const main = { path: "/a/X", branch: "main", main: true };
+    const worktree = { path: "/b/X", branch: "fix/a", main: false };
+    const { kept, calls } = run(
+      [{ branch: "fix/a", worktree }],
+      () => {
+        throw new Error("docker must not run");
+      },
+      [main],
+      (dir) => composeProjectName(dir, {}),
+    );
+    assert.equal(kept.length, 1);
+    assert.match(kept[0].reason, /project "x" is shared with \/a\/X/);
+    assert.deepEqual(
+      calls.filter((call) => /^(down|remove|branch) /.test(call)),
       [],
     );
   });
