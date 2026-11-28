@@ -44,6 +44,11 @@ export default tseslint.config(
           message:
             "Parse path params with uuidParamSchema from routes/params.ts, e.g. uuidParamSchema.safeParse(c.req.param('id')). For an intentionally raw read, add an eslint-disable-next-line comment that says why.",
         },
+        {
+          selector: "VariableDeclarator[id.name=/ParamSchema$/]",
+          message:
+            "Declare path param schemas in routes/params.ts and import them; a route file must not define its own *ParamSchema.",
+        },
       ],
     },
   },
