@@ -21,3 +21,17 @@ export async function forgetAccount(userId: string): Promise<void> {
     ),
   );
 }
+
+const ACCOUNT_ON_DEVICE_KEY = "kavtsya.account_on_device";
+
+export function accountOnDevice(): Promise<string | null> {
+  return SecureStore.getItemAsync(ACCOUNT_ON_DEVICE_KEY);
+}
+
+export function setAccountOnDevice(userId: string): Promise<void> {
+  return SecureStore.setItemAsync(ACCOUNT_ON_DEVICE_KEY, userId);
+}
+
+export async function clearAccountOnDevice(): Promise<void> {
+  await SecureStore.deleteItemAsync(ACCOUNT_ON_DEVICE_KEY).catch(() => {});
+}

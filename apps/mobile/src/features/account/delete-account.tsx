@@ -5,7 +5,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { deleteAccount, fetchDeletionPreview } from "@/lib/api";
 
 import { cafeOwnerCopy, customerCopy } from "./delete-account-copy";
-import { useSignOut } from "./sign-out";
+import { signOut } from "./sign-out";
 
 /**
  * The account-deletion exit (#143, redesign turns 6b/6e and 7d/7h) — the UI in
@@ -49,7 +49,6 @@ export function useDeleteAccount(): {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const signOut = useSignOut();
 
   const open = useCallback(async () => {
     setLoading(true);
@@ -84,7 +83,7 @@ export function useDeleteAccount(): {
       setPreview(null);
       setError(e instanceof Error ? e.message : "Не вдалося видалити акаунт");
     }
-  }, [signOut]);
+  }, []);
 
   return { open, cancel, confirm, preview, loading, deleting, error };
 }

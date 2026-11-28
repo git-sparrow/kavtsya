@@ -7,8 +7,9 @@ import { registerPushToken } from "@/lib/api";
  * One opaque id per signed-in stretch on this install — it names the device,
  * and `push_tokens` is per device (#24). Uniqueness is all it needs (it keys a
  * refresh, and the sign-out release, not a secret). Minted on first read and
- * forgotten at sign-out (#402), so the server can't link the accounts that
- * shared a phone; `unique (token)` still re-homes the token to the next one.
+ * forgotten when the session ends, so the server can't link the
+ * accounts that shared a phone; `unique (token)` still re-homes the token to
+ * the next one.
  */
 const DEVICE_ID_KEY = "kavtsya.device_id";
 
