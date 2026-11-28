@@ -6,6 +6,12 @@
         "repo": "cloudflare/skills"
       }
     },
+    "git-sparrow": {
+      "source": {
+        "source": "github",
+        "repo": "git-sparrow/skills"
+      }
+    },
     "mattpocock": {
       "source": {
         "source": "directory",
@@ -23,7 +29,8 @@
     "cloudflare@cloudflare": true,
     "expo@claude-plugins-official": true,
     "mattpocock-skills@mattpocock": true,
-    "pstack@pstack-claude": true
+    "pstack@pstack-claude": true,
+    "skills@git-sparrow": true
   },
   "permissions": {
     "allow": ["mcp__argent"]

@@ -10,7 +10,7 @@ const pluginDir = ".agents/plugins/mattpocock-skills";
 // Asserted absent below, not merely excused — see checkArgentVendoring().
 const PRUNED_SKILLS = ["argent-tv-interact"];
 // Skills this repo owns, shared by Claude and Codex through one file each.
-const FIRST_PARTY_SKILLS = ["verify", "cross-review"];
+const FIRST_PARTY_SKILLS = ["verify"];
 const plugin = JSON.parse(
   await read(`${pluginDir}/.claude-plugin/plugin.json`),
 );

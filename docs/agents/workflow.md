@@ -90,10 +90,10 @@ to merge or expands the task the user authorized.
    work explicitly. Never stash, reset or overwrite unfamiliar changes.
 3. Give the next tool the handoff below. The reviewer reads the actual diff
    against the base and checks the acceptance criteria and verification evidence.
-   It starts read-only; transfer edit ownership explicitly before fixes. With the
-   `cross-review` skill the edit owner runs the other engine (or both) as
-   read-only reviewers and reads their reports from files, so the maintainer
-   relays nothing.
+   It starts read-only; transfer edit ownership explicitly before fixes. With
+   `skills:cross-review` (from the `skills@git-sparrow` plugin) the edit owner
+   runs the other engine (or both) as read-only reviewers and reads their
+   reports from files, so the maintainer relays nothing.
 4. Address valid findings, repeat affected checks, run `pnpm verify`, and inspect
    the current PR's CI. Merge only when separately authorized.
 

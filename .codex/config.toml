@@ -250,7 +250,10 @@ url = "https://mcp.cloudflare.com/mcp"
 [mcp_servers.cloudflare.tools.execute]
 approval_mode = "prompt"
 
-# Needs the pstack-claude marketplace in the user's Codex config; Codex reads
-# this file only in trusted folders.
+# Each needs its marketplace (pstack-claude, git-sparrow) in the user's Codex
+# config; Codex reads this file only in trusted folders.
 [plugins."pstack@pstack-claude"]
+enabled = true
+
+[plugins."skills@git-sparrow"]
 enabled = true
