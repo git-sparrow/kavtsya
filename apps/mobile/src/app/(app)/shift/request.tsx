@@ -224,7 +224,10 @@ export default function ScanPosterScreen() {
   // barista off their current post (#99).
   if (switchTo) {
     return (
-      <Screen fixedHeader header={<BackHeader title="Уже на зміні" />}>
+      <Screen
+        fixedHeader
+        header={<BackHeader title="Уже на зміні" testID="request.back" />}
+      >
         <Surface emphasis="promise">
           <Text
             style={{
