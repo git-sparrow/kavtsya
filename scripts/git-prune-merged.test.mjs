@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, it } from "node:test";
-import { parseWorktrees, planPrune, workAtStake } from "./git-prune-merged.mjs";
+import {
+  applyPrune,
+  composeProjectName,
+  isProvisionedEnv,
+  planPrune,
+  workAtStake,
+} from "./git-prune-merged.mjs";
+import { withDbPort } from "./env-worktree.mjs";
+import { parseWorktrees } from "./worktrees.mjs";
 
 const MAIN = { path: "/repo", branch: "main", locked: false, main: true };
 const tree = (branch, extra = {}) => ({
@@ -122,6 +133,174 @@ describe("workAtStake", () => {
 
   it("returns nothing for a clean worktree", () => {
     assert.deepEqual(workAtStake(""), []);
+  });
+
+  it("drops only the root .env, and only when it is provisioned", () => {
+    const status = "!! .env\n!! apps/api/.env";
+    assert.deepEqual(workAtStake(status), ["!! .env", "!! apps/api/.env"]);
+    assert.deepEqual(workAtStake(status, { provisionedEnv: true }), [
+      "!! apps/api/.env",
+    ]);
+  });
+});
+
+describe("isProvisionedEnv", () => {
+  const MAIN_ENV = "SECRET=abc\nDATABASE_URL=postgres://u:p@localhost:5432/d\n";
+
+  it("accepts exactly what env:worktree would write", () => {
+    assert.ok(isProvisionedEnv(withDbPort(MAIN_ENV, 5440), MAIN_ENV));
+  });
+
+  it("rejects an .env edited by hand", () => {
+    const edited = `${withDbPort(MAIN_ENV, 5440)}MY_TOKEN=keep-me\n`;
+    assert.equal(isProvisionedEnv(edited, MAIN_ENV), false);
+  });
+
+  it("rejects an .env that sets no DB_PORT", () => {
+    assert.equal(isProvisionedEnv(MAIN_ENV, MAIN_ENV), false);
+  });
+
+  it("rejects an .env the main one has since moved on from", () => {
+    const worktreeEnv = withDbPort(MAIN_ENV, 5440);
+    assert.equal(isProvisionedEnv(worktreeEnv, `${MAIN_ENV}NEW=1\n`), false);
+  });
+});
+
+describe("composeProjectName", () => {
+  const withEnv = (content, fn) => {
+    const root = mkdtempSync(path.join(tmpdir(), "compose-name-"));
+    const dir = path.join(root, "My_Proj");
+    mkdirSync(dir);
+    try {
+      if (content !== null) writeFileSync(path.join(dir, ".env"), content);
+      fn(dir);
+    } finally {
+      rmSync(root, { recursive: true });
+    }
+  };
+
+  it("normalizes the folder name the way Compose does", () => {
+    assert.equal(composeProjectName("/r/My Proj.X_ü-1", {}), "myprojx_-1");
+    assert.equal(composeProjectName("/r/_lead", {}), "lead");
+  });
+
+  it("prefers the environment, then the .env, over the folder name", () => {
+    withEnv("COMPOSE_PROJECT_NAME=from-file\n", (dir) => {
+      assert.equal(composeProjectName(dir, {}), "from-file");
+      assert.equal(
+        composeProjectName(dir, { COMPOSE_PROJECT_NAME: "from-env" }),
+        "from-env",
+      );
+    });
+  });
+
+  it("falls back to the folder name when .env sets no project", () => {
+    withEnv("DB_PORT=5440\n", (dir) => {
+      assert.equal(composeProjectName(dir, {}), "my_proj");
+    });
+    withEnv(null, (dir) => {
+      assert.equal(composeProjectName(dir, {}), "my_proj");
+    });
+  });
+});
+
+describe("applyPrune", () => {
+  function run(
+    decisions,
+    composeDown,
+    others = [],
+    projectName = (dir) => dir,
+  ) {
+    const calls = [];
+    const kept = applyPrune(decisions, {
+      worktrees: [
+        ...decisions.map((d) => d.worktree).filter(Boolean),
+        ...others,
+      ],
+      projectName,
+      composeDown: (dir) => {
+        calls.push(`down ${dir}`);
+        composeDown(dir);
+      },
+      removeWorktree: (dir) => calls.push(`remove ${dir}`),
+      deleteBranch: (name) => calls.push(`branch ${name}`),
+      log: (line) => calls.push(`log ${line}`),
+    });
+    return { kept, calls };
+  }
+
+  it("takes the Postgres down before removing the worktree and branch", () => {
+    const worktree = tree("fix/a");
+    const { kept, calls } = run([{ branch: "fix/a", worktree }], () => {});
+    assert.deepEqual(kept, []);
+    assert.deepEqual(calls, [
+      `down ${worktree.path}`,
+      `remove ${worktree.path}`,
+      "branch fix/a",
+      "log pruned fix/a",
+    ]);
+  });
+
+  it("keeps the worktree and branch, with the reason, when compose fails", () => {
+    const worktree = tree("fix/a");
+    const { kept, calls } = run([{ branch: "fix/a", worktree }], () => {
+      throw new Error("Cannot connect to the Docker daemon");
+    });
+    assert.equal(kept.length, 1);
+    assert.match(
+      kept[0].reason,
+      /docker compose down -v failed.*Docker daemon/,
+    );
+    assert.deepEqual(
+      calls.filter((call) => /^(remove|branch) /.test(call)),
+      [],
+    );
+  });
+
+  it("keeps a worktree whose Compose project another checkout shares, without running down -v", () => {
+    const main = { path: "/a/X", branch: "main", main: true };
+    const worktree = { path: "/b/X", branch: "fix/a", main: false };
+    const { kept, calls } = run(
+      [{ branch: "fix/a", worktree }],
+      () => {
+        throw new Error("docker must not run");
+      },
+      [main],
+      (dir) => composeProjectName(dir, {}),
+    );
+    assert.equal(kept.length, 1);
+    assert.match(kept[0].reason, /project "x" is shared with \/a\/X/);
+    assert.deepEqual(
+      calls.filter((call) => /^(down|remove|branch) /.test(call)),
+      [],
+    );
+  });
+
+  it("needs no Docker for a branch without a worktree", () => {
+    const { kept, calls } = run([{ branch: "fix/a", worktree: null }], () => {
+      throw new Error("docker must not run");
+    });
+    assert.deepEqual(kept, []);
+    assert.deepEqual(calls, ["branch fix/a", "log pruned fix/a"]);
+  });
+
+  it("keeps going after one worktree fails", () => {
+    const failing = tree("fix/a");
+    const fine = tree("fix/b");
+    const { kept, calls } = run(
+      [
+        { branch: "fix/a", worktree: failing },
+        { branch: "fix/b", worktree: fine },
+      ],
+      (dir) => {
+        if (dir === failing.path) throw new Error("down");
+      },
+    );
+    assert.deepEqual(
+      kept.map((entry) => entry.branch),
+      ["fix/a"],
+    );
+    assert.ok(calls.includes("branch fix/b"));
   });
 });
 

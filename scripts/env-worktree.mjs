@@ -12,7 +12,7 @@ import {
 import net from "node:net";
 import path from "node:path";
 import { parseEnv } from "node:util";
-import { parseWorktrees } from "./git-prune-merged.mjs";
+import { parseWorktrees } from "./worktrees.mjs";
 
 const PORTS = { first: 5433, last: 5532 };
 const DB_KEYS = ["DB_PORT", "DATABASE_URL", "TEST_DATABASE_URL"];
