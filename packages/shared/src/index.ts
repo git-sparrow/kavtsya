@@ -17,7 +17,7 @@ import { z } from "zod";
  */
 export const KYIV_TIME_ZONE = "Europe/Kyiv";
 
-/** Kavtsya's one public mail address, routed by Cloudflare Email Routing (#352). */
+/** Kavtsya's one public mail address; kavtsya.app has no MX record and receives no mail. */
 export const CONTACT_EMAIL = "hello@kavtsya.com";
 
 /**
