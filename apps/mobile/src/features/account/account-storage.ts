@@ -1,9 +1,8 @@
 import * as SecureStore from "expo-secure-store";
 
 /**
- * Every SecureStore entry the app keeps PER ACCOUNT (#91). Each one is removed
- * when the account's session ends (#402, #438), so a per-account entry exists
- * only by being listed here.
+ * Every SecureStore entry the app keeps PER ACCOUNT (#91). Sign-out removes
+ * each one (#402), so a per-account entry exists only by being listed here.
  */
 const ACCOUNT_ENTRIES = ["member_code", "push_consent_decided"] as const;
 
@@ -23,21 +22,16 @@ export async function forgetAccount(userId: string): Promise<void> {
   );
 }
 
-/**
- * The account whose entries this device holds. It outlives the session, so an
- * account whose session ended while the app was closed can still be found and
- * forgotten on the next launch (#438).
- */
-const HELD_ACCOUNT_KEY = "kavtsya.held_account";
+const ACCOUNT_ON_DEVICE_KEY = "kavtsya.account_on_device";
 
-export function heldAccount(): Promise<string | null> {
-  return SecureStore.getItemAsync(HELD_ACCOUNT_KEY);
+export function accountOnDevice(): Promise<string | null> {
+  return SecureStore.getItemAsync(ACCOUNT_ON_DEVICE_KEY);
 }
 
-export function holdAccount(userId: string): Promise<void> {
-  return SecureStore.setItemAsync(HELD_ACCOUNT_KEY, userId);
+export function setAccountOnDevice(userId: string): Promise<void> {
+  return SecureStore.setItemAsync(ACCOUNT_ON_DEVICE_KEY, userId);
 }
 
-export async function releaseAccount(): Promise<void> {
-  await SecureStore.deleteItemAsync(HELD_ACCOUNT_KEY).catch(() => {});
+export async function clearAccountOnDevice(): Promise<void> {
+  await SecureStore.deleteItemAsync(ACCOUNT_ON_DEVICE_KEY).catch(() => {});
 }

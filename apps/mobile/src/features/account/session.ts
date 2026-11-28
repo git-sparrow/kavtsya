@@ -4,17 +4,16 @@ import { forgetDeviceId } from "@/features/push/push-registration";
 import { authClient } from "@/lib/auth-client";
 
 import {
+  accountOnDevice,
+  clearAccountOnDevice,
   forgetAccount,
-  heldAccount,
-  holdAccount,
-  releaseAccount,
+  setAccountOnDevice,
 } from "./account-storage";
 
 /**
- * What this device knows about its session. `ended` and `unreachable` both
- * show the sign-in screen, but only `ended` is the server's word (or this
- * device's sign-out); `unreachable` keeps the account's data, because losing the
- * network is not a session ending (#21, ADR 0006).
+ * Only `ended` is the server's word (or this device's sign-out); `unreachable`
+ * keeps the account's data, because losing the network is not a session ending
+ * (ADR 0006).
  */
 export type SessionState =
   | { kind: "pending" }
@@ -42,33 +41,28 @@ function toSessionState({
     : { kind: "ended" };
 }
 
-/**
- * The single place an account's data leaves the device (#402, #438): whenever
- * its session ends, through sign-out, deletion, expiry or revocation, and
- * whenever another account's session replaces it.
- */
-async function settleHeldAccount(state: SessionState): Promise<void> {
+async function forgetEndedAccount(state: SessionState): Promise<void> {
   if (state.kind === "pending" || state.kind === "unreachable") return;
-  const held = await heldAccount();
+  const previous = await accountOnDevice();
   if (state.kind === "signedIn") {
-    if (held === state.userId) return;
-    if (held) await Promise.all([forgetAccount(held), forgetDeviceId()]);
-    await holdAccount(state.userId);
+    if (previous === state.userId) return;
+    if (previous)
+      await Promise.all([forgetAccount(previous), forgetDeviceId()]);
+    await setAccountOnDevice(state.userId);
   } else {
-    await Promise.all([held && forgetAccount(held), forgetDeviceId()]);
-    await releaseAccount();
+    await Promise.all([previous && forgetAccount(previous), forgetDeviceId()]);
+    await clearAccountOnDevice();
   }
 }
 
 let settling = Promise.resolve();
 
-/** This device's session, with ended accounts' data removed as it ends. */
-export function useDeviceSession(): SessionState {
+export function useSessionForgettingEndedAccounts(): SessionState {
   const state = toSessionState(authClient.useSession());
   const userId = state.kind === "signedIn" ? state.userId : null;
 
   const settle = useEffectEvent(() => {
-    settling = settling.then(() => settleHeldAccount(state)).catch(() => {});
+    settling = settling.then(() => forgetEndedAccount(state)).catch(() => {});
   });
   useEffect(() => settle(), [state.kind, userId]);
 

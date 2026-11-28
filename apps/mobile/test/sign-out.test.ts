@@ -1,12 +1,6 @@
 import { DEVICE_ID_HEADER } from "@kavtsya/shared";
 import { beforeEach, expect, it, vi } from "vitest";
 
-/**
- * Sign-out (#330) names this device, so the server releases its push token in
- * the same request that ends the session. Clearing the account's data once the
- * session has ended is `device-session.test.tsx`.
- */
-
 const store = new Map<string, string>();
 vi.mock("expo-secure-store", () => ({
   getItemAsync: async (key: string) => store.get(key) ?? null,

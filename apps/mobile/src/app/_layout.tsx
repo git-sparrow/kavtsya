@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { RenderErrorFallback } from "@/components/render-error-fallback";
-import { useDeviceSession } from "@/features/account/session";
+import { useSessionForgettingEndedAccounts } from "@/features/account/session";
 import { initForegroundNotifications } from "@/features/push/foreground-notifications";
 import { initCrashReporting } from "@/lib/crash-reporting";
 import { ThemePreferenceProvider, fontAssets, useTheme } from "@/theme";
@@ -61,9 +61,7 @@ function ThemedStatusBar() {
 }
 
 function RootShell() {
-  // useSession reads the SecureStore-cached session first, so a returning
-  // Customer lands authenticated without a network round-trip on launch.
-  const session = useDeviceSession();
+  const session = useSessionForgettingEndedAccounts();
   // A font failure shouldn't wedge launch — fall through to system fonts.
   const [fontsLoaded, fontError] = useFonts(fontAssets);
 

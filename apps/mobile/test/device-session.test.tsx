@@ -4,8 +4,6 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, renderHook, waitFor } from "./support/render-hook";
 
 /**
- * Whenever this device's session ends, the account's data leaves with it
- * (#402, #438); losing the network is not a session ending (#21, ADR 0006).
  * Driven through the real Better Auth client and its Expo plugin, with only the
  * server and the native modules stubbed, so the test pins how the installed
  * library reports each outcome.
@@ -47,13 +45,12 @@ const sessionOf = (userId: string, expiresAt = Date.now() + HOUR) => ({
   user: { id: userId, email: `${userId}@example.com`, name: userId },
 });
 
-/** What the server answers `get-session` with. */
-type Server =
+type GetSessionReply =
   | { kind: "session"; userId: string }
   | { kind: "none" }
   | { kind: "unauthorized" }
   | { kind: "offline" };
-let server: Server = { kind: "offline" };
+let server: GetSessionReply = { kind: "offline" };
 let signOutReachesServer = true;
 
 const json = (body: unknown, status = 200) =>
@@ -84,23 +81,19 @@ const fetchMock = vi.fn(
 );
 vi.stubGlobal("fetch", fetchMock);
 
-/**
- * A fresh app launch: a new auth client over whatever the device's SecureStore
- * already holds, then the session check the app makes on launch.
- */
-async function launch() {
+async function freshLaunch() {
   vi.resetModules();
   const { authClient } = await import("../src/lib/auth-client");
-  const { useDeviceSession } = await import("../src/features/account/session");
+  const { useSessionForgettingEndedAccounts } =
+    await import("../src/features/account/session");
   const { signOut } = await import("../src/features/account/sign-out");
-  const hook = renderHook(useDeviceSession);
+  const hook = renderHook(useSessionForgettingEndedAccounts);
   const checkSession = () => authClient.$store.atoms.session.get().refetch();
   await checkSession();
   return { hook, checkSession, signOut };
 }
 
-/** The app's own entries, leaving out the auth client's storage. */
-const appEntries = () =>
+const appSecureStoreEntries = () =>
   Object.fromEntries([...store].filter(([key]) => key.startsWith("kavtsya.")));
 
 const accountData = (userId: string) => ({
@@ -109,11 +102,12 @@ const accountData = (userId: string) => ({
   "kavtsya.device_id": "device-1",
 });
 
-/** Signed in as `userId` in this launch, with the account's data on the device. */
 async function signedInAs(userId: string) {
   server = { kind: "session", userId };
-  const app = await launch();
-  await waitFor(() => expect(store.get("kavtsya.held_account")).toBe(userId));
+  const app = await freshLaunch();
+  await waitFor(() =>
+    expect(store.get("kavtsya.account_on_device")).toBe(userId),
+  );
   for (const [key, value] of Object.entries(accountData(userId)))
     store.set(key, value);
   return app;
@@ -133,7 +127,7 @@ it("forgets the account when the server revokes its session", async () => {
   await checkSession();
 
   expect(hook.result.current).toEqual({ kind: "ended" });
-  await waitFor(() => expect(appEntries()).toEqual({}));
+  await waitFor(() => expect(appSecureStoreEntries()).toEqual({}));
 });
 
 it("forgets the account when the server answers 401", async () => {
@@ -142,7 +136,7 @@ it("forgets the account when the server answers 401", async () => {
   server = { kind: "unauthorized" };
   await checkSession();
 
-  await waitFor(() => expect(appEntries()).toEqual({}));
+  await waitFor(() => expect(appSecureStoreEntries()).toEqual({}));
 });
 
 it("forgets the account whose session expired while the app was closed", async () => {
@@ -154,10 +148,10 @@ it("forgets the account whose session expired while the app was closed", async (
   );
 
   server = { kind: "none" };
-  const { hook } = await launch();
+  const { hook } = await freshLaunch();
 
   expect(hook.result.current).toEqual({ kind: "ended" });
-  await waitFor(() => expect(appEntries()).toEqual({}));
+  await waitFor(() => expect(appSecureStoreEntries()).toEqual({}));
 });
 
 it("keeps the account through a session check that fails on the network", async () => {
@@ -167,7 +161,7 @@ it("keeps the account through a session check that fails on the network", async 
   await checkSession();
 
   expect(hook.result.current).toEqual({ kind: "signedIn", userId: "user-a" });
-  expect(appEntries()).toMatchObject(accountData("user-a"));
+  expect(appSecureStoreEntries()).toMatchObject(accountData("user-a"));
 });
 
 it("keeps the account and stays signed in on an offline launch", async () => {
@@ -175,10 +169,10 @@ it("keeps the account and stays signed in on an offline launch", async () => {
   cleanup();
 
   server = { kind: "offline" };
-  const { hook } = await launch();
+  const { hook } = await freshLaunch();
 
   expect(hook.result.current).toEqual({ kind: "signedIn", userId: "user-a" });
-  expect(appEntries()).toMatchObject(accountData("user-a"));
+  expect(appSecureStoreEntries()).toMatchObject(accountData("user-a"));
 });
 
 it("keeps the account on an offline launch after its session expired", async () => {
@@ -190,10 +184,10 @@ it("keeps the account on an offline launch after its session expired", async () 
   );
 
   server = { kind: "offline" };
-  const { hook } = await launch();
+  const { hook } = await freshLaunch();
 
   expect(hook.result.current).toEqual({ kind: "unreachable" });
-  expect(appEntries()).toMatchObject(accountData("user-a"));
+  expect(appSecureStoreEntries()).toMatchObject(accountData("user-a"));
 });
 
 it("names the device to the server on sign-out, then forgets the account", async () => {
@@ -208,7 +202,7 @@ it("names the device to the server on sign-out, then forgets the account", async
     "device-1",
   );
   expect(hook.result.current).toEqual({ kind: "ended" });
-  await waitFor(() => expect(appEntries()).toEqual({}));
+  await waitFor(() => expect(appSecureStoreEntries()).toEqual({}));
 });
 
 it("forgets the account on sign-out even when the request fails", async () => {
@@ -218,7 +212,7 @@ it("forgets the account on sign-out even when the request fails", async () => {
   await signOut();
 
   expect(hook.result.current).toEqual({ kind: "ended" });
-  await waitFor(() => expect(appEntries()).toEqual({}));
+  await waitFor(() => expect(appSecureStoreEntries()).toEqual({}));
 });
 
 it("forgets the account its session ended for when another account signs in", async () => {
@@ -230,8 +224,8 @@ it("forgets the account its session ended for when another account signs in", as
   await checkSession();
 
   await waitFor(() =>
-    expect(appEntries()).toEqual({
-      "kavtsya.held_account": "user-b",
+    expect(appSecureStoreEntries()).toEqual({
+      "kavtsya.account_on_device": "user-b",
       "kavtsya.member_code.user-b": "K7-5678",
       "kavtsya.theme_preference": "dark",
     }),
