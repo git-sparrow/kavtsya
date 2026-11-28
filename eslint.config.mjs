@@ -5,6 +5,9 @@ import tseslint from "typescript-eslint";
 import expoFlat from "eslint-config-expo/flat.js";
 import prettier from "eslint-config-prettier/flat";
 
+const SET_ITEM_MESSAGE =
+  "use setAccountEntry and add the entry to ACCOUNT_ENTRIES";
+
 export default tseslint.config(
   {
     ignores: [
@@ -58,6 +61,33 @@ export default tseslint.config(
                 "Report through @/lib/crash-reporting; only it imports the SDK.",
             },
           ],
+        },
+      ],
+    },
+  },
+
+  // Per-account SecureStore writes go through setAccountEntry so sign-out can
+  // clear them (#402, #445). Per-device writes (device id, theme) are allowed.
+  {
+    files: ["apps/mobile/**/*.{ts,tsx}"],
+    ignores: [
+      "apps/mobile/src/features/account/account-storage.ts",
+      "apps/mobile/src/features/push/push-registration.ts",
+      "apps/mobile/src/theme/preference-context.tsx",
+      "apps/mobile/test/**",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.type='MemberExpression']:matches([callee.property.name='setItemAsync'], [callee.property.value='setItemAsync'])",
+          message: SET_ITEM_MESSAGE,
+        },
+        {
+          selector:
+            "ImportDeclaration[source.value='expo-secure-store'] > ImportSpecifier[imported.name='setItemAsync']",
+          message: SET_ITEM_MESSAGE,
         },
       ],
     },
