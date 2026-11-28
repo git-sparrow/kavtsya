@@ -6,8 +6,8 @@ import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { RenderErrorFallback } from "@/components/render-error-fallback";
+import { useDeviceSession } from "@/features/account/session";
 import { initForegroundNotifications } from "@/features/push/foreground-notifications";
-import { authClient } from "@/lib/auth-client";
 import { initCrashReporting } from "@/lib/crash-reporting";
 import { ThemePreferenceProvider, fontAssets, useTheme } from "@/theme";
 
@@ -63,17 +63,18 @@ function ThemedStatusBar() {
 function RootShell() {
   // useSession reads the SecureStore-cached session first, so a returning
   // Customer lands authenticated without a network round-trip on launch.
-  const { data: session, isPending } = authClient.useSession();
+  const session = useDeviceSession();
   // A font failure shouldn't wedge launch — fall through to system fonts.
   const [fontsLoaded, fontError] = useFonts(fontAssets);
 
-  const ready = !isPending && (fontsLoaded || !!fontError);
+  const ready = session.kind !== "pending" && (fontsLoaded || !!fontError);
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
   }, [ready]);
 
   if (!ready) return null; // splash stays up until the app is ready to paint
+  const signedIn = session.kind === "signedIn";
 
   return (
     <SafeAreaProvider>
@@ -82,10 +83,10 @@ function RootShell() {
           false the router redirects to the first available screen, so signing
           in/out reactively swaps the auth screen for the app and back. */}
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Protected guard={!!session}>
+        <Stack.Protected guard={signedIn}>
           <Stack.Screen name="(app)" />
         </Stack.Protected>
-        <Stack.Protected guard={!session}>
+        <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" />
         </Stack.Protected>
       </Stack>

@@ -3,8 +3,8 @@ import { beforeEach, expect, it, vi } from "vitest";
 
 /**
  * Sign-out (#330) names this device, so the server releases its push token in
- * the same request that ends the session — and then leaves nothing of the
- * account on the device (#402).
+ * the same request that ends the session. Clearing the account's data once the
+ * session has ended is `device-session.test.tsx`.
  */
 
 const store = new Map<string, string>();
@@ -32,7 +32,7 @@ beforeEach(() => {
 it("signs out naming this device", async () => {
   store.set("kavtsya.device_id", "device-1");
 
-  await signOut("user-a");
+  await signOut();
 
   expect(authSignOut).toHaveBeenCalledExactlyOnceWith({
     fetchOptions: { headers: { [DEVICE_ID_HEADER]: "device-1" } },
@@ -45,54 +45,9 @@ it("still signs out when the device id can't be read", async () => {
     new Error("keychain locked"),
   );
 
-  await signOut("user-a");
+  await signOut();
 
   expect(authSignOut).toHaveBeenCalledExactlyOnceWith({
     fetchOptions: { headers: undefined },
   });
-});
-
-it("leaves none of the account's data on the device", async () => {
-  store.set("kavtsya.device_id", "device-1");
-  store.set("kavtsya.member_code.user-a", "K7-1234");
-  store.set("kavtsya.push_consent_decided.user-a", "yes");
-
-  await signOut("user-a");
-
-  expect([...store.keys()]).toEqual([]);
-});
-
-it("keeps other accounts' data and the device's appearance choice", async () => {
-  store.set("kavtsya.member_code.user-a", "K7-1234");
-  store.set("kavtsya.member_code.user-b", "K7-5678");
-  store.set("kavtsya.push_consent_decided.user-b", "no");
-  store.set("kavtsya.theme_preference", "dark");
-
-  await signOut("user-a");
-
-  expect(Object.fromEntries(store)).toEqual({
-    "kavtsya.member_code.user-b": "K7-5678",
-    "kavtsya.push_consent_decided.user-b": "no",
-    "kavtsya.theme_preference": "dark",
-  });
-});
-
-it("still names the device and forgets its id when the account isn't known", async () => {
-  store.set("kavtsya.device_id", "device-1");
-
-  await signOut(undefined);
-
-  expect(authSignOut).toHaveBeenCalledExactlyOnceWith({
-    fetchOptions: { headers: { [DEVICE_ID_HEADER]: "device-1" } },
-  });
-  expect(store.has("kavtsya.device_id")).toBe(false);
-});
-
-it("clears the account's data even when the sign-out request fails", async () => {
-  store.set("kavtsya.member_code.user-a", "K7-1234");
-  authSignOut.mockRejectedValueOnce(new Error("network down"));
-
-  await signOut("user-a");
-
-  expect(store.has("kavtsya.member_code.user-a")).toBe(false);
 });
