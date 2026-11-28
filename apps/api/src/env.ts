@@ -23,13 +23,22 @@ export type Env = z.infer<typeof envSchema>;
  * Walk up from `startDir` to the filesystem root, loading the first `.env`
  * found. Lets API processes pick up the repo-root `.env` even though pnpm runs
  * package scripts with the cwd set to `apps/api`. Best-effort: real environment
- * variables (e.g. Railway) take precedence and need no file.
+ * variables (e.g. Railway) take precedence and need no file. A `.env` above the
+ * enclosing git checkout belongs to another checkout (a worktree nested inside
+ * the main one would otherwise reach the main database), so it is refused.
  */
 export function loadDotEnv(startDir: string = process.cwd()): void {
   let dir = startDir;
+  let checkout: string | undefined;
   for (;;) {
+    if (checkout === undefined && existsSync(join(dir, ".git"))) checkout = dir;
     const candidate = join(dir, ".env");
     if (existsSync(candidate)) {
+      if (checkout !== undefined && checkout !== dir) {
+        throw new Error(
+          `Found ${candidate}, outside this git checkout (${checkout}), which has no .env of its own. Run \`pnpm env:worktree\` in the checkout to give it its own .env and database.`,
+        );
+      }
       process.loadEnvFile(candidate);
       return;
     }

@@ -60,8 +60,8 @@ report any unavailable capability, and leave the vendored copy unchanged.
 `implement-spec` is pinned but **not adopted**. Each implementer works in its own
 worktree, which needs `pnpm env:worktree` and `pnpm db:up` before any test: a
 worktree without a `.env` nested inside the main checkout (such as
-`.claude/worktrees/`) silently loads the main checkout's `.env` and tests against
-its database. Its close-out also asks for `code-review` by bare name, which in
+`.claude/worktrees/`) makes the API refuse to start rather than reach the main
+checkout's database. Its close-out also asks for `code-review` by bare name, which in
 Claude resolves to the built-in review rather than Matt's. Implement tickets one
 at a time with `implement` or `tdd`, then run `mattpocock-skills:code-review`
 explicitly.
@@ -169,13 +169,16 @@ files within a run; it is not a cross-agent lock. Do not run simultaneous suites
 against one database. `pnpm db:up` starts the checkout's own `db` service: Compose
 names the container and data volume after the checkout folder and publishes
 `DB_PORT` (5432 when unset) from the checkout's `.env`. Both outlive the folder, so
-run `docker compose down -v` in a merged worktree before removing it.
+run `docker compose down -v` in a worktree before removing it by hand;
+`pnpm git:prune-merged --apply` does this for you.
 
 Record ownership in the handoff and release it
 when done. After a PR merges, run `pnpm git:prune-merged` from the main checkout:
 it lists each local branch with a keep or prune decision, and `-- --apply`
-removes the merged branches with their worktrees. It keeps any worktree that
-holds uncommitted, untracked or non-build ignored files. Stop only task-owned processes and Argent device servers, naming the
+removes the merged branches with their worktrees and each worktree's Postgres
+(`docker compose down -v`; a worktree stays, with the reason, when that fails). It
+keeps any worktree that holds uncommitted, untracked or non-build ignored files,
+including a `.env` that differs from what `pnpm env:worktree` would write. Stop only task-owned processes and Argent device servers, naming the
 devices used. Never run a machine-wide cleanup or `db:reset` as handoff housekeeping.
 
 ## Maintenance and verification sources
