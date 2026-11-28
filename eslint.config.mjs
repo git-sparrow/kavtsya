@@ -29,6 +29,25 @@ export default tseslint.config(
     extends: [tseslint.configs.recommended],
   },
 
+  // A path param is client input, and a malformed one must read as "not found",
+  // not reach Postgres and 500 (#51, #252). Read each through a schema from
+  // routes/params.ts.
+  {
+    files: ["apps/api/src/routes/**/*.ts"],
+    ignores: ["apps/api/src/routes/params.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.object.property.name='req'][callee.property.name='param']:not(CallExpression[callee.property.name=/^(safeParse|parse)$/][callee.object.name=/ParamSchema$/] > CallExpression)",
+          message:
+            "Parse path params with uuidParamSchema from routes/params.ts, e.g. uuidParamSchema.safeParse(c.req.param('id')). For an intentionally raw read, add an eslint-disable-next-line comment that says why.",
+        },
+      ],
+    },
+  },
+
   // Mobile: Expo's own config (React Native + TypeScript aware). Point the
   // import resolver at the mobile tsconfig so `@/*` path aliases resolve.
   {

@@ -153,6 +153,7 @@ export function registerRosterRoutes(
 
     const approved = await approveBarista(db, clock, {
       cafeId: cafeId.data,
+      // eslint-disable-next-line no-restricted-syntax -- Better Auth ids are text, no cast to fail (#252)
       userId: c.req.param("userId"),
       ownerUserId: user.id,
     });
@@ -172,6 +173,7 @@ export function registerRosterRoutes(
       db,
       {
         cafeId: cafeId.data,
+        // eslint-disable-next-line no-restricted-syntax -- Better Auth ids are text, no cast to fail (#252)
         userId: c.req.param("userId"),
         ownerUserId: user.id,
       },
