@@ -17,6 +17,9 @@ import { z } from "zod";
  */
 export const KYIV_TIME_ZONE = "Europe/Kyiv";
 
+/** Kavtsya's one public mail address; kavtsya.app has no MX record and receives no mail. */
+export const CONTACT_EMAIL = "hello@kavtsya.com";
+
 /**
  * Contract for the `/health` endpoint, shared by the API (which produces it)
  * and the mobile app (which validates it). This is the first link in the

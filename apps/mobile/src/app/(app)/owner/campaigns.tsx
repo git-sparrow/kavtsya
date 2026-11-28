@@ -1,4 +1,4 @@
-import type { CampaignResult } from "@kavtsya/shared";
+import { type CampaignResult, CONTACT_EMAIL } from "@kavtsya/shared";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Linking, View } from "react-native";
@@ -18,7 +18,6 @@ export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-
 
 /** Where a Free owner reaches Kavtsya about Pro — Telegram-first (grilling 2026-07-10). */
 const KAVTSYA_TELEGRAM_URL = "https://t.me/kavtsya";
-const KAVTSYA_EMAIL = "hello@kavtsya.app";
 
 /** The API caps the message at 200 — mirror it so the counter is honest. */
 const MESSAGE_LIMIT = 200;
@@ -109,7 +108,7 @@ export default function OwnerCampaigns() {
           testID="campaigns.telegram"
           onPress={() => void Linking.openURL(KAVTSYA_TELEGRAM_URL)}
         />
-        <Muted>або {KAVTSYA_EMAIL}</Muted>
+        <Muted>або {CONTACT_EMAIL}</Muted>
       </Screen>
     );
   }
