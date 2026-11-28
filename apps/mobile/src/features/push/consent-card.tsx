@@ -5,7 +5,10 @@ import { Text, View } from "react-native";
 import { Berehynia } from "@/components/berehynia";
 import { Button } from "@/components/button";
 import { Surface } from "@/components/surface";
-import { accountKey } from "@/features/account/account-storage";
+import {
+  accountKey,
+  setAccountEntry,
+} from "@/features/account/account-storage";
 import { useMe } from "@/features/account/me-context";
 import { useBalances } from "@/features/loyalty/use-balances";
 import { updatePushConsent } from "@/lib/api";
@@ -48,8 +51,9 @@ export function ConsentCard() {
     setBusy(true);
     try {
       await updatePushConsent(consent);
-      await SecureStore.setItemAsync(
-        accountKey("push_consent_decided", userId!),
+      await setAccountEntry(
+        "push_consent_decided",
+        userId!,
         consent ? "yes" : "no",
       );
       setDecided(true);

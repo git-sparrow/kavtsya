@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 
-import { accountKey } from "@/features/account/account-storage";
+import {
+  accountKey,
+  setAccountEntry,
+} from "@/features/account/account-storage";
 import { useMe } from "@/features/account/me-context";
 import { fetchMemberCode } from "@/lib/api";
 
@@ -38,8 +41,10 @@ export function useMemberCode(): string | null {
 
     void SecureStore.deleteItemAsync(LEGACY_STORAGE_KEY);
 
-    async function load(storageKey: string) {
-      const cached = await SecureStore.getItemAsync(storageKey);
+    async function load(accountId: string) {
+      const cached = await SecureStore.getItemAsync(
+        accountKey("member_code", accountId),
+      );
       if (cached) {
         if (active) setEntry({ userId, code: cached });
         return;
@@ -48,7 +53,7 @@ export function useMemberCode(): string | null {
         const fetched = await fetchMemberCode();
         // Signed out mid-fetch: don't write back what sign-out cleared (#402).
         if (!active) return;
-        await SecureStore.setItemAsync(storageKey, fetched);
+        await setAccountEntry("member_code", accountId, fetched);
         setEntry({ userId, code: fetched });
       } catch {
         // Offline before the first fetch ever succeeded: nothing to show yet.
@@ -58,7 +63,7 @@ export function useMemberCode(): string | null {
 
     // One entry PER ACCOUNT (#91): the member code is an earning identity, so
     // on a shared or handed-over device account B never inherits A's code.
-    void load(accountKey("member_code", userId));
+    void load(userId);
     return () => {
       active = false;
     };

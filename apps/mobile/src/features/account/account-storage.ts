@@ -13,6 +13,15 @@ export function accountKey(entry: AccountEntry, userId: string): string {
   return `kavtsya.${entry}.${userId.replace(/[^A-Za-z0-9._-]/g, "_")}`;
 }
 
+/** The only way to write a per-account entry, so `forgetAccount` can clear it. */
+export function setAccountEntry(
+  entry: AccountEntry,
+  userId: string,
+  value: string,
+): Promise<void> {
+  return SecureStore.setItemAsync(accountKey(entry, userId), value);
+}
+
 /** Remove the account's entries from this device; never throws. */
 export async function forgetAccount(userId: string): Promise<void> {
   await Promise.allSettled(
