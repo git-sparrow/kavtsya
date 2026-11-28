@@ -18,7 +18,7 @@ export function BackHeader({
   onBack,
 }: {
   title: string;
-  testID?: string;
+  testID: string;
   onBack?: () => void;
 }) {
   const t = useTheme();
