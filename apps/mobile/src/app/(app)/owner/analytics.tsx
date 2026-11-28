@@ -1,4 +1,4 @@
-import type { AnalyticsPeriod } from "@kavtsya/shared";
+import { type AnalyticsPeriod, CONTACT_EMAIL } from "@kavtsya/shared";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Linking, View } from "react-native";
@@ -22,7 +22,6 @@ export { ScreenErrorBoundary as ErrorBoundary } from "@/components/render-error-
 
 /** Where a Free owner reaches Kavtsya about Pro — Telegram-first (grilling 2026-07-10). */
 const KAVTSYA_TELEGRAM_URL = "https://t.me/kavtsya";
-const KAVTSYA_EMAIL = "hello@kavtsya.app";
 
 /** The two presets the API serves (#25), as the segmented control's options. */
 const PERIOD_OPTIONS: {
@@ -156,7 +155,7 @@ function FreePitch() {
         testID="analytics.telegram"
         onPress={() => void Linking.openURL(KAVTSYA_TELEGRAM_URL)}
       />
-      <Muted>або {KAVTSYA_EMAIL}</Muted>
+      <Muted>або {CONTACT_EMAIL}</Muted>
     </>
   );
 }

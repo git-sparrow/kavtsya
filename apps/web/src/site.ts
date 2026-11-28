@@ -1,10 +1,12 @@
+import { CONTACT_EMAIL } from "@kavtsya/shared";
+
+export { CONTACT_EMAIL };
+
 export const BRAND = "Кавця";
 
 export const CONTROLLER_LEAD = `${BRAND} (Kavtsya) розробляє та підтримує`;
 
 export const CONTROLLER_NAME = "Олександр Горобець (Oleksandr Horobets)";
-
-export const CONTACT_EMAIL = "hello@kavtsya.com";
 
 export const CONTACT_MAILTO = `mailto:${CONTACT_EMAIL}`;
 
