@@ -15,6 +15,7 @@ const DISPOSABLE = [
   ".astro/",
   ".husky/_/",
   "coverage/",
+  "apps/web/src/styles/tokens.css",
 ];
 
 /** Parses `git worktree list --porcelain`; the first entry is the main checkout. */
