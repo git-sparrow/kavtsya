@@ -108,6 +108,7 @@ describe("workAtStake", () => {
       "!! node_modules/x/index.js",
       "!! apps/mobile/ios/Podfile.lock",
       "!! .husky/_/pre-commit",
+      "!! apps/web/src/styles/tokens.css",
       "!! apps/api/.env",
       "!! .claude/settings.local.json",
     ].join("\n");
